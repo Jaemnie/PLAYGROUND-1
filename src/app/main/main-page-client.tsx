@@ -29,26 +29,6 @@ export function MainPageClient({ initialSections, initialIsAdmin }: MainPageClie
   )
   const supabase = createClientBrowser()
 
-  useEffect(() => {
-    let isMounted = true
-    
-    const loadData = async () => {
-      try {
-        if (sections.length > 0) {
-          await loadGuideItems()
-        }
-      } catch (error) {
-        console.error('Data loading error:', error)
-      }
-    }
-
-    if (isMounted) loadData()
-    
-    return () => {
-      isMounted = false
-    }
-  }, [])
-
   const loadGuideItems = async () => {
     try {
       const sectionsWithItems = await Promise.all(
@@ -78,6 +58,26 @@ export function MainPageClient({ initialSections, initialIsAdmin }: MainPageClie
       console.error('가이드 아이템 로딩 에러:', error)
     }
   }
+
+  useEffect(() => {
+    let isMounted = true
+    
+    const loadData = async () => {
+      try {
+        if (sections.length > 0) {
+          await loadGuideItems()
+        }
+      } catch (error) {
+        console.error('Data loading error:', error)
+      }
+    }
+
+    if (isMounted) loadData()
+    
+    return () => {
+      isMounted = false
+    }
+  }, [sections.length])
 
   const scrollToGuides = () => {
     const guidesSection = document.querySelector('#guides-section')

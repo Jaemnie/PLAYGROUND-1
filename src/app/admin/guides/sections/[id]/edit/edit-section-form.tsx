@@ -5,8 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/card'
-import { createClientBrowser } from '@/lib/supabase/client'
+import { Card, CardContent, CardFooter } from '@/components/ui/card'
 import { toast } from 'sonner'
 import { motion } from 'framer-motion'
 import { GuideSection } from '@/lib/types/guide'
@@ -18,7 +17,6 @@ interface EditSectionFormProps {
 
 export function EditSectionForm({ section }: EditSectionFormProps) {
   const router = useRouter()
-  const supabase = createClientBrowser()
   const [formData, setFormData] = useState({
     title: section.title,
     description: section.description

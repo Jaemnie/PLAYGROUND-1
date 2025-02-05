@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { Card, CardHeader, CardContent } from '@/components/ui/card'
+import { Card, CardHeader } from '@/components/ui/card'
 import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline'
 import { GuideSection, GuideItem } from '@/lib/types/guide'
 import { toast } from 'sonner'
@@ -123,7 +123,7 @@ export function SectionItems({ section, items, sectionId }: SectionItemsProps) {
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className="text-xl font-semibold text-gray-100">
-                        {item.name}
+                        {item.title}
                       </h3>
                       <p className="text-sm text-gray-400">
                         {item.description}
