@@ -1,12 +1,9 @@
 'use client'
 
-import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import {
   BarChart3,
-  BookOpen,
-  GraduationCap,
   Trophy,
   Users2,
   ShoppingBag,
@@ -16,9 +13,10 @@ import { Button } from '@/components/ui/button'
 import { BackButton } from '@/components/back-button'
 import { useRouter } from 'next/navigation'
 import { logout } from '@/lib/actions/auth'
+import { User } from '@supabase/supabase-js'
 
 interface DashboardClientProps {
-  user: any
+  user: User
   profile: {
     nickname: string
     points: number

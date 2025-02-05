@@ -10,7 +10,7 @@ interface AdminGuideContainerProps {
 }
 
 export function AdminGuideContainer({ initialSections }: AdminGuideContainerProps) {
-  const [sections, setSections] = useState<GuideSection[]>(initialSections)
+  const [sections] = useState<GuideSection[]>(initialSections)
 
   return (
     <div className="min-h-screen flex flex-col bg-background">

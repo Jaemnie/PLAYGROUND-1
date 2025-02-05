@@ -29,7 +29,7 @@ export async function GET(request: Request) {
 
     // timeframe에 따른 시간 범위 계산
     const now = new Date()
-    let startDate = new Date()
+    const startDate = new Date()
     
     switch (timeframe) {
       case '1D':

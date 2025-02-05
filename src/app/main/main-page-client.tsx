@@ -77,7 +77,7 @@ export function MainPageClient({ initialSections, initialIsAdmin }: MainPageClie
     return () => {
       isMounted = false
     }
-  }, [sections.length])
+  }, [sections.length, loadGuideItems])
 
   const scrollToGuides = () => {
     const guidesSection = document.querySelector('#guides-section')

@@ -17,7 +17,7 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ order: data })
-  } catch (err: any) {
+  } catch (err: unknown) {
     return NextResponse.json({ error: '주문 처리 중 오류가 발생했습니다.' }, { status: 500 })
   }
 } 
