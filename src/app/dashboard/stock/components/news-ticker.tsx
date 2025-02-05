@@ -27,6 +27,14 @@ export function NewsTicker({ news: initialNews }: NewsTickerProps) {
   const totalPages = Math.ceil(newsData.length / itemsPerPage)
   const currentNews = newsData[currentPage - 1]
 
+  // 새로운 뉴스가 추가되면 첫 페이지로 이동
+  useEffect(() => {
+    if (latestUpdate) {
+      setCurrentPage(1)
+    }
+  }, [latestUpdate])
+
+  // 자동 슬라이드 효과
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentPage((prev) => (prev === totalPages ? 1 : prev + 1))
@@ -74,22 +82,19 @@ export function NewsTicker({ news: initialNews }: NewsTickerProps) {
       </CardHeader>
       <CardContent>
         <div className="relative min-h-[140px]">
-          <AnimatePresence mode="wait">
+          <AnimatePresence>
             <motion.div
               key={currentNews?.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.5 }}
-              className={`space-y-3 p-4 rounded-xl border ${getImpactStyle(currentNews?.impact || 'neutral')}`}
+              className={`absolute inset-0 space-y-3 p-4 rounded-xl border ${getImpactStyle(currentNews?.impact || 'neutral')}`}
             >
-              <motion.div
-                animate={{
-                  scale: latestUpdate === currentNews?.id ? [1, 1.02, 1] : 1,
-                  transition: { duration: 0.3 }
-                }}
+              <div
+                className={latestUpdate === currentNews?.id ? 'ring-2 ring-blue-500/50 rounded-lg' : ''}
               >
-                <h3 className="font-bold text-gray-100 mb-2">
+                <h3 className="font-bold text-gray-100 mb-2 line-clamp-1">
                   {currentNews?.title}
                 </h3>
                 <p className="text-sm text-gray-400 line-clamp-2 mb-2">
@@ -105,7 +110,7 @@ export function NewsTicker({ news: initialNews }: NewsTickerProps) {
                     </span>
                   )}
                 </div>
-              </motion.div>
+              </div>
             </motion.div>
           </AnimatePresence>
         </div>

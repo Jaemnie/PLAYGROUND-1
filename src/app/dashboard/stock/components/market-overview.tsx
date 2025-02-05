@@ -44,7 +44,7 @@ export function MarketOverview({ companies: initialCompanies }: MarketOverviewPr
       </CardHeader>
       <CardContent>
         <div className="space-y-3">
-          <AnimatePresence mode="wait">
+          <AnimatePresence>
             {displayedCompanies.map((company) => {
               const currentPrice = company.current_price
               const previousPrice = company.last_closing_price
@@ -54,7 +54,6 @@ export function MarketOverview({ companies: initialCompanies }: MarketOverviewPr
               return (
                 <motion.div
                   key={company.id}
-                  layout
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
@@ -62,40 +61,19 @@ export function MarketOverview({ companies: initialCompanies }: MarketOverviewPr
                 >
                   <div className="flex justify-between items-center">
                     <div>
-                      <motion.p 
-                        className="font-medium text-gray-100"
-                        animate={{
-                          color: priceChangePercent !== 0 
-                            ? isPriceUp ? '#10B981' : '#EF4444'
-                            : '#E5E7EB',
-                          transition: { duration: 0.3 }
-                        }}
-                      >
+                      <p className={`font-medium ${isPriceUp ? 'text-green-500' : 'text-red-500'}`}>
                         {company.name}
-                      </motion.p>
+                      </p>
                       <p className="text-sm text-gray-400">{company.ticker}</p>
                     </div>
                     <div className="text-right">
-                      <motion.div
-                        initial={false}
-                        animate={{
-                          backgroundColor: priceChangePercent !== 0
-                            ? isPriceUp 
-                              ? 'rgba(16, 185, 129, 0.1)'
-                              : 'rgba(239, 68, 68, 0.1)'
-                            : 'transparent'
-                        }}
-                        className="inline-block px-2 py-1 rounded"
-                      >
-                        <motion.p
-                          key={company.current_price}
-                          initial={{ y: -20, opacity: 0 }}
-                          animate={{ y: 0, opacity: 1 }}
-                          className="font-medium text-gray-100"
-                        >
+                      <div className={`inline-block px-2 py-1 rounded ${
+                        isPriceUp ? 'bg-green-500/10' : 'bg-red-500/10'
+                      }`}>
+                        <p className="font-medium text-gray-100">
                           {Math.floor(company.current_price).toLocaleString()}원
-                        </motion.p>
-                      </motion.div>
+                        </p>
+                      </div>
                       <div className="flex items-center justify-end gap-1 mt-1">
                         {isPriceUp ? (
                           <ArrowUpIcon className="w-3 h-3 text-green-500" />

@@ -131,7 +131,6 @@ export function StockList({ companies: initialCompanies }: StockListProps) {
                   return (
                     <motion.tr
                       key={company.id}
-                      layout
                       initial={{ opacity: 0.8 }}
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0.8 }}
@@ -140,42 +139,22 @@ export function StockList({ companies: initialCompanies }: StockListProps) {
                       onClick={() => router.push(`/dashboard/stock/${company.ticker}`)}
                     >
                       <TableCell>
-                        <motion.span
-                          animate={{
-                            color: priceChange !== 0 
-                              ? isPositive ? '#10B981' : '#EF4444'
-                              : '#E5E7EB',
-                            transition: { duration: 0.3 }
-                          }}
-                        >
+                        <span className={isPositive ? 'text-green-500' : 'text-red-500'}>
                           {company.name}
-                        </motion.span>
+                        </span>
                       </TableCell>
                       <TableCell>{company.ticker}</TableCell>
                       <TableCell className="text-right">
-                        <motion.div
-                          initial={false}
-                          animate={{
-                            backgroundColor: priceChange !== 0
-                              ? isPositive 
-                                ? 'rgba(16, 185, 129, 0.1)'
-                                : 'rgba(239, 68, 68, 0.1)'
-                              : 'transparent'
-                          }}
-                          className="inline-block px-2 py-1 rounded"
-                        >
-                          <motion.span
-                            key={company.current_price}
-                            initial={{ y: -20, opacity: 0 }}
-                            animate={{ y: 0, opacity: 1 }}
-                            className={getPriceChangeStyle(
-                              company.current_price,
-                              company.previous_price
-                            )}
-                          >
+                        <div className={`inline-block px-2 py-1 rounded ${
+                          isPositive ? 'bg-green-500/10' : 'bg-red-500/10'
+                        }`}>
+                          <span className={getPriceChangeStyle(
+                            company.current_price,
+                            company.previous_price
+                          )}>
                             {Math.floor(company.current_price).toLocaleString()}원
-                          </motion.span>
-                        </motion.div>
+                          </span>
+                        </div>
                       </TableCell>
                       <TableCell className="text-right">
                         <span className="text-gray-400">
