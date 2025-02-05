@@ -126,7 +126,7 @@ export function OrderBook({ company }: OrderBookProps) {
                         className="hover:bg-gray-800/30 border-gray-800"
                       >
                         <TableCell className="text-right font-medium text-red-400">
-                          {order.price.toLocaleString()}
+                          {Math.floor(order.price).toLocaleString()}
                         </TableCell>
                         <TableCell className="text-right text-gray-300">
                           {order.volume.toLocaleString()}
@@ -171,7 +171,7 @@ export function OrderBook({ company }: OrderBookProps) {
                         className="hover:bg-gray-800/30 border-gray-800"
                       >
                         <TableCell className="text-right font-medium text-green-400">
-                          {order.price.toLocaleString()}
+                          {Math.floor(order.price).toLocaleString()}
                         </TableCell>
                         <TableCell className="text-right text-gray-300">
                           {order.volume.toLocaleString()}

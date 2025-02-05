@@ -29,7 +29,7 @@ export function CompanyInfo({ company, holding }: CompanyInfoProps) {
             <p className="text-sm text-gray-400">현재가</p>
             <div className="flex items-center gap-2">
               <p className="text-3xl font-bold text-gray-100">
-                {company.current_price.toLocaleString()}원
+                {Math.floor(company.current_price).toLocaleString()}원
               </p>
               <span className={`flex items-center ${isPriceUp ? 'text-green-500' : 'text-red-500'}`}>
                 {isPriceUp ? <ArrowUpIcon className="w-4 h-4" /> : <ArrowDownIcon className="w-4 h-4" />}

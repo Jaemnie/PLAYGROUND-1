@@ -42,31 +42,71 @@ interface MarketEvent {
 }
 
 export class MarketScheduler {
-  private supabase: any // 임시로 any 타입 사용
+  private static instance: MarketScheduler | null = null;
+  private supabase: any
   private isRunning: boolean = false
+  private marketUpdateJob: cron.ScheduledTask | null = null
+  private newsEventJob: cron.ScheduledTask | null = null
   
-  constructor() {
-    this.supabase = null
+  private constructor() {}
+
+  static async getInstance(): Promise<MarketScheduler> {
+    if (!MarketScheduler.instance) {
+      MarketScheduler.instance = new MarketScheduler();
+      await MarketScheduler.instance.initialize();
+    }
+    return MarketScheduler.instance;
+  }
+
+  async start() {
+    if (this.isRunning) {
+      console.log('마켓 스케줄러가 이미 실행 중입니다.')
+      return
+    }
+    
+    // 기존 인스턴스의 모든 작업을 정리
+    if (MarketScheduler.instance) {
+      await MarketScheduler.instance.cleanup()
+    }
+    
+    await this.initialize()
+    this.isRunning = true
+
+    console.log('마켓 스케줄러가 시작되었습니다.')
+
+    // 기존 작업이 있다면 먼저 중지
+    if (this.marketUpdateJob) {
+      this.marketUpdateJob.stop()
+    }
+    if (this.newsEventJob) {
+      this.newsEventJob.stop()
+    }
+
+    // 새로운 작업 시작
+    this.marketUpdateJob = cron.schedule('* * * * *', async () => {
+      await this.updateMarket()
+    })
+
+    this.newsEventJob = cron.schedule('*/5 * * * *', async () => {
+      await this.generateNewsAndEvents()
+    })
+  }
+
+  private async cleanup() {
+    if (this.marketUpdateJob) {
+      this.marketUpdateJob.stop()
+      this.marketUpdateJob = null
+    }
+    if (this.newsEventJob) {
+      this.newsEventJob.stop()
+      this.newsEventJob = null
+    }
+    this.isRunning = false
+    MarketScheduler.instance = null
   }
 
   private async initialize() {
     this.supabase = await createClient()
-  }
-
-  async start() {
-    if (this.isRunning) return
-    await this.initialize()
-    this.isRunning = true
-
-    // 1분마다 시장 업데이트
-    cron.schedule('* * * * *', async () => {
-      await this.updateMarket()
-    })
-
-    // 5분마다 뉴스/이벤트 생성
-    cron.schedule('*/5 * * * *', async () => {
-      await this.generateNewsAndEvents()
-    })
   }
 
   private async updateMarket() {
@@ -90,10 +130,19 @@ export class MarketScheduler {
 
       for (const company of companies || []) {
         const newPrice = await this.calculateNewPrice(company, orders, activeEvents)
-        await this.updateCompanyPrice(company.id, newPrice)
+        
+        // 현재 가격을 이전 가격으로 저장하고 새 가격 업데이트
+        await this.supabase
+          .from('companies')
+          .update({ 
+            previous_price: company.current_price,
+            current_price: newPrice 
+          })
+          .eq('id', company.id)
       }
+      console.log('시장 업데이트 완료')
     } catch (error) {
-      console.error('Market update error:', error)
+      console.error('시장 업데이트 중 오류 발생:', error)
     }
   }
 
@@ -123,8 +172,9 @@ export class MarketScheduler {
           await this.generateCompanyNews(company)
         }
       }
+      console.log('뉴스/이벤트 생성 완료')
     } catch (error) {
-      console.error('News/Events generation error:', error)
+      console.error('뉴스/이벤트 생성 중 오류 발생:', error)
     }
   }
 

@@ -32,21 +32,21 @@ export default function PortfolioAnalysis({ portfolio, points }: PortfolioAnalys
         <div className="space-y-4">
           <div>
             <p className="text-sm text-gray-400">보유 포인트</p>
-            <p className="text-2xl font-bold text-blue-400">{points.toLocaleString()} P</p>
+            <p className="text-2xl font-bold text-blue-400">{Math.floor(points).toLocaleString()} P</p>
           </div>
           <div>
             <p className="text-sm text-gray-400">주식 자산</p>
-            <p className="text-2xl font-bold text-gray-100">{stocksValue.toLocaleString()}원</p>
+            <p className="text-2xl font-bold text-gray-100">{Math.floor(stocksValue).toLocaleString()}원</p>
           </div>
           <div>
             <p className="text-sm text-gray-400">총 투자금액</p>
-            <p className="text-2xl font-bold text-gray-100">{investedAmount.toLocaleString()}원</p>
+            <p className="text-2xl font-bold text-gray-100">{Math.floor(investedAmount).toLocaleString()}원</p>
           </div>
           <div>
             <p className="text-sm text-gray-400">총 손익</p>
             <div className="flex items-center gap-2">
               <p className={`text-2xl font-bold ${isGainPositive ? 'text-green-500' : 'text-red-500'}`}>
-                {totalGain.toLocaleString()}원
+                {Math.floor(totalGain).toLocaleString()}원
               </p>
               <span className={`flex items-center ${isGainPositive ? 'text-green-500' : 'text-red-500'}`}>
                 {isGainPositive ? <ArrowUpIcon className="w-4 h-4" /> : <ArrowDownIcon className="w-4 h-4" />}

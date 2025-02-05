@@ -32,9 +32,9 @@ export default function HoldingsTable({ portfolio }: HoldingsTableProps) {
                 <TableCell className="text-gray-100 font-medium">{company.name}</TableCell>
                 <TableCell className="text-gray-400">{company.ticker}</TableCell>
                 <TableCell className="text-right">{shares}</TableCell>
-                <TableCell className="text-right">{average_cost.toLocaleString()}원</TableCell>
-                <TableCell className="text-right">{currentPrice.toLocaleString()}원</TableCell>
-                <TableCell className="text-right">{totalValue.toLocaleString()}원</TableCell>
+                <TableCell className="text-right">{Math.floor(average_cost).toLocaleString()}원</TableCell>
+                <TableCell className="text-right">{Math.floor(currentPrice).toLocaleString()}원</TableCell>
+                <TableCell className="text-right">{Math.floor(totalValue).toLocaleString()}원</TableCell>
               </TableRow>
             )
           })}

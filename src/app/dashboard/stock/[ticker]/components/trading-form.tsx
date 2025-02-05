@@ -113,7 +113,7 @@ export function TradingForm({
           <div>
             <p className="text-sm text-gray-400 mb-2">총 거래금액</p>
             <p className="text-xl font-bold text-gray-100">
-              {totalAmount.toLocaleString()}원
+              {Math.floor(totalAmount).toLocaleString()}원
             </p>
           </div>
 

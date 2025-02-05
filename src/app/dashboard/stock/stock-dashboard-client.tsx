@@ -24,7 +24,7 @@ export function StockDashboardClient({
   points
 }: StockDashboardClientProps) {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 overflow-x-hidden">
       <div className="fixed top-4 left-4 z-50">
         <BackButton />
       </div>
@@ -34,23 +34,23 @@ export function StockDashboardClient({
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* 포트폴리오 요약 */}
-          <Card className="lg:col-span-2 bg-black/40 backdrop-blur-sm border-gray-800">
+          <Card className="lg:col-span-2 bg-black/40 backdrop-blur-sm border-gray-800 overflow-hidden">
             <PortfolioSummary portfolio={initialPortfolio} points={points} />
           </Card>
           
           {/* 시장 개요 */}
-          <Card className="bg-black/40 backdrop-blur-sm border-gray-800">
+          <Card className="bg-black/40 backdrop-blur-sm border-gray-800 overflow-hidden">
             <MarketOverview companies={initialCompanies} />
           </Card>
         </div>
         
         {/* 뉴스 티커 */}
-        <Card className="mt-6 bg-black/40 backdrop-blur-sm border-gray-800">
+        <Card className="mt-6 bg-black/40 backdrop-blur-sm border-gray-800 overflow-hidden">
           <NewsTicker news={initialNews} />
         </Card>
         
         {/* 주식 목록 */}
-        <Card className="mt-6 bg-black/40 backdrop-blur-sm border-gray-800">
+        <Card className="mt-6 bg-black/40 backdrop-blur-sm border-gray-800 overflow-hidden">
           <StockList companies={initialCompanies} />
         </Card>
       </div>

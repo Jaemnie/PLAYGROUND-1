@@ -41,8 +41,8 @@ export default function TransactionHistory({ transactions }: TransactionHistoryP
               <TableCell>{tx.company?.ticker || '-'}</TableCell>
               <TableCell>{tx.transaction_type === 'buy' ? '매수' : '매도'}</TableCell>
               <TableCell className="text-right">{tx.shares}</TableCell>
-              <TableCell className="text-right">{tx.price.toLocaleString()}원</TableCell>
-              <TableCell className="text-right">{tx.total_amount.toLocaleString()}원</TableCell>
+              <TableCell className="text-right">{Math.floor(tx.price).toLocaleString()}원</TableCell>
+              <TableCell className="text-right">{Math.floor(tx.total_amount).toLocaleString()}원</TableCell>
             </TableRow>
           ))}
         </TableBody>

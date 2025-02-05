@@ -30,19 +30,17 @@ export default async function StockDashboardPage() {
         `)
         .eq('user_id', user.id),
       
-      // 주요 기업 목록
+      // 주요 기업 목록 (시가총액 순)
       supabase
         .from('companies')
         .select('*')
-        .order('market_cap', { ascending: false })
-        .limit(10),
+        .order('market_cap', { ascending: false }),
       
       // 최신 뉴스
       supabase
         .from('news')
         .select('*')
-        .order('published_at', { ascending: false })
-        .limit(5),
+        .order('published_at', { ascending: false }),
       
       // 사용자 프로필 정보
       supabase
