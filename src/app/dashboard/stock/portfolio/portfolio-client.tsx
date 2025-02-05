@@ -28,7 +28,10 @@ export function PortfolioClient({ user, portfolio, transactions, points }: Portf
             <PortfolioAnalysis portfolio={portfolio} points={points} />
           </Card>
           <Card className="bg-black/40 backdrop-blur-sm border-gray-800">
-            <PerformanceChart portfolio={portfolio} />
+            <PerformanceChart 
+              portfolio={portfolio} 
+              user={user}
+            />
           </Card>
         </div>
         

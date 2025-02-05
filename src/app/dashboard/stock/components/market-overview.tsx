@@ -14,7 +14,7 @@ interface MarketOverviewProps {
     name: string
     ticker: string
     current_price: number
-    previous_price: number
+    last_closing_price: number
   }[]
 }
 
@@ -47,7 +47,7 @@ export function MarketOverview({ companies: initialCompanies }: MarketOverviewPr
           <AnimatePresence mode="wait">
             {displayedCompanies.map((company) => {
               const currentPrice = company.current_price
-              const previousPrice = company.previous_price
+              const previousPrice = company.last_closing_price
               const priceChangePercent = ((currentPrice - previousPrice) / previousPrice) * 100
               const isPriceUp = priceChangePercent > 0
 

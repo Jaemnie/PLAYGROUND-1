@@ -58,8 +58,8 @@ export function StockList({ companies: initialCompanies }: StockListProps) {
   })
 
   // 가격 변동 스타일
-  const getPriceChangeStyle = (current: number, previous: number) => {
-    const change = ((current - previous) / previous) * 100
+  const getPriceChangeStyle = (current: number, lastClose: number) => {
+    const change = ((current - lastClose) / lastClose) * 100
     if (change > 0) return 'text-green-500'
     if (change < 0) return 'text-red-500'
     return 'text-gray-400'
