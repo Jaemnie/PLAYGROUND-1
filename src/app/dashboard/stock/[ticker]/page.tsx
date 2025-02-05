@@ -1,0 +1,66 @@
+import { createClient } from '@/lib/supabase/server'
+import { StockDetailClient } from './stock-detail-client'
+import { redirect, notFound } from 'next/navigation'
+import { Suspense } from 'react'
+import { LoadingSpinner } from '@/components/ui/loading-spinner'
+
+export default async function StockDetailPage({ 
+  params 
+}: { 
+  params: Promise<{ ticker: string }> 
+}) {
+  const { ticker } = await params
+
+  const supabase = await createClient()
+  
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    
+    if (!user) {
+      redirect('/login')
+    }
+
+    // 기업 정보 먼저 조회
+    const companyResult = await supabase
+      .from('companies')
+      .select('*')
+      .eq('ticker', ticker)
+      .single()
+
+    if (!companyResult.data) {
+      notFound()
+    }
+
+    // 나머지 데이터 병렬로 가져오기
+    const [holdingResult, profileResult] = await Promise.all([
+      // 사용자의 보유 주식 정보
+      supabase
+        .from('holdings')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('company_id', companyResult.data?.id)
+        .maybeSingle(),
+      
+      // 사용자 포인트 정보
+      supabase
+        .from('profiles')
+        .select('points')
+        .eq('id', user.id)
+        .single()
+    ])
+
+    return (
+      <Suspense fallback={<LoadingSpinner />}>
+        <StockDetailClient 
+          user={user}
+          company={companyResult.data}
+          holding={holdingResult.data || null}
+          points={profileResult.data?.points || 0}
+        />
+      </Suspense>
+    )
+  } catch (error) {
+    console.error('Error:', error)
+    return <div>오류가 발생했습니다.</div>
+  }
+} 

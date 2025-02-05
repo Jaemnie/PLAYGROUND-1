@@ -1,0 +1,139 @@
+'use client'
+
+import { useState } from 'react'
+import { motion } from 'framer-motion'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import {
+  BarChart3,
+  BookOpen,
+  GraduationCap,
+  Trophy,
+  Users2,
+  ShoppingBag,
+  LogOut
+} from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { BackButton } from '@/components/back-button'
+import { useRouter } from 'next/navigation'
+import { logout } from '@/lib/actions/auth'
+
+interface DashboardClientProps {
+  user: any
+  profile: {
+    nickname: string
+    points: number
+    friends: number
+  }
+}
+
+export function DashboardClient({ user, profile }: DashboardClientProps) {
+  const router = useRouter()
+
+  const stats = [
+    {
+      title: '주식 시뮬레이션',
+      value: '시작하기',
+      icon: <BarChart3 className="h-6 w-6" />,
+      description: '가상 주식 거래를 체험해보세요',
+      href: '/dashboard/stock'
+    },
+    {
+      title: '미니게임',
+      value: '입장하기',
+      icon: <Trophy className="h-6 w-6" />,
+      description: '간단한 도박 게임을 즐겨보세요',
+      href: '/dashboard/minigame'
+    },
+    {
+      title: '친구 목록',
+      value: `${profile.friends || 0}명`,
+      icon: <Users2 className="h-6 w-6" />,
+      description: '친구들과 소통해보세요',
+      href: '/dashboard/friends'
+    },
+    {
+      title: '상점',
+      value: `${profile.points?.toLocaleString() || 0} P`,
+      icon: <ShoppingBag className="h-6 w-6" />,
+      description: '포인트로 아이템을 구매하세요',
+      href: '/dashboard/shop'
+    }
+  ]
+
+  return (
+    <div className="min-h-screen bg-background">
+      <div className="fixed top-4 left-4 z-50">
+        <BackButton />
+      </div>
+      <div className="fixed top-4 right-4 z-50">
+        <form action={logout}>
+          <Button
+            type="submit"
+            variant="ghost"
+            size="sm"
+            className="bg-black/40 backdrop-blur-sm border border-red-800/50 hover:bg-red-950/50 text-red-400 hover:text-red-300"
+          >
+            <LogOut className="h-4 w-4 mr-2" />
+            로그아웃
+          </Button>
+        </form>
+      </div>
+      
+      {/* 헤더 섹션 */}
+      <section className="relative pt-32 pb-20 px-4 bg-gradient-to-br from-gray-900 via-black to-gray-900">
+        <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))]" />
+        <div className="relative container mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="max-w-2xl"
+          >
+            <h1 className="text-3xl font-bold text-gray-100">
+              안녕하세요, {profile.nickname || '사용자'} 님 👋
+            </h1>
+            <p className="mt-2 text-gray-400">
+              오늘도 새로운 지식을 탐험해보세요.
+            </p>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* 통계 카드 섹션 */}
+      <section className="py-12 px-4">
+        <div className="container mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {stats.map((stat, index) => (
+              <motion.div
+                key={stat.title}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
+                onClick={() => router.push(stat.href)}
+                className="cursor-pointer"
+              >
+                <Card className="bg-black/40 backdrop-blur-sm border border-gray-800/50 hover:bg-black/60 transition-colors">
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <h3 className="text-sm font-medium text-gray-400">
+                      {stat.title}
+                    </h3>
+                    <div className="text-violet-400">
+                      {stat.icon}
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-gray-100">
+                      {stat.value}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {stat.description}
+                    </p>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+    </div>
+  )
+} 
