@@ -9,6 +9,7 @@ interface PriceChartProps {
   company: any
   timeframe: string
   onTimeframeChange: (timeframe: string) => void
+  formatPrice: (value: number) => string
 }
 
 export function PriceChart({ 
@@ -77,7 +78,7 @@ export function PriceChart({
                 tickLine={{ stroke: '#4B5563' }}
                 axisLine={{ stroke: '#4B5563' }}
                 domain={['auto', 'auto']}
-                tickFormatter={(value) => `${value.toLocaleString()}원`}
+                tickFormatter={(value) => `${Math.round(value).toLocaleString()}원`}
               />
               <Tooltip
                 contentStyle={{
@@ -87,7 +88,7 @@ export function PriceChart({
                 }}
                 labelStyle={{ color: '#9CA3AF' }}
                 itemStyle={{ color: '#60A5FA' }}
-                formatter={(value: any) => [`${Number(value).toLocaleString()}원`]}
+                formatter={(value: any) => [`${Math.round(Number(value)).toLocaleString()}원`]}
               />
               <CartesianGrid stroke="#374151" strokeDasharray="3 3" />
               <Line

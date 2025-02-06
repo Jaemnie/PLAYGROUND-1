@@ -6,23 +6,27 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { createClientBrowser } from '@/lib/supabase/client'
 import { toast } from 'sonner'
+import { TradeAlert } from '@/components/ui/trade-alert'
 
 interface TradingFormProps {
   user: any
   company: any
   holding: any
   points: number
+  onTradeComplete: (type: 'buy' | 'sell') => void
 }
 
 export function TradingForm({ 
   user, 
   company, 
   holding,
-  points 
+  points,
+  onTradeComplete
 }: TradingFormProps) {
   const [type, setType] = useState<'buy' | 'sell'>('buy')
   const [shares, setShares] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [showAlert, setShowAlert] = useState(false)
   
   const supabase = createClientBrowser()
 
@@ -55,6 +59,7 @@ export function TradingForm({
 
       if (transactionError) throw transactionError
 
+      onTradeComplete(type)
       toast.success(
         type === 'buy' 
           ? '매수가 완료되었습니다.' 
@@ -71,6 +76,11 @@ export function TradingForm({
 
   return (
     <>
+      <TradeAlert 
+        isOpen={showAlert} 
+        type={type} 
+        onClose={() => setShowAlert(false)} 
+      />
       <CardHeader>
         <h2 className="text-xl font-semibold text-gray-100">주식 거래</h2>
       </CardHeader>

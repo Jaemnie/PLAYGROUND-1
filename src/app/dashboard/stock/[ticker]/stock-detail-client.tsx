@@ -7,6 +7,7 @@ import { TradingForm } from './components/trading-form'
 import { OrderBook } from './components/order-book'
 import { Card } from '@/components/ui/card'
 import { BackButton } from '@/components/back-button'
+import { TradeAlert } from '@/components/ui/trade-alert'
 
 interface StockDetailClientProps {
   user: any
@@ -22,9 +23,23 @@ export function StockDetailClient({
   points
 }: StockDetailClientProps) {
   const [selectedTimeframe, setSelectedTimeframe] = useState('1D')
+  const [showAlert, setShowAlert] = useState(false)
+  const [tradeType, setTradeType] = useState<'buy' | 'sell'>('buy')
+
+  const handleTradeComplete = (type: 'buy' | 'sell') => {
+    setTradeType(type)
+    setShowAlert(true)
+    setTimeout(() => setShowAlert(false), 2000)
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900">
+      <TradeAlert 
+        isOpen={showAlert} 
+        type={tradeType} 
+        onClose={() => setShowAlert(false)} 
+      />
+      
       <div className="fixed top-4 left-4 z-50">
         <BackButton />
       </div>
@@ -43,6 +58,7 @@ export function StockDetailClient({
               company={company}
               holding={holding}
               points={points}
+              onTradeComplete={handleTradeComplete}
             />
           </Card>
         </div>
@@ -53,6 +69,7 @@ export function StockDetailClient({
             company={company}
             timeframe={selectedTimeframe}
             onTimeframeChange={setSelectedTimeframe}
+            formatPrice={(value: number) => Math.round(value).toString()}
           />
         </Card>
         

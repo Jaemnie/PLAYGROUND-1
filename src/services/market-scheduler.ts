@@ -224,25 +224,32 @@ export class MarketScheduler {
       console.log('장 마감 - 종가 저장')
       await this.setClosingPrices();
     });
-
-    // 1분마다 주가 변동 (단일 작업으로 변경)
-    const priceUpdateJob = cron.schedule('* * * * *', async () => {
+    // 10분마다 주가 변동 (단일 작업으로 변경)
+    const priceUpdateJob = cron.schedule('*/10 * * * *', async () => {
       if (this.isMarketOpen()) {
         console.log('시장 업데이트 시작:', new Date().toISOString())
         await this.updateMarket();
       }
     });
 
-    // 5분마다 뉴스 생성
-    this.newsEventJob = cron.schedule('*/5 * * * *', async () => {
+    // 1시간마다 마켓 뉴스 생성
+    const marketNewsJob = cron.schedule('0 * * * *', async () => {
       if (this.isMarketOpen()) {
-        console.log('뉴스 생성 시작:', new Date().toISOString())
-        await this.generateNewsAndEvents();
+        console.log('마켓 뉴스 생성 시작:', new Date().toISOString())
+        await this.generateMarketNews();
+      }
+    });
+
+    // 30분마다 기업 뉴스 생성
+    const companyNewsJob = cron.schedule('*/30 * * * *', async () => {
+      if (this.isMarketOpen()) {
+        console.log('기업 뉴스 생성 시작:', new Date().toISOString())
+        await this.generateCompanyNews();
       }
     });
 
     // 모든 작업을 하나로 묶기
-    const allJobs = [openingJob, closingJob, priceUpdateJob];
+    const allJobs = [openingJob, closingJob, priceUpdateJob, marketNewsJob, companyNewsJob];
     this.marketUpdateJob = {
       stop: () => {
         console.log('모든 마켓 작업 중지')
@@ -346,57 +353,33 @@ export class MarketScheduler {
     }
   }
 
-  private async generateNewsAndEvents() {
-    try {
-      if (!this.isMarketOpen()) {
-        console.log('장 운영 시간이 아닙니다.');
-        return;
-      }
+  private async generateMarketNews() {
+    if (Math.random() < 0.75) { // 75% 확률로 마켓 뉴스 생성
+      const marketNews = this.selectRandomNews(this.marketNewsTemplates);
+      await this.createNews({
+        ...marketNews,
+        title: `[시장 전체] ${marketNews.title}`,
+        content: `${marketNews.content} - 전체 시장에 영향`
+      });
+      console.log('시장 전체 뉴스 발생:', marketNews.title);
+    }
+  }
 
-      let newsCreated = false;
+  private async generateCompanyNews() {
+    const { data: companies } = await this.supabase
+      .from('companies')
+      .select('*');
 
-      // 시장 전체 이벤트 (10% 확률로 증가)
-      if (Math.random() < 0.10) {
-        const marketNews = this.selectRandomNews(this.marketNewsTemplates);
-        await this.createNews({
-          ...marketNews,
-          title: `[시장 전체] ${marketNews.title}`,
-          content: `${marketNews.content} - 전체 시장에 영향`
-        });
-        console.log('시장 전체 이벤트 발생:', marketNews.title);
-        newsCreated = true;
-        return;
-      }
-
-      // 시장 전체 이벤트가 없을 경우에만 기업 뉴스 생성 시도
-      const { data: companies } = await this.supabase
-        .from('companies')
-        .select('*');
-
-      // 기업 뉴스 생성 확률 25%로 증가
-      if (Math.random() < 0.25) {
-        // 랜덤하게 하나의 기업 선택
-        const randomCompany = companies[Math.floor(Math.random() * companies.length)];
-        
-        // 선택된 기업의 뉴스 생성 (15% 확률)
-        const companyNews = this.selectRandomNews(this.companyNewsTemplates);
-        await this.createNews({
-          ...companyNews,
-          title: `[${randomCompany.name}] ${companyNews.title}`,
-          content: `${randomCompany.name}(${randomCompany.ticker}): ${companyNews.content}`,
-          company_id: randomCompany.id
-        });
-        console.log(`${randomCompany.name} 기업 뉴스 발생:`, companyNews.title);
-        newsCreated = true;
-      }
-
-      // 뉴스가 생성된 경우에만 가격 업데이트
-      if (newsCreated) {
-        console.log('뉴스로 인한 가격 변동 발생');
-        await this.updateMarket();
-      }
-    } catch (error) {
-      console.error('뉴스/이벤트 생성 중 오류 발생:', error);
+    if (Math.random() < 0.6) { // 60% 확률로 기업 뉴스 생성
+      const randomCompany = companies[Math.floor(Math.random() * companies.length)];
+      const companyNews = this.selectRandomNews(this.companyNewsTemplates);
+      await this.createNews({
+        ...companyNews,
+        title: `[${randomCompany.name}] ${companyNews.title}`,
+        content: `${randomCompany.name}(${randomCompany.ticker}): ${companyNews.content}`,
+        company_id: randomCompany.id
+      });
+      console.log(`${randomCompany.name} 기업 뉴스 발생:`, companyNews.title);
     }
   }
 
@@ -533,67 +516,6 @@ export class MarketScheduler {
       is_active: true,
       expires_at: new Date(Date.now() + 30 * 60000) // 30분 지속
     })
-  }
-
-  private async generateCompanyNews(company: any) {
-    const newsTemplates: CompanyNews[] = [
-      // 긍정적인 뉴스 (큰 영향)
-      { 
-        title: '실적 발표', 
-        content: `${company.name}의 분기 실적 예상치 크게 상회`, 
-        sentiment: 'positive',
-        impact: 0.15
-      },
-      { 
-        title: '대규모 투자 유치', 
-        content: `${company.name}, 1조원 규모 투자 유치 성공`, 
-        sentiment: 'positive',
-        impact: 0.12
-      },
-      // 긍정적인 뉴스 (중간 영향)
-      { 
-        title: '신규 사업 진출', 
-        content: `${company.name}, 유망 시장 진출 선언`, 
-        sentiment: 'positive',
-        impact: 0.08
-      },
-      // 부정적인 뉴스 (큰 영향)
-      { 
-        title: '대규모 리콜', 
-        content: `${company.name}, 주력 제품 전량 리콜 실시`, 
-        sentiment: 'negative',
-        impact: -0.15
-      },
-      { 
-        title: '횡령 사건', 
-        content: `${company.name} 경영진, 대규모 횡령 의혹`, 
-        sentiment: 'negative',
-        impact: -0.12
-      },
-      // 중립적인 뉴스
-      { 
-        title: '조직 개편', 
-        content: `${company.name}, 정기 조직 개편 실시`, 
-        sentiment: 'neutral',
-        impact: 0.02
-      }
-    ];
-
-    const selectedNews = newsTemplates[Math.floor(Math.random() * newsTemplates.length)];
-
-    // 뉴스 생성 및 주가 영향 반영
-    await this.supabase.from('news').insert({
-      company_id: company.id,
-      title: selectedNews.title,
-      content: selectedNews.content,
-      sentiment: selectedNews.sentiment,
-      impact: selectedNews.impact
-    });
-
-    // 뉴스 영향에 따른 즉각적인 주가 변동
-    const currentPrice = company.current_price;
-    const priceChange = currentPrice * (1 + selectedNews.impact);
-    await this.updateCompanyPrice(company.id, priceChange);
   }
 
   private async updateCompanyPrice(companyId: string, newPrice: number) {

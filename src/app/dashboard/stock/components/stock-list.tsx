@@ -6,7 +6,7 @@ import { CardHeader, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
-import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline'
+import { ChevronLeftIcon, ChevronRightIcon, ChevronUpIcon, ChevronDownIcon } from '@heroicons/react/24/outline'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useRealtimeStockData } from '@/hooks/useRealtimeStockData'
 
@@ -76,6 +76,38 @@ export function StockList({ companies: initialCompanies }: StockListProps) {
     }))
   }
 
+  // 시가총액 포맷팅 함수 추가
+  const formatMarketCap = (marketCap: number) => {
+    const trillion = 1_000_000_000_000; // 1조
+    const billion = 100_000_000; // 1억
+    const million = 10000; // 1만
+
+    if (marketCap >= trillion) {
+      const trillionValue = Math.floor(marketCap / trillion);
+      const billionValue = Math.floor((marketCap % trillion) / billion);
+      if (billionValue > 0) {
+        return `${trillionValue}조 ${billionValue}억`;
+      }
+      return `${trillionValue}조`;
+    }
+
+    if (marketCap >= billion) {
+      const billionValue = Math.floor(marketCap / billion);
+      const millionValue = Math.floor((marketCap % billion) / million);
+      if (millionValue > 0) {
+        return `${billionValue}억 ${millionValue}만`;
+      }
+      return `${billionValue}억`;
+    }
+
+    if (marketCap >= million) {
+      const millionValue = Math.floor(marketCap / million);
+      return `${millionValue}만`;
+    }
+
+    return `${marketCap.toLocaleString()}`;
+  }
+
   return (
     <>
       <CardHeader>
@@ -139,15 +171,24 @@ export function StockList({ companies: initialCompanies }: StockListProps) {
                       onClick={() => router.push(`/dashboard/stock/${company.ticker}`)}
                     >
                       <TableCell>
-                        <span className={isPositive ? 'text-green-500' : 'text-red-500'}>
+                        <span className="text-white">
                           {company.name}
                         </span>
                       </TableCell>
-                      <TableCell>{company.ticker}</TableCell>
+                      <TableCell>
+                        <span className="text-gray-400">
+                          {company.ticker}
+                        </span>
+                      </TableCell>
                       <TableCell className="text-right">
-                        <div className={`inline-block px-2 py-1 rounded ${
+                        <div className={`inline-flex items-center gap-1 px-2 py-1 rounded ${
                           isPositive ? 'bg-green-500/10' : 'bg-red-500/10'
                         }`}>
+                          {isPositive ? (
+                            <ChevronUpIcon className="w-4 h-4 text-green-500" />
+                          ) : (
+                            <ChevronDownIcon className="w-4 h-4 text-red-500" />
+                          )}
                           <span className={getPriceChangeStyle(
                             company.current_price,
                             company.previous_price
@@ -158,9 +199,8 @@ export function StockList({ companies: initialCompanies }: StockListProps) {
                       </TableCell>
                       <TableCell className="text-right">
                         <span className="text-gray-400">
-                          {(company.market_cap / 1_000_000).toFixed(0)}
+                          {formatMarketCap(company.market_cap)}
                         </span>
-                        <span className="text-sm text-gray-500 ml-1">M</span>
                       </TableCell>
                     </motion.tr>
                   )
