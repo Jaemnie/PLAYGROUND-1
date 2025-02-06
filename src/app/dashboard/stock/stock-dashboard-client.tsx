@@ -7,6 +7,7 @@ import { StockList } from './components/stock-list'
 import { NewsTicker } from './components/news-ticker'
 import { Card } from '@/components/ui/card'
 import { BackButton } from '@/components/back-button'
+import { MarketTimer } from './components/market-timer'
 
 interface StockDashboardClientProps {
   user: any
@@ -38,10 +39,17 @@ export function StockDashboardClient({
             <PortfolioSummary portfolio={initialPortfolio} points={points} />
           </Card>
           
-          {/* 시장 개요 */}
-          <Card className="bg-black/40 backdrop-blur-sm border-gray-800 overflow-hidden">
-            <MarketOverview companies={initialCompanies} />
-          </Card>
+          <div className="space-y-6">
+            {/* 마켓 타이머 */}
+            <Card className="bg-black/40 backdrop-blur-sm border-gray-800 overflow-hidden">
+              <MarketTimer />
+            </Card>
+            
+            {/* 시장 개요 */}
+            <Card className="bg-black/40 backdrop-blur-sm border-gray-800 overflow-hidden">
+              <MarketOverview companies={initialCompanies} />
+            </Card>
+          </div>
         </div>
         
         {/* 뉴스 티커 */}

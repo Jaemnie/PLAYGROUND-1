@@ -9,7 +9,10 @@ interface CompanyInfoProps {
 }
 
 export function CompanyInfo({ company, holding }: CompanyInfoProps) {
-  const priceChange = 2.5 // 실제로는 DB에서 가져와야 함
+  // 가격 변동률 계산
+  const priceChange = company.current_price && company.last_closing_price
+    ? ((company.current_price - company.last_closing_price) / company.last_closing_price) * 100
+    : 0
   const isPriceUp = priceChange > 0
 
   return (
@@ -27,14 +30,23 @@ export function CompanyInfo({ company, holding }: CompanyInfoProps) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <p className="text-sm text-gray-400">현재가</p>
-            <div className="flex items-center gap-2">
-              <p className="text-3xl font-bold text-gray-100">
-                {Math.floor(company.current_price).toLocaleString()}원
-              </p>
-              <span className={`flex items-center ${isPriceUp ? 'text-green-500' : 'text-red-500'}`}>
-                {isPriceUp ? <ArrowUpIcon className="w-4 h-4" /> : <ArrowDownIcon className="w-4 h-4" />}
-                {Math.abs(priceChange)}%
-              </span>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <p className="text-3xl font-bold text-gray-100">
+                  {Math.floor(company.current_price).toLocaleString()}원
+                </p>
+                <span className={`flex items-center ${isPriceUp ? 'text-green-500' : 'text-red-500'}`}>
+                  {isPriceUp ? <ArrowUpIcon className="w-4 h-4" /> : <ArrowDownIcon className="w-4 h-4" />}
+                  {Math.abs(priceChange).toFixed(2)}%
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-400">전일대비</span>
+                <span className={`text-sm ${isPriceUp ? 'text-green-500' : 'text-red-500'}`}>
+                  {isPriceUp ? '+' : '-'}
+                  {Math.floor(Math.abs(company.current_price - company.last_closing_price)).toLocaleString()}원
+                </span>
+              </div>
             </div>
           </div>
           
@@ -46,7 +58,7 @@ export function CompanyInfo({ company, holding }: CompanyInfoProps) {
                   {holding.shares.toLocaleString()}주
                 </p>
                 <p className="text-sm text-gray-400">
-                  평균단가: {holding.average_cost.toLocaleString()}원
+                  평균단가: {Math.floor(holding.average_cost).toLocaleString()}원
                 </p>
               </div>
             ) : (

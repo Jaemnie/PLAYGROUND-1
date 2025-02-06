@@ -2,53 +2,6 @@ import { createClient } from '@/lib/supabase/server'
 import cron from 'node-cron'
 import { PortfolioTracker } from '@/services/portfolio-tracker'
 
-interface StockData {
-  ticker: string;
-  price: number;
-  timestamp: string;
-}
-
-interface OrderData {
-  id: string;
-  ticker: string;
-  price: number;
-  quantity: number;
-  type: 'buy' | 'sell';
-}
-
-interface TradeData {
-  buyOrderId: string;
-  sellOrderId: string;
-  price: number;
-  quantity: number;
-  timestamp: string;
-}
-
-type MarketEventType = 
-  | 'economic_crisis' 
-  | 'market_boom' 
-  | 'interest_rate_cut' 
-  | 'inflation_rise' 
-  | 'tech_innovation'
-  | 'policy_reform'
-  | 'trade_conflict'
-  | 'housing_market'
-  | 'energy_crisis'
-  | 'startup_boost'
-
-interface MarketEvent {
-  type: MarketEventType
-  impact: number
-  probability: number
-}
-
-interface CompanyNews {
-  title: string;
-  content: string;
-  sentiment: 'positive' | 'negative' | 'neutral';
-  impact: number; // 가격 영향도 (-1.0 ~ 1.0)
-}
-
 interface NewsTemplate {
   title: string;
   content: string;
@@ -79,6 +32,35 @@ interface SchedulerStatus {
   jobType: 'market_update' | 'news_generation' | 'price_update';
 }
 
+type Industry =
+  | 'IT' 
+  | 'IT 서비스'
+  | '소프트웨어'
+  | '전자'
+  | '반도체'
+  | '바이오'
+  | '제약'
+  | '금융'
+  | '건설'
+  | '식품'
+  | '소비재'
+  | '자동차'
+  | '운송'
+  | '에너지'
+  | '디자인'
+  | '제조'
+  | string;
+
+interface Company {
+  id: string;
+  name: string;
+  ticker: string;
+  industry: Industry;
+  current_price: number;
+  previous_price: number;
+  last_closing_price: number;
+}
+
 export class MarketScheduler {
   private static instance: MarketScheduler | null = null;
   private isInitialized: boolean = false;
@@ -90,98 +72,305 @@ export class MarketScheduler {
   private readonly MARKET_CLOSE_HOUR = 24;  // 장 마감 시간 (자정)
   private lastMarketUpdate: Date | null = null;
   private lastNewsUpdate: Date | null = null;
+  private newsTemplateCache: Map<string, NewsTemplate[]> = new Map();
   
-  private readonly marketNewsTemplates: NewsTemplate[] = [
-    // 대형 이벤트 (큰 영향)
-    {
-      title: '글로벌 금융 위기 발생',
-      content: '주요국 증시 폭락, 전세계 금융시장 패닉',
-      sentiment: 'negative',
-      impact: -0.25,
-      type: 'market',
-      volatility: 2.5
-    },
-    {
-      title: '획기적인 AI 기술 발전',
-      content: '새로운 AI 혁신으로 전 산업 생산성 향상 기대',
-      sentiment: 'positive',
-      impact: 0.12,
-      type: 'market',
-      volatility: 1.8
-    },
-    // 중간 규모 이벤트
-    {
-      title: '중앙은행 기준금리 인상',
-      content: '예상보다 높은 수준의 금리 인상 단행',
-      sentiment: 'negative',
-      impact: -0.08,
-      type: 'market',
-      volatility: 1.5
-    },
-    {
-      title: '주요국 경기부양책 발표',
-      content: '대규모 경기부양 정책 시행 예정',
-      sentiment: 'positive',
-      impact: 0.07,
-      type: 'market',
-      volatility: 1.3
-    },
-    // 소규모 이벤트
-    {
-      title: '국제유가 소폭 상승',
-      content: '원자재 가격 전반적 상승세',
-      sentiment: 'neutral',
-      impact: -0.02,
-      type: 'market',
-      volatility: 1.1
-    }
-  ];
+  // 시장 뉴스 템플릿 (Market News Templates)
+private readonly marketNewsTemplates: NewsTemplate[] = [
+  // 대형 이벤트 (큰 영향)
+  {
+    title: '글로벌 금융 위기 발생',
+    content: '주요국 증시 폭락과 함께 전세계 금융시장이 마치 지진처럼 흔들립니다!',
+    sentiment: 'negative',
+    impact: -0.30,
+    type: 'market',
+    volatility: 3.0
+  },
+  {
+    title: '획기적인 AI 기술 발전',
+    content: '신세대 AI 도입으로 모든 산업이 혁신의 물결을 타고 있습니다. 미래가 달라집니다!',
+    sentiment: 'positive',
+    impact: 0.20,
+    type: 'market',
+    volatility: 2.2
+  },
+  // 중간 규모 이벤트
+  {
+    title: '중앙은행 기준금리 인상',
+    content: '예상보다 높은 금리 인상으로 금융시장이 긴장 상태에 돌입합니다.',
+    sentiment: 'negative',
+    impact: -0.10,
+    type: 'market',
+    volatility: 1.6
+  },
+  {
+    title: '주요국 경기부양책 발표',
+    content: '각국 정부가 대규모 경기부양책을 발표, 시장 활성화에 대한 기대감 상승!',
+    sentiment: 'positive',
+    impact: 0.10,
+    type: 'market',
+    volatility: 1.5
+  },
+  // 소규모 이벤트
+  {
+    title: '국제유가 소폭 상승',
+    content: '원자재 가격이 소폭 상승하면서 에너지 관련 기업에 미미한 영향 발생',
+    sentiment: 'neutral',
+    impact: -0.03,
+    type: 'market',
+    volatility: 1.2
+  },
+  // 추가 재미있는 이벤트
+  {
+    title: '글로벌 사이버 공격 발생',
+    content: '전 세계 증권 거래소가 사이버 공격으로 일시 마비, 시장에 혼란을 초래합니다!',
+    sentiment: 'negative',
+    impact: -0.15,
+    type: 'market',
+    volatility: 2.0
+  },
+  {
+    title: '세계 각국 축제 열풍',
+    content: '국제 문화 축제가 동시에 열리며 소비 심리가 급상승, 긍정적 분위기 확산!',
+    sentiment: 'positive',
+    impact: 0.08,
+    type: 'market',
+    volatility: 1.3
+  },
+  {
+    title: '메타버스 혁명 시작',
+    content: '가상현실과 현실의 경계가 무너지며 새로운 경제 패러다임이 열립니다!',
+    sentiment: 'positive',
+    impact: 0.15,
+    type: 'market',
+    volatility: 2.0
+  },
+  {
+    title: '글로벌 공급망 대란',
+    content: '주요 물류 허브 마비로 전 세계 공급망에 비상이 걸렸습니다.',
+    sentiment: 'negative',
+    impact: -0.18,
+    type: 'market',
+    volatility: 2.1
+  },
+  {
+    title: '양자컴퓨터 상용화 임박',
+    content: '양자 우위 달성! 기존 암호체계와 금융시스템의 대변혁이 예고됩니다.',
+    sentiment: 'positive',
+    impact: 0.25,
+    type: 'market',
+    volatility: 2.4
+  },
+  {
+    title: '글로벌 기후 위기 심화',
+    content: '이상기후 현상으로 인한 산업계 전반의 비상상황 발생!',
+    sentiment: 'negative',
+    impact: -0.12,
+    type: 'market',
+    volatility: 1.8
+  }
+];
 
-  private readonly companyNewsTemplates: NewsTemplate[] = [
-    // 대형 뉴스
-    {
-      title: '대규모 회계부정 적발',
-      content: '기업 회계장부 조작 의혹 제기',
-      sentiment: 'negative',
-      impact: -0.35,
-      type: 'company',
-      volatility: 2.5
-    },
-    {
-      title: '혁신적 신제품 출시',
-      content: '시장 판도를 바꿀 새로운 제품 공개',
-      sentiment: 'positive',
-      impact: 0.20,
-      type: 'company',
-      volatility: 1.8
-    },
-    // 중간 규모 뉴스
-    {
-      title: '분기 실적 발표',
-      content: '예상치 상회하는 실적 달성',
-      sentiment: 'positive',
-      impact: 0.12,
-      type: 'company',
-      volatility: 1.5
-    },
-    {
-      title: '대규모 구조조정 착수',
-      content: '인력 감축 계획 발표',
-      sentiment: 'negative',
-      impact: -0.10,
-      type: 'company',
-      volatility: 1.4
-    },
-    // 소규모 뉴스
-    {
-      title: '신규 특허 등록',
-      content: '기술 경쟁력 강화 기대',
-      sentiment: 'positive',
-      impact: 0.05,
-      type: 'company',
-      volatility: 1.2
-    }
-  ];
+
+// 기업 뉴스 템플릿 (Company News Templates)
+private readonly companyNewsTemplates: NewsTemplate[] = [
+  // 대형 뉴스 (약 5% 확률)
+  {
+    title: '대규모 회계부정 의혹 제기',
+    content: '내부 고발로 드러난 분식회계 의혹… 금융당국의 특별 감리와 함께 주가 급락 우려!',
+    sentiment: 'negative',
+    impact: -0.45,
+    type: 'company',
+    volatility: 3.0
+  },
+  {
+    title: '획기적인 신기술 특허 취득',
+    content: '글로벌 시장을 선도할 핵심 기술 확보! 향후 5년간 독점권이 보장될 전망입니다.',
+    sentiment: 'positive',
+    impact: 0.40,
+    type: 'company',
+    volatility: 2.8
+  },
+  // 중형 뉴스 (약 15% 확률)
+  {
+    title: '실적 서프라이즈 달성',
+    content: '시장 예상치를 30% 상회하는 영업이익 기록! 주력 사업의 호조가 눈에 띕니다.',
+    sentiment: 'positive',
+    impact: 0.18,
+    type: 'company',
+    volatility: 2.0
+  },
+  {
+    title: '대규모 리콜 발표',
+    content: '품질 결함으로 인한 전량 리콜 결정… 막대한 비용 부담과 함께 이미지 타격 우려!',
+    sentiment: 'negative',
+    impact: -0.20,
+    type: 'company',
+    volatility: 2.1
+  },
+  {
+    title: '대형 공급계약 체결',
+    content: '3년간의 납품 계약 성사! 향후 매출 신장이 기대됩니다.',
+    sentiment: 'positive',
+    impact: 0.14,
+    type: 'company',
+    volatility: 1.7
+  },
+  // 소형 뉴스 (약 80% 확률)
+  {
+    title: '신임 CEO 선임',
+    content: '전문경영인 출신의 신임 대표이사 선임… 조직 개편과 경영 혁신이 예고됩니다.',
+    sentiment: 'neutral',
+    impact: 0.06,
+    type: 'company',
+    volatility: 1.4
+  },
+  {
+    title: '해외 시장 진출',
+    content: '동남아 시장에 첫 진출! 현지 유통망 구축에 박차를 가하고 있습니다.',
+    sentiment: 'positive',
+    impact: 0.10,
+    type: 'company',
+    volatility: 1.5
+  },
+  {
+    title: '신제품 출시 일정 지연',
+    content: '부품 수급 차질로 인해 신제품 출시가 3개월 연기… 소비자 우려 증폭',
+    sentiment: 'negative',
+    impact: -0.08,
+    type: 'company',
+    volatility: 1.3
+  },
+  {
+    title: '우수 인재 영입',
+    content: '경쟁사 핵심 개발자 영입 성공! 기술력 강화와 함께 혁신적 변화 기대',
+    sentiment: 'positive',
+    impact: 0.05,
+    type: 'company',
+    volatility: 1.2
+  },
+  {
+    title: '친환경 설비 투자',
+    content: 'ESG 경영 강화의 일환으로 친환경 설비에 대규모 투자… 탄소 배출 20% 감축 목표!',
+    sentiment: 'positive',
+    impact: 0.04,
+    type: 'company',
+    volatility: 1.0
+  },
+  {
+    title: '노사 임금 협상 타결',
+    content: '올해 임금 3.5% 인상 합의! 노사 간 무분규 타결로 안정된 경영 환경 조성',
+    sentiment: 'neutral',
+    impact: 0.03,
+    type: 'company',
+    volatility: 1.0
+  },
+  {
+    title: '사내 복지 제도 개선',
+    content: '직원 만족도 향상을 위한 복리후생 제도 대폭 확대',
+    sentiment: 'positive',
+    impact: 0.03,
+    type: 'company',
+    volatility: 1.0
+  },
+  {
+    title: '소규모 기업 인수',
+    content: '기술력 보유 스타트업 인수로 시너지 효과 기대, 시장 경쟁력 강화',
+    sentiment: 'neutral',
+    impact: 0.04,
+    type: 'company',
+    volatility: 1.2
+  },
+  {
+    title: '정기 임원 인사',
+    content: '상반기 임원 인사 단행… 조직 효율화와 혁신 경영 추진',
+    sentiment: 'neutral',
+    impact: 0.02,
+    type: 'company',
+    volatility: 0.9
+  },
+  {
+    title: '업무 협약 체결',
+    content: '동종 업계 선두 기업과 기술 협력 MOU 체결, 공동 성장 기대',
+    sentiment: 'positive',
+    impact: 0.03,
+    type: 'company',
+    volatility: 1.0
+  },
+  // 추가 재미있는 기업 뉴스
+  {
+    title: '전설의 CEO 복귀',
+    content: '퇴임 후 갑작스럽게 복귀한 전설의 CEO가 회사에 새로운 바람을 예고합니다!',
+    sentiment: 'positive',
+    impact: 0.25,
+    type: 'company',
+    volatility: 2.0
+  },
+  {
+    title: '신비로운 연구 성과 공개',
+    content: '비밀리에 진행된 혁신 연구 결과가 공개되어 미래 기술에 대한 기대감이 폭발합니다!',
+    sentiment: 'positive',
+    impact: 0.20,
+    type: 'company',
+    volatility: 2.2
+  },
+  {
+    title: '대규모 사이버 보안 사고',
+    content: '회사 시스템 해킹으로 인한 데이터 유출 발생, 신속한 복구 조치 중입니다.',
+    sentiment: 'negative',
+    impact: -0.22,
+    type: 'company',
+    volatility: 2.3
+  },
+  {
+    title: '특별 주주총회 소집',
+    content: '예상치 못한 안건 상정으로 주주들이 뜨거운 관심을 보입니다.',
+    sentiment: 'neutral',
+    impact: 0.03,
+    type: 'company',
+    volatility: 1.1
+  },
+  {
+    title: '인공지능 챗봇 서비스 출시',
+    content: '혁신적인 AI 기술을 적용한 고객 서비스로 시장을 선도합니다!',
+    sentiment: 'positive',
+    impact: 0.15,
+    type: 'company',
+    volatility: 1.8
+  },
+  {
+    title: '직원 대량 이직 사태',
+    content: '핵심 인재들의 잇따른 퇴사로 기업 경쟁력 약화 우려가 제기됩니다.',
+    sentiment: 'negative',
+    impact: -0.12,
+    type: 'company',
+    volatility: 1.6
+  },
+  {
+    title: '블록체인 기술 도입',
+    content: '전사적 블록체인 시스템 구축으로 업무 혁신을 이뤄냅니다!',
+    sentiment: 'positive',
+    impact: 0.10,
+    type: 'company',
+    volatility: 1.5
+  },
+  {
+    title: '환경 규제 위반 적발',
+    content: '환경부 특별 단속에서 규정 위반 사실이 드러나 과징금 부과가 예상됩니다.',
+    sentiment: 'negative',
+    impact: -0.15,
+    type: 'company',
+    volatility: 1.7
+  },
+  {
+    title: '우주 사업 진출 선언',
+    content: '민간 우주산업 참여를 선언하며 미래 성장동력 확보에 나섭니다!',
+    sentiment: 'positive',
+    impact: 0.30,
+    type: 'company',
+    volatility: 2.5
+  }
+];
+
 
   private constructor() {}
 
@@ -240,8 +429,8 @@ export class MarketScheduler {
       console.log('장 마감 - 종가 저장')
       await this.setClosingPrices();
     });
-    // 10분마다 주가 변동 (단일 작업으로 변경)
-    const priceUpdateJob = cron.schedule('*/10 * * * *', async () => {
+    // 1분마다 주가 변동 (단일 작업으로 변경)
+    const priceUpdateJob = cron.schedule('*/1 * * * *', async () => {
       if (this.isMarketOpen()) {
         console.log('시장 업데이트 시작:', new Date().toISOString())
         await this.updateMarket();
@@ -293,18 +482,24 @@ export class MarketScheduler {
     console.log('마켓 스케줄러 초기화')
     this.supabase = await createClient()
     
-    // 초기화 시 current_price를 last_closing_price로 설정
-    const { data: companies } = await this.supabase
-      .from('companies')
-      .select('*')
-    
-    for (const company of companies || []) {
-      await this.supabase
+    try {
+      const { data: companies, error } = await this.supabase
         .from('companies')
-        .update({ 
-          last_closing_price: company.current_price 
-        })
-        .eq('id', company.id)
+        .select('*')
+      
+      if (error) throw error;
+
+      for (const company of companies || []) {
+        await this.supabase
+          .from('companies')
+          .update({ 
+            last_closing_price: company.current_price 
+          })
+          .eq('id', company.id)
+      }
+    } catch (error) {
+      console.error('초기화 중 오류 발생:', error);
+      throw new Error('마켓 스케줄러 초기화 실패');
     }
   }
 
@@ -390,7 +585,7 @@ export class MarketScheduler {
   }
 
   private async generateMarketNews() {
-    if (Math.random() < 0.75) { // 75% 확률로 마켓 뉴스 생성
+    if (Math.random() < 0.05) { // 5% 확률로 마켓 뉴스 생성
       const marketNews = this.selectRandomNews(this.marketNewsTemplates);
       await this.createNews({
         ...marketNews,
@@ -402,20 +597,31 @@ export class MarketScheduler {
   }
 
   private async generateCompanyNews() {
-    const { data: companies } = await this.supabase
-      .from('companies')
-      .select('*');
+    try {
+      const supabase = await this.ensureConnection();
+      const { data: companies, error } = await supabase
+        .from('companies')
+        .select('*');
 
-    if (Math.random() < 0.6) { // 60% 확률로 기업 뉴스 생성
-      const randomCompany = companies[Math.floor(Math.random() * companies.length)];
-      const companyNews = this.selectRandomNews(this.companyNewsTemplates);
-      await this.createNews({
-        ...companyNews,
-        title: `[${randomCompany.name}] ${companyNews.title}`,
-        content: `${randomCompany.name}(${randomCompany.ticker}): ${companyNews.content}`,
-        company_id: randomCompany.id
-      });
-      console.log(`${randomCompany.name} 기업 뉴스 발생:`, companyNews.title);
+      if (error) throw error;
+
+      if (Math.random() < 0.6 && companies && companies.length > 0) {
+        const randomCompany = companies[Math.floor(Math.random() * companies.length)];
+        const templatesForIndustry = this.getNewsTemplatesForIndustry(randomCompany.industry);
+        const companyNews = this.selectRandomNews(templatesForIndustry);
+        
+        await this.createNews({
+          ...companyNews,
+          title: `[${randomCompany.name}] ${companyNews.title}`,
+          content: `${randomCompany.name}(${randomCompany.ticker}): ${companyNews.content}`,
+          company_id: randomCompany.id
+        });
+        
+        console.log(`${randomCompany.name} 기업 뉴스 발생:`, companyNews.title);
+      }
+    } catch (error) {
+      console.error('기업 뉴스 생성 중 오류:', error);
+      throw new Error('기업 뉴스 생성 실패');
     }
   }
 
@@ -430,17 +636,25 @@ export class MarketScheduler {
     };
   }
 
-  private async createNews(news: NewsTemplate, companyId?: string) {
-    await this.supabase.from('news').insert({
-      title: news.title,
-      content: news.content,
-      company_id: companyId || null,
-      sentiment: news.sentiment,
-      impact: news.impact,
-      published_at: new Date().toISOString(),
-      type: news.type,
-      volatility: news.volatility
-    });
+  private async createNews(news: NewsTemplate) {
+    try {
+      const supabase = await this.ensureConnection();
+      const { error } = await supabase.from('news').insert({
+        title: news.title,
+        content: news.content,
+        company_id: news.company_id || null,
+        sentiment: news.sentiment,
+        impact: news.impact,
+        published_at: new Date().toISOString(),
+        type: news.type,
+        volatility: news.volatility
+      });
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('뉴스 생성 중 오류 발생:', error);
+      throw new Error('뉴스 생성 실패');
+    }
   }
 
   private calculateSentimentMultiplier(sentiment: string): number {
@@ -461,107 +675,114 @@ export class MarketScheduler {
   }
 
   private async calculateNewPrice(
-    company: any,
-    orders: any[],
+    company: Company,
+    _orders: any[], // 사용하지 않음
     events: any[]
   ): Promise<number> {
-    const basePrice = company.current_price
-    
-    // 1. 호가 영향 계산 - 영향력 증가
-    const companyOrders = orders?.filter(o => o.company_id === company.id) || []
-    const buyPressure = companyOrders
-      .filter(o => o.transaction_type === 'buy')
-      .reduce((sum, o) => sum + o.shares, 0)
-    const sellPressure = companyOrders
-      .filter(o => o.transaction_type === 'sell')
-      .reduce((sum, o) => sum + o.shares, 0)
-    
-    // 주문 영향도를 5000으로 낮춰서 더 큰 변동성 부여
-    const orderImpact = (buyPressure - sellPressure) / 5000 
+    try {
+      const basePrice = company.current_price;
+      
+      // 1. 시장 전체 트렌드 계산
+      const { data: allCompanies } = await this.supabase
+        .from('companies')
+        .select('*');
+      
+      const marketTrend = this.calculateMarketTrend(allCompanies);
+      
+      // 2. 업종 트렌드 계산
+      const industryCompanies = allCompanies.filter((c: Company) => c.industry === company.industry);
+      const industryTrend = this.calculateMarketTrend(industryCompanies);
 
-    // 2. 이벤트 영향 계산 - 영향력 2배 증가
-    const eventImpact = (events?.reduce((sum, e) => sum + (e.impact || 0), 0) || 0) * 2
+      // 3. 개별 종목 변동성
+      const stockVolatility = this.calculateStockVolatility(company);
+      
+      // 4. 이벤트 영향력 계산
+      const eventImpact = this.calculateEventImpact(events, company.industry);
+      
+      // 5. 시간대별 변동성
+      const timeVolatility = this.calculateTimeVolatility(new Date().getHours());
+      
+      // 6. 최종 가격 변동률 계산
+      const totalChange = (
+        marketTrend * 0.45 +          // 시장 전체 영향 (45%)
+        industryTrend * 0.35 +        // 업종 영향 (35%)
+        stockVolatility * 0.15 +      // 개별 변동성 (15%)
+        eventImpact * 0.05            // 이벤트 영향 (5%)
+      ) * timeVolatility;             // 시간대별 변동성 적용
 
-    // 3. 랜덤 변동성 증가 (-1.5% ~ 1.5%)
-    const randomChange = (Math.random() - 0.5) * 0.03
-
-    // 4. 최종 가격 계산
-    const totalChange = 1 + orderImpact + eventImpact + randomChange
-    const newPrice = basePrice * totalChange
-
-    // 5. 가격 제한 확대 (최대 ±50%)
-    const maxChange = basePrice * 1.5
-    const minChange = basePrice * 0.5
-    return Math.min(Math.max(newPrice, minChange), maxChange)
+      // 7. 일일 가격 제한 (상/하한가 15%)
+      const maxDailyChange = 0.15;
+      const maxPrice = company.last_closing_price * (1 + maxDailyChange);
+      const minPrice = company.last_closing_price * (1 - maxDailyChange);
+      const newPrice = basePrice * (1 + totalChange);
+      
+      return Math.min(Math.max(newPrice, minPrice), maxPrice);
+    } catch (error) {
+      console.error('가격 계산 중 오류:', error);
+      return company.current_price;
+    }
   }
 
-  private async createMarketEvent(event: MarketEvent) {
-    const descriptions = {
-      economic_crisis: [
-        '글로벌 경제 위기 발생',
-        '주요 경제국 금융 시장 충격',
-      ],
-      market_boom: [
-        '시장 낙관론 확산',
-        '글로벌 경기 회복 신호',
-      ],
-      interest_rate_cut: [
-        '중앙은행, 기준금리 인하 결정',
-        '금융시장, 금리 인하 기대감 고조',
-      ],
-      inflation_rise: [
-        '소비자 물가 상승률 급등',
-        '인플레이션 우려로 생활비 부담 증가',
-      ],
-      tech_innovation: [
-        '최첨단 기술 혁신 발표',
-        '신기술 도입으로 산업 전반에 파장 예상',
-      ],
-      policy_reform: [
-        '정부, 대대적 경제 정책 개편 발표',
-        '규제 완화 조치로 기업 활로 모색',
-      ],
-      trade_conflict: [
-        '국제 무역 갈등 심화',
-        '수출입 규제 강화로 글로벌 시장 동요',
-      ],
-      housing_market: [
-        '부동산 시장 과열 우려',
-        '주택 가격 급등, 정부의 대책 마련 필요',
-      ],
-      energy_crisis: [
-        '에너지 공급 불안, 가격 폭등 우려',
-        '원자재 시장 변동성 심화',
-      ],
-      startup_boost: [
-        '스타트업 투자 활성화',
-        '혁신 기업, 시장 경쟁력 강화 기대',
-      ],
-      // 필요에 따라 추가 이벤트 설명을 더 작성할 수 있습니다.
-    };
-  
-
-    const description = descriptions[event.type][
-      Math.floor(Math.random() * descriptions[event.type].length)
-    ]
-
-    await this.supabase.from('market_events').insert({
-      event_type: event.type,
-      description,
-      impact: event.impact,
-      is_active: true,
-      expires_at: new Date(Date.now() + 30 * 60000) // 30분 지속
-    })
+  // 시장/업종 트렌드 계산
+  private calculateMarketTrend(companies: Company[]): number {
+    if (!companies.length) return 0;
+    
+    // 브라운 운동 기반의 자연스러운 변동성 생성
+    const baseChange = (Math.random() - 0.5) * 0.006; // 기본 변동폭 ±0.3%
+    const momentum = Math.random() > 0.7 ? 1 : -1;    // 30% 확률로 추세 전환
+    
+    return baseChange * momentum;
   }
 
-  private async updateCompanyPrice(companyId: string, newPrice: number) {
-    await this.supabase
-      .from('companies')
-      .update({ 
-        current_price: newPrice,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', companyId)
+  // 개별 종목 변동성 계산
+  private calculateStockVolatility(company: Company): number {
+    // 산업별 기본 변동성 가중치
+    const industryVolatility = {
+      'IT': 1.4,
+      'IT 서비스': 1.3,
+      '소프트웨어': 1.3,
+      '전자': 1.2,
+      '반도체': 1.5,
+      '바이오': 1.6,
+      '제약': 1.2,
+      '금융': 0.9,
+      '건설': 0.8,
+      '식품': 0.7,
+      '소비재': 0.8,
+      '자동차': 1.1,
+      '운송': 0.9,
+      '에너지': 1.0,
+      '디자인': 1.1,
+      '제조': 0.9
+    }[company.industry] || 1.0;
+
+    // 기본 변동성에 산업 가중치 적용
+    return (Math.random() - 0.5) * 0.004 * industryVolatility;
+  }
+
+  // 이벤트 영향력 계산
+  private calculateEventImpact(events: any[], industry: string): number {
+    if (!events?.length) return 0;
+    
+    return events.reduce((impact, event) => {
+      const industryWeight = event.affected_industries?.includes(industry) ? 1.5 : 1;
+      return impact + (event.impact * industryWeight);
+    }, 0);
+  }
+
+  // 시간대별 변동성 계산 (기존 함수 수정)
+  private calculateTimeVolatility(hour: number): number {
+    // 장 시작 직후 (9시-10시): 높은 변동성
+    if (hour === 9) return 1.8;
+    
+    // 점심시간 (11시-13시): 낮은 변동성
+    if (hour >= 11 && hour <= 13) return 0.7;
+    
+    // 장 마감 전 (14시-15시): 중간~높은 변동성
+    if (hour >= 14) return 1.4;
+    
+    // 그 외 시간대: 보통 변동성
+    return 1.0;
   }
 
   // 장 시작 시 시가 결정
@@ -602,18 +823,24 @@ export class MarketScheduler {
   }
 
   private async updateStatus(status: SchedulerStatus) {
-    if (!this.supabase) await this.initialize();
-    
-    await this.supabase
-      .from('scheduler_status')
-      .upsert({
-        status: status.status,
-        last_run: status.lastRun?.toISOString(),
-        next_run: status.nextRun?.toISOString(),
-        error_message: status.errorMessage,
-        job_type: status.jobType,
-        updated_at: new Date().toISOString()
-      });
+    try {
+      const supabase = await this.ensureConnection();
+      
+      const { error } = await supabase
+        .from('scheduler_status')
+        .upsert({
+          status: status.status,
+          last_run: status.lastRun?.toISOString(),
+          next_run: status.nextRun?.toISOString(),
+          error_message: status.errorMessage,
+          job_type: status.jobType,
+          updated_at: new Date().toISOString()
+        });
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('스케줄러 상태 업데이트 중 오류:', error);
+    }
   }
 
   private calculateNextRun(jobType: string): Date {
@@ -632,15 +859,48 @@ export class MarketScheduler {
     return this.calculateNextRun(jobType);
   }
 
-  get isRunning() {
+  get isRunning(): boolean {
     return this._isRunning;
   }
   
-  get lastMarketUpdateTime() {
+  get lastMarketUpdateTime(): Date | null {
     return this.lastMarketUpdate;
   }
   
-  get lastNewsUpdateTime() {
+  get lastNewsUpdateTime(): Date | null {
     return this.lastNewsUpdate;
+  }
+
+  private async ensureConnection() {
+    if (!this.supabase) {
+      await this.initialize();
+    }
+    return this.supabase;
+  }
+
+  private getNewsTemplatesForIndustry(industry: string): NewsTemplate[] {
+    if (this.newsTemplateCache.has(industry)) {
+      return this.newsTemplateCache.get(industry)!;
+    }
+
+    const templates = {
+      'IT': this.marketNewsTemplates,
+      'IT 서비스': this.marketNewsTemplates,
+      '소프트웨어': this.marketNewsTemplates,
+      '전자': this.marketNewsTemplates,
+      '반도체': this.marketNewsTemplates,
+      '바이오': this.companyNewsTemplates,
+      '제약': this.companyNewsTemplates,
+      '금융': this.companyNewsTemplates,
+      '건설': this.companyNewsTemplates,
+      '식품': this.companyNewsTemplates,
+      '소비재': this.companyNewsTemplates,
+      '자동차': this.companyNewsTemplates,
+      '운송': this.companyNewsTemplates,
+      '에너지': this.companyNewsTemplates,
+    }[industry] || this.companyNewsTemplates;
+
+    this.newsTemplateCache.set(industry, templates);
+    return templates;
   }
 } 

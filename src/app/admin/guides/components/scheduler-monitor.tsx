@@ -24,7 +24,7 @@ export function SchedulerMonitor() {
     }
     
     fetchStatus()
-    const interval = setInterval(fetchStatus, 30000) // 30초마다 갱신
+    const interval = setInterval(fetchStatus, 10000) // 10초마다 갱신
     
     return () => clearInterval(interval)
   }, [])

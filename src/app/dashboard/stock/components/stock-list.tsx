@@ -15,7 +15,7 @@ interface Company {
   name: string
   ticker: string
   current_price: number
-  previous_price: number
+  last_closing_price: number
   market_cap: number
 }
 
@@ -155,7 +155,7 @@ export function StockList({ companies: initialCompanies }: StockListProps) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              <AnimatePresence>
+              <AnimatePresence mode="popLayout">
                 {sortedCompanies.map((company) => {
                   const priceChange = changes.get(company.id) || 0
                   const isPositive = priceChange > 0
@@ -182,22 +182,22 @@ export function StockList({ companies: initialCompanies }: StockListProps) {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className={`inline-flex items-center gap-1 px-2 py-1 rounded ${
-                          company.current_price > company.previous_price 
+                          company.current_price > company.last_closing_price 
                             ? 'bg-green-500/10' 
-                            : company.current_price < company.previous_price 
+                            : company.current_price < company.last_closing_price 
                               ? 'bg-red-500/10'
                               : 'bg-gray-500/10'
                         }`}>
-                          {company.current_price > company.previous_price ? (
+                          {company.current_price > company.last_closing_price ? (
                             <ChevronUpIcon className="w-4 h-4 text-green-500" />
-                          ) : company.current_price < company.previous_price ? (
+                          ) : company.current_price < company.last_closing_price ? (
                             <ChevronDownIcon className="w-4 h-4 text-red-500" />
                           ) : (
                             <span className="w-4 h-4" />
                           )}
                           <span className={getPriceChangeStyle(
                             company.current_price,
-                            company.previous_price
+                            company.last_closing_price
                           )}>
                             {Math.floor(company.current_price).toLocaleString()}원
                           </span>

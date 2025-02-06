@@ -11,7 +11,7 @@ interface TradeAlertProps {
 
 export function TradeAlert({ isOpen, type, onClose }: TradeAlertProps) {
   return (
-    <AnimatePresence>
+    <AnimatePresence mode="popLayout">
       {isOpen && (
         <>
           <motion.div

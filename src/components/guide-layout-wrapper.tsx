@@ -1,6 +1,6 @@
 'use client'
 
-import { BackButton } from '../app/guides/[id]/back-button'
+import { BackButton } from '@/components/back-button'
 
 export function GuideLayoutWrapper({ children }: { children: React.ReactNode }) {
   return (

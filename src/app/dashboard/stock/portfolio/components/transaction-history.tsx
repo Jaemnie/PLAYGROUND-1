@@ -3,7 +3,7 @@
 import { format } from 'date-fns'
 import { useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 
 interface Transaction {
@@ -44,46 +44,48 @@ export default function TransactionHistory({ transactions }: TransactionHistoryP
       </div>
 
       <div className="bg-black/20 rounded-2xl backdrop-blur-sm border border-white/5">
-        {displayedTransactions.map((tx, index) => (
-          <motion.div
-            key={tx.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.05 }}
-            className={`
-              p-4 flex items-center justify-between
-              ${index !== displayedTransactions.length - 1 ? 'border-b border-white/5' : ''}
-            `}
-          >
-            <div className="flex items-center gap-4">
-              <div className={`
-                w-10 h-10 rounded-full flex items-center justify-center
-                ${tx.transaction_type === 'buy' 
-                  ? 'bg-blue-500/10 text-blue-400' 
-                  : 'bg-red-500/10 text-red-400'}
-              `}>
-                {tx.transaction_type === 'buy' ? '매수' : '매도'}
+        <AnimatePresence mode="popLayout">
+          {displayedTransactions.map((tx, index) => (
+            <motion.div
+              key={tx.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.05 }}
+              className={`
+                p-4 flex items-center justify-between
+                ${index !== displayedTransactions.length - 1 ? 'border-b border-white/5' : ''}
+              `}
+            >
+              <div className="flex items-center gap-4">
+                <div className={`
+                  w-10 h-10 rounded-full flex items-center justify-center
+                  ${tx.transaction_type === 'buy' 
+                    ? 'bg-blue-500/10 text-blue-400' 
+                    : 'bg-red-500/10 text-red-400'}
+                `}>
+                  {tx.transaction_type === 'buy' ? '매수' : '매도'}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-gray-100">{tx.company.name}</span>
+                    <span className="text-sm text-gray-400">{tx.company.ticker}</span>
+                  </div>
+                  <div className="text-sm text-gray-400">
+                    {format(new Date(tx.created_at), 'yyyy.MM.dd HH:mm')}
+                  </div>
+                </div>
               </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="font-medium text-gray-100">{tx.company.name}</span>
-                  <span className="text-sm text-gray-400">{tx.company.ticker}</span>
+              <div className="text-right">
+                <div className="font-medium text-gray-100">
+                  {Math.floor(tx.total_amount).toLocaleString()}원
                 </div>
                 <div className="text-sm text-gray-400">
-                  {format(new Date(tx.created_at), 'yyyy.MM.dd HH:mm')}
+                  {tx.shares.toLocaleString()}주 × {Math.floor(tx.price).toLocaleString()}원
                 </div>
               </div>
-            </div>
-            <div className="text-right">
-              <div className="font-medium text-gray-100">
-                {Math.floor(tx.total_amount).toLocaleString()}원
-              </div>
-              <div className="text-sm text-gray-400">
-                {tx.shares.toLocaleString()}주 × {Math.floor(tx.price).toLocaleString()}원
-              </div>
-            </div>
-          </motion.div>
-        ))}
+            </motion.div>
+          ))}
+        </AnimatePresence>
 
         {transactions.length === 0 && (
           <div className="py-8 text-center text-gray-400">

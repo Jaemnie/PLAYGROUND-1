@@ -38,6 +38,28 @@ export function QuickTradeModal({
   const canBuy = points >= totalAmount && Number(shares) > 0
   const canSell = holding?.shares >= Number(shares) && Number(shares) > 0
 
+  const maxBuyShares = Math.floor(points / company.current_price)
+  const maxShares = type === 'buy' ? maxBuyShares : (holding?.shares || 0)
+
+  const handleSharesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    const numValue = Number(value)
+    
+    if (numValue > maxShares) {
+      setShares(String(maxShares))
+    } else {
+      setShares(value)
+    }
+  }
+
+  const setMaxShares = () => {
+    setShares(String(maxShares))
+  }
+
+  const setHalfShares = () => {
+    setShares(String(Math.floor(maxShares / 2)))
+  }
+
   const handleTrade = async () => {
     setIsLoading(true)
     
@@ -135,16 +157,42 @@ export function QuickTradeModal({
                 </div>
 
                 <div>
-                  <p className="text-sm text-gray-400 mb-2">수량</p>
+                  <div className="flex justify-between items-center mb-2">
+                    <p className="text-sm text-gray-400">수량</p>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 px-2 text-xs border-gray-700 text-gray-300 hover:text-white"
+                        onClick={setHalfShares}
+                      >
+                        HALF
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 px-2 text-xs border-gray-700 text-gray-300 hover:text-white"
+                        onClick={setMaxShares}
+                      >
+                        ALL
+                      </Button>
+                    </div>
+                  </div>
                   <Input
                     type="number"
                     min="1"
+                    max={maxShares}
                     value={shares}
-                    onChange={(e) => setShares(e.target.value)}
+                    onChange={handleSharesChange}
                     className="bg-black/30 border-gray-700 text-white placeholder-gray-500
                              focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                     placeholder="거래할 수량을 입력하세요"
                   />
+                  <p className="mt-1 text-xs text-gray-400">
+                    {type === 'buy' 
+                      ? `최대 매수 가능: ${maxBuyShares.toLocaleString()}주`
+                      : `보유 중: ${(holding?.shares || 0).toLocaleString()}주`}
+                  </p>
                 </div>
 
                 <div>

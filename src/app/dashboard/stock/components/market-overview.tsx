@@ -20,35 +20,70 @@ interface MarketOverviewProps {
 
 export function MarketOverview({ companies: initialCompanies }: MarketOverviewProps) {
   const [currentPage, setCurrentPage] = useState(1)
+  const [sortConfig, setSortConfig] = useState({
+    key: 'priceChange',
+    direction: 'desc'
+  })
   const itemsPerPage = 3
   
   const companyIds = initialCompanies.map(c => c.id)
   const { stockData, changes } = useRealtimeStockData(companyIds)
   
-  // 실시간 데이터로 업데이트
-  const companies = initialCompanies.map(company => ({
-    ...company,
-    ...stockData.get(company.id)
-  }))
+  // 실시간 데이터로 업데이트 및 변동폭 계산
+  const companies = initialCompanies.map(company => {
+    const currentPrice = stockData.get(company.id)?.current_price || company.current_price
+    const lastClosingPrice = company.last_closing_price
+    const priceChangePercent = ((currentPrice - lastClosingPrice) / lastClosingPrice) * 100
+
+    return {
+      ...company,
+      ...stockData.get(company.id),
+      priceChangePercent
+    }
+  })
+
+  // 변동폭 기준 정렬
+  const sortedCompanies = [...companies].sort((a, b) => {
+    const aChange = Math.abs(a.priceChangePercent)
+    const bChange = Math.abs(b.priceChangePercent)
+    return sortConfig.direction === 'desc' ? bChange - aChange : aChange - bChange
+  })
   
-  const totalPages = Math.ceil(companies.length / itemsPerPage)
+  const totalPages = Math.ceil(sortedCompanies.length / itemsPerPage)
   const startIndex = (currentPage - 1) * itemsPerPage
-  const displayedCompanies = companies.slice(startIndex, startIndex + itemsPerPage)
+  const displayedCompanies = sortedCompanies.slice(startIndex, startIndex + itemsPerPage)
+
+  const toggleSortDirection = () => {
+    setSortConfig(prev => ({
+      ...prev,
+      direction: prev.direction === 'desc' ? 'asc' : 'desc'
+    }))
+  }
 
   return (
     <>
       <CardHeader>
-        <h2 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent">
-          시장 동향
-        </h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent">
+            시장 동향
+          </h2>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={toggleSortDirection}
+            className="text-gray-400 hover:text-blue-400"
+          >
+            {sortConfig.direction === 'desc' ? '변동폭 ↓' : '변동폭 ↑'}
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
         <div className="space-y-3 h-[280px] overflow-hidden">
-          <AnimatePresence mode="wait">
+          <AnimatePresence mode="popLayout">
             {displayedCompanies.map((company) => {
               const currentPrice = company.current_price
-              const previousPrice = company.last_closing_price
-              const priceChangePercent = ((currentPrice - previousPrice) / previousPrice) * 100
+              const lastClosingPrice = company.last_closing_price
+              const priceChangePercent = ((currentPrice - lastClosingPrice) / lastClosingPrice) * 100
               const isPriceUp = priceChangePercent > 0
 
               return (
