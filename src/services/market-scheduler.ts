@@ -71,14 +71,25 @@ interface NewsRecord {
   volatility: number;
 }
 
+interface SchedulerStatus {
+  status: 'running' | 'stopped' | 'error';
+  lastRun: Date | null;
+  nextRun: Date | null;
+  errorMessage?: string;
+  jobType: 'market_update' | 'news_generation' | 'price_update';
+}
+
 export class MarketScheduler {
   private static instance: MarketScheduler | null = null;
+  private isInitialized: boolean = false;
   private supabase: any
-  private isRunning: boolean = false
+  private _isRunning = false
   private marketUpdateJob: cron.ScheduledTask | null = null
   private newsEventJob: cron.ScheduledTask | null = null
   private readonly MARKET_OPEN_HOUR = 9;    // 장 시작 시간
   private readonly MARKET_CLOSE_HOUR = 24;  // 장 마감 시간 (자정)
+  private lastMarketUpdate: Date | null = null;
+  private lastNewsUpdate: Date | null = null;
   
   private readonly marketNewsTemplates: NewsTemplate[] = [
     // 대형 이벤트 (큰 영향)
@@ -177,8 +188,13 @@ export class MarketScheduler {
   static async getInstance(): Promise<MarketScheduler> {
     if (!MarketScheduler.instance) {
       MarketScheduler.instance = new MarketScheduler();
-      await MarketScheduler.instance.initialize();
     }
+    
+    if (!MarketScheduler.instance.isInitialized) {
+      await MarketScheduler.instance.initialize();
+      MarketScheduler.instance.isInitialized = true;
+    }
+    
     return MarketScheduler.instance;
   }
 
@@ -191,7 +207,7 @@ export class MarketScheduler {
   }
 
   async start() {
-    if (this.isRunning) {
+    if (this._isRunning) {
       console.log('마켓 스케줄러가 이미 실행 중입니다.')
       return
     }
@@ -202,7 +218,7 @@ export class MarketScheduler {
     }
     
     await this.initialize()
-    this.isRunning = true
+    this._isRunning = true
 
     console.log('마켓 스케줄러가 시작되었습니다.')
 
@@ -258,7 +274,7 @@ export class MarketScheduler {
     } as cron.ScheduledTask;
   }
 
-  private async cleanup() {
+  public async cleanup() {
     console.log('마켓 스케줄러 정리 시작')
     if (this.marketUpdateJob) {
       this.marketUpdateJob.stop()
@@ -268,7 +284,7 @@ export class MarketScheduler {
       this.newsEventJob.stop()
       this.newsEventJob = null
     }
-    this.isRunning = false
+    this._isRunning = false
     MarketScheduler.instance = null
     console.log('마켓 스케줄러 정리 완료')
   }
@@ -294,6 +310,13 @@ export class MarketScheduler {
 
   private async updateMarket() {
     try {
+      await this.updateStatus({
+        status: 'running',
+        lastRun: new Date(),
+        nextRun: this.calculateNextRun('market_update'),
+        jobType: 'market_update'
+      });
+
       if (!this.isMarketOpen()) {
         console.log('장 운영 시간이 아닙니다.');
         return;
@@ -348,8 +371,21 @@ export class MarketScheduler {
         await portfolioTracker.recordPerformance(user.id)
       }
 
+      await this.updateStatus({
+        status: 'running',
+        lastRun: new Date(),
+        nextRun: this.calculateNextRun('market_update'),
+        jobType: 'market_update'
+      });
     } catch (error) {
-      console.error('시장 업데이트 중 오류 발생:', error)
+      await this.updateStatus({
+        status: 'error',
+        lastRun: new Date(),
+        nextRun: null,
+        errorMessage: error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.',
+        jobType: 'market_update'
+      });
+      throw error;
     }
   }
 
@@ -563,5 +599,48 @@ export class MarketScheduler {
         })
         .eq('id', company.id);
     }
+  }
+
+  private async updateStatus(status: SchedulerStatus) {
+    if (!this.supabase) await this.initialize();
+    
+    await this.supabase
+      .from('scheduler_status')
+      .upsert({
+        status: status.status,
+        last_run: status.lastRun?.toISOString(),
+        next_run: status.nextRun?.toISOString(),
+        error_message: status.errorMessage,
+        job_type: status.jobType,
+        updated_at: new Date().toISOString()
+      });
+  }
+
+  private calculateNextRun(jobType: string): Date {
+    const now = new Date();
+    switch (jobType) {
+      case 'market_update':
+        return new Date(now.getTime() + 10 * 60000); // 10분 후
+      case 'news_generation':
+        return new Date(now.getTime() + 60 * 60000); // 1시간 후
+      default:
+        return now;
+    }
+  }
+
+  public getNextRunTime(jobType: 'market_update' | 'news_generation') {
+    return this.calculateNextRun(jobType);
+  }
+
+  get isRunning() {
+    return this._isRunning;
+  }
+  
+  get lastMarketUpdateTime() {
+    return this.lastMarketUpdate;
+  }
+  
+  get lastNewsUpdateTime() {
+    return this.lastNewsUpdate;
   }
 } 

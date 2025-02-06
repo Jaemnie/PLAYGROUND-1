@@ -24,7 +24,10 @@ export default async function PortfolioPage() {
   // 사용자 거래 내역 조회 (최신순)
   const transactionsResult = await supabase
     .from('transactions')
-    .select('*')
+    .select(`
+      *,
+      company:companies(*)
+    `)
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
 

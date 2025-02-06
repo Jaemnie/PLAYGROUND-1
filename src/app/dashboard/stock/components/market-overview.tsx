@@ -20,7 +20,7 @@ interface MarketOverviewProps {
 
 export function MarketOverview({ companies: initialCompanies }: MarketOverviewProps) {
   const [currentPage, setCurrentPage] = useState(1)
-  const itemsPerPage = 5
+  const itemsPerPage = 3
   
   const companyIds = initialCompanies.map(c => c.id)
   const { stockData, changes } = useRealtimeStockData(companyIds)
@@ -43,8 +43,8 @@ export function MarketOverview({ companies: initialCompanies }: MarketOverviewPr
         </h2>
       </CardHeader>
       <CardContent>
-        <div className="space-y-3">
-          <AnimatePresence>
+        <div className="space-y-3 h-[280px] overflow-hidden">
+          <AnimatePresence mode="wait">
             {displayedCompanies.map((company) => {
               const currentPrice = company.current_price
               const previousPrice = company.last_closing_price

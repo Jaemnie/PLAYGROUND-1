@@ -182,12 +182,18 @@ export function StockList({ companies: initialCompanies }: StockListProps) {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className={`inline-flex items-center gap-1 px-2 py-1 rounded ${
-                          isPositive ? 'bg-green-500/10' : 'bg-red-500/10'
+                          company.current_price > company.previous_price 
+                            ? 'bg-green-500/10' 
+                            : company.current_price < company.previous_price 
+                              ? 'bg-red-500/10'
+                              : 'bg-gray-500/10'
                         }`}>
-                          {isPositive ? (
+                          {company.current_price > company.previous_price ? (
                             <ChevronUpIcon className="w-4 h-4 text-green-500" />
-                          ) : (
+                          ) : company.current_price < company.previous_price ? (
                             <ChevronDownIcon className="w-4 h-4 text-red-500" />
+                          ) : (
+                            <span className="w-4 h-4" />
                           )}
                           <span className={getPriceChangeStyle(
                             company.current_price,

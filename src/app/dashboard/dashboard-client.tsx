@@ -7,7 +7,8 @@ import {
   Trophy,
   Users2,
   ShoppingBag,
-  LogOut
+  LogOut,
+  Settings
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { BackButton } from '@/components/back-button'
@@ -22,9 +23,10 @@ interface DashboardClientProps {
     points: number
     friends: number
   }
+  isAdmin: boolean  // admin_users 테이블 체크 결과
 }
 
-export function DashboardClient({ user, profile }: DashboardClientProps) {
+export function DashboardClient({ user, profile, isAdmin }: DashboardClientProps) {
   const router = useRouter()
 
   const stats = [
@@ -55,7 +57,16 @@ export function DashboardClient({ user, profile }: DashboardClientProps) {
       icon: <ShoppingBag className="h-6 w-6" />,
       description: '포인트로 아이템을 구매하세요',
       href: '/dashboard/shop'
-    }
+    },
+    ...(isAdmin ? [
+      {
+        title: '스케줄러 모니터링',
+        value: '관리자 전용',
+        icon: <Settings className="h-6 w-6" />,
+        description: '마켓 스케줄러 상태를 확인하세요',
+        href: '/admin/guides'
+      }
+    ] : [])
   ]
 
   return (

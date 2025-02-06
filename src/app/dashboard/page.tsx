@@ -5,22 +5,30 @@ import { redirect } from 'next/navigation'
 export default async function DashboardPage() {
   const supabase = await createClient()
   
-  try {
-    const { data: { user } } = await supabase.auth.getUser()
-    
-    if (!user) {
-      redirect('/login')
-    }
+  const { data: { user } } = await supabase.auth.getUser()
+  
+  if (!user) {
+    redirect('/login')
+  }
 
-    const { data: profile } = await supabase
+  const [profileResult, adminResult] = await Promise.all([
+    supabase
       .from('profiles')
       .select('*')
       .eq('id', user.id)
-      .single()
+      .single(),
+    supabase
+      .from('admin_users')
+      .select('*')
+      .eq('user_id', user.id)
+      .maybeSingle()
+  ])
 
-    return <DashboardClient user={user} profile={profile || {}} />
-  } catch (error) {
-    console.error('Error:', error)
-    return <div>오류가 발생했습니다.</div>
-  }
+  return (
+    <DashboardClient 
+      user={user} 
+      profile={profileResult.data || {}} 
+      isAdmin={!!adminResult.data}
+    />
+  )
 } 

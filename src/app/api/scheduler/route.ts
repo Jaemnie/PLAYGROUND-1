@@ -1,10 +1,9 @@
 import { MarketScheduler } from '@/services/market-scheduler'
 import { NextResponse } from 'next/server'
 
-const scheduler = new MarketScheduler()
-
 export async function GET() {
   try {
+    const scheduler = await MarketScheduler.getInstance()
     await scheduler.start()
     return NextResponse.json({ message: '스케줄러가 시작되었습니다.' })
   } catch {
