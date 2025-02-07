@@ -13,7 +13,7 @@ export function TradeAlert({ isOpen, type, onClose }: TradeAlertProps) {
   return (
     <AnimatePresence mode="popLayout">
       {isOpen && (
-        <>
+        <div>
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 0.5 }}
@@ -62,7 +62,7 @@ export function TradeAlert({ isOpen, type, onClose }: TradeAlertProps) {
               </motion.div>
             </div>
           </motion.div>
-        </>
+        </div>
       )}
     </AnimatePresence>
   )

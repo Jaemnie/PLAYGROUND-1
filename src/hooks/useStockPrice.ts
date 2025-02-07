@@ -7,7 +7,7 @@ export function useStockPrice(companyId: string) {
   useEffect(() => {
     const supabase = createClientBrowser()
     
-    // 초기 가격 로드
+    // 컴포넌트 마운트 시 처음 한번 현재 가격 조회 (초기 로드)
     supabase
       .from('companies')
       .select('current_price')

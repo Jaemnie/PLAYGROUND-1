@@ -1,6 +1,11 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
+interface PriceRow {
+  created_at: string;
+  avg: number;
+}
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
@@ -49,33 +54,24 @@ export async function GET(request: Request) {
         break
     }
 
-    // transactions 테이블에서 거래 데이터 조회
-    const { data: transactions, error } = await supabase
-      .from('transactions')
-      .select('created_at, price')
+    // 타입 캐스팅을 이용해 group 사용. (임시 해결책)
+    const { data } = await (supabase
+      .from('transactions') as any)
+      .select('created_at, company_id, avg(price)', { count: 'exact' })
+      .group('created_at, company_id')
       .eq('company_id', company.id)
       .gte('created_at', startDate.toISOString())
       .lte('created_at', now.toISOString())
       .order('created_at', { ascending: true })
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+    if (data.length === 0) {
+      return NextResponse.json({ error: '해당 기간 동안의 거래 데이터가 없습니다.' }, { status: 404 })
     }
 
-    // 시간별 평균 가격 계산
-    const pricesByTime = transactions?.reduce((acc: { [key: string]: number[] }, tx) => {
-      const timeKey = new Date(tx.created_at).toISOString()
-      if (!acc[timeKey]) {
-        acc[timeKey] = []
-      }
-      acc[timeKey].push(tx.price)
-      return acc
-    }, {})
-
     // 각 시간대별 평균 가격 계산
-    const prices = Object.entries(pricesByTime || {}).map(([time, prices]) => ({
-      time,
-      price: prices.reduce((sum, price) => sum + price, 0) / prices.length
+    const prices = data.map((row: PriceRow) => ({
+      time: row.created_at,
+      price: row.avg
     }))
 
     return NextResponse.json({ prices })

@@ -16,8 +16,15 @@ export default async function PortfolioPage() {
   const holdingsResult = await supabase
     .from('holdings')
     .select(`
-      *,
-      company:companies(*)
+      id,
+      shares,
+      average_cost,
+      company:companies(
+        id,
+        name,
+        ticker,
+        current_price
+      )
     `)
     .eq('user_id', user.id)
 
@@ -25,11 +32,20 @@ export default async function PortfolioPage() {
   const transactionsResult = await supabase
     .from('transactions')
     .select(`
-      *,
-      company:companies(*)
+      id,
+      shares,
+      price,
+      transaction_type,
+      created_at,
+      company:companies(
+        id,
+        name,
+        ticker
+      )
     `)
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
+    .limit(20) // 최근 20개 거래만 로드
 
   // 사용자 포인트 정보 조회
   const profileResult = await supabase

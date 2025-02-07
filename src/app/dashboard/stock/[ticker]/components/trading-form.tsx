@@ -23,6 +23,22 @@ export function TradingForm({
   points,
   onTradeComplete
 }: TradingFormProps) {
+  // 상장폐지 상태이면 거래 폼 대신 안내 메시지만 렌더링합니다.
+  if (company?.is_delisted) {
+    return (
+      <>
+        <CardHeader>
+          <h2 className="text-xl font-semibold text-gray-100">거래 불가</h2>
+        </CardHeader>
+        <CardContent>
+          <p className="text-gray-400">
+            이 기업은 상장폐지 상태이므로 거래할 수 없습니다.
+          </p>
+        </CardContent>
+      </>
+    )
+  }
+
   const [type, setType] = useState<'buy' | 'sell'>('buy')
   const [shares, setShares] = useState('')
   const [isLoading, setIsLoading] = useState(false)

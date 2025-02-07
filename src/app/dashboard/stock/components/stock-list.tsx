@@ -9,6 +9,8 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 import { ChevronLeftIcon, ChevronRightIcon, ChevronUpIcon, ChevronDownIcon } from '@heroicons/react/24/outline'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useRealtimeStockData } from '@/hooks/useRealtimeStockData'
+import { toast } from 'sonner'
+import { createClientBrowser } from '@/lib/supabase/client'
 
 interface Company {
   id: string
@@ -17,6 +19,7 @@ interface Company {
   current_price: number
   last_closing_price: number
   market_cap: number
+  is_delisted?: boolean
 }
 
 interface StockListProps {
@@ -34,7 +37,7 @@ export function StockList({ companies: initialCompanies }: StockListProps) {
   const companyIds = initialCompanies.map(c => c.id)
   const { stockData, changes } = useRealtimeStockData(companyIds)
   
-  // companies 데이터를 실시간 데이터로 업데이트
+  // 실시간 데이터와 결합
   const companies = initialCompanies.map(company => ({
     ...company,
     ...stockData.get(company.id)
@@ -46,7 +49,7 @@ export function StockList({ companies: initialCompanies }: StockListProps) {
     company.ticker.toLowerCase().includes(search.toLowerCase())
   )
 
-  // 정렬 로직
+  // 정렬
   const sortedCompanies = [...filteredCompanies].sort((a, b) => {
     const key = sortConfig.key as keyof Company
     const aValue = a[key]
@@ -57,7 +60,7 @@ export function StockList({ companies: initialCompanies }: StockListProps) {
     return 0
   })
 
-  // 가격 변동 스타일
+  // 가격 변동 스타일 지정
   const getPriceChangeStyle = (current: number, lastClose: number) => {
     const change = ((current - lastClose) / lastClose) * 100
     if (change > 0) return 'text-green-500'
@@ -76,37 +79,41 @@ export function StockList({ companies: initialCompanies }: StockListProps) {
     }))
   }
 
-  // 시가총액 포맷팅 함수 추가
+  // 시가총액 포맷팅 함수
   const formatMarketCap = (marketCap: number) => {
-    const trillion = 1_000_000_000_000; // 1조
-    const billion = 100_000_000; // 1억
-    const million = 10000; // 1만
+    const trillion = 1_000_000_000_000
+    const billion = 100_000_000
+    const million = 10000
 
     if (marketCap >= trillion) {
-      const trillionValue = Math.floor(marketCap / trillion);
-      const billionValue = Math.floor((marketCap % trillion) / billion);
+      const trillionValue = Math.floor(marketCap / trillion)
+      const billionValue = Math.floor((marketCap % trillion) / billion)
       if (billionValue > 0) {
-        return `${trillionValue}조 ${billionValue}억`;
+        return `${trillionValue}조 ${billionValue}억`
       }
-      return `${trillionValue}조`;
+      return `${trillionValue}조`
     }
 
     if (marketCap >= billion) {
-      const billionValue = Math.floor(marketCap / billion);
-      const millionValue = Math.floor((marketCap % billion) / million);
+      const billionValue = Math.floor(marketCap / billion)
+      const millionValue = Math.floor((marketCap % billion) / million)
       if (millionValue > 0) {
-        return `${billionValue}억 ${millionValue}만`;
+        return `${billionValue}억 ${millionValue}만`
       }
-      return `${billionValue}억`;
+      return `${billionValue}억`
     }
 
-    if (marketCap >= million) {
-      const millionValue = Math.floor(marketCap / million);
-      return `${millionValue}만`;
-    }
-
-    return `${marketCap.toLocaleString()}`;
+    return marketCap.toString()
   }
+
+  // 수정: 서버 사이드 페이징
+  const fetchPage = async (page: number) => {
+    const { data } = await createClientBrowser()
+      .from('companies')
+      .select('*')
+      .range((page-1)*20, page*20-1);
+    return data;
+  };
 
   return (
     <>
@@ -156,61 +163,67 @@ export function StockList({ companies: initialCompanies }: StockListProps) {
             </TableHeader>
             <TableBody>
               <AnimatePresence mode="popLayout">
-                {sortedCompanies.map((company) => {
-                  const priceChange = changes.get(company.id) || 0
-                  const isPositive = priceChange > 0
-                  
-                  return (
-                    <motion.tr
-                      key={company.id}
-                      initial={{ opacity: 0.8 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0.8 }}
-                      transition={{ duration: 0.3 }}
-                      className={`cursor-pointer border-white/10 hover:bg-white/5`}
-                      onClick={() => router.push(`/dashboard/stock/${company.ticker}`)}
-                    >
-                      <TableCell>
-                        <span className="text-white">
-                          {company.name}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-gray-400">
-                          {company.ticker}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className={`inline-flex items-center gap-1 px-2 py-1 rounded ${
-                          company.current_price > company.last_closing_price 
-                            ? 'bg-green-500/10' 
-                            : company.current_price < company.last_closing_price 
-                              ? 'bg-red-500/10'
-                              : 'bg-gray-500/10'
-                        }`}>
-                          {company.current_price > company.last_closing_price ? (
-                            <ChevronUpIcon className="w-4 h-4 text-green-500" />
-                          ) : company.current_price < company.last_closing_price ? (
-                            <ChevronDownIcon className="w-4 h-4 text-red-500" />
-                          ) : (
-                            <span className="w-4 h-4" />
-                          )}
-                          <span className={getPriceChangeStyle(
-                            company.current_price,
-                            company.last_closing_price
-                          )}>
-                            {Math.floor(company.current_price).toLocaleString()}원
+                {sortedCompanies.map((company) => (
+                  <motion.tr
+                    key={company.id}
+                    initial={{ opacity: 0.8 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0.8 }}
+                    transition={{ duration: 0.3 }}
+                    className={`cursor-pointer border-white/10 hover:bg-white/5`}
+                    onClick={() => {
+                      if (company.is_delisted) {
+                        toast.error('상장폐지 상태인 기업은 조회할 수 없습니다.')
+                        return
+                      }
+                      router.push(`/dashboard/stock/${company.ticker}`)
+                    }}
+                  >
+                    <TableCell>
+                      <span className="text-white">
+                        {company.name}
+                        {company.is_delisted && (
+                          <span className="ml-2 text-xs bg-red-500 text-white rounded px-1">
+                            상장폐지
                           </span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <span className="text-gray-400">
-                          {formatMarketCap(company.market_cap)}
+                        )}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-gray-400">
+                        {company.ticker}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className={`inline-flex items-center gap-1 px-2 py-1 rounded ${
+                        company.current_price > company.last_closing_price 
+                          ? 'bg-green-500/10' 
+                          : company.current_price < company.last_closing_price 
+                            ? 'bg-red-500/10'
+                            : 'bg-gray-500/10'
+                      }`}>
+                        {company.current_price > company.last_closing_price ? (
+                          <ChevronUpIcon className="w-4 h-4 text-green-500" />
+                        ) : company.current_price < company.last_closing_price ? (
+                          <ChevronDownIcon className="w-4 h-4 text-red-500" />
+                        ) : (
+                          <span className="w-4 h-4" />
+                        )}
+                        <span className={getPriceChangeStyle(
+                          company.current_price,
+                          company.last_closing_price
+                        )}>
+                          {Math.floor(company.current_price).toLocaleString()}원
                         </span>
-                      </TableCell>
-                    </motion.tr>
-                  )
-                })}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <span className="text-gray-400">
+                        {formatMarketCap(company.market_cap)}
+                      </span>
+                    </TableCell>
+                  </motion.tr>
+                ))}
               </AnimatePresence>
             </TableBody>
           </Table>

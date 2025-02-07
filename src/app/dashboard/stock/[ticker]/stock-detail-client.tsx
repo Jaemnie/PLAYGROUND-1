@@ -1,6 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
 import { CompanyInfo } from './components/company-info'
 import { PriceChart } from './components/price-chart'
 import { TradingForm } from './components/trading-form'
@@ -25,6 +27,14 @@ export function StockDetailClient({
   const [selectedTimeframe, setSelectedTimeframe] = useState('1D')
   const [showAlert, setShowAlert] = useState(false)
   const [tradeType, setTradeType] = useState<'buy' | 'sell'>('buy')
+  const router = useRouter()
+
+  useEffect(() => {
+    if (company?.is_delisted) {
+      toast.error('해당 기업은 상장폐지 상태입니다. 페이지를 조회할 수 없습니다.')
+      router.push('/dashboard') // 대시보드나 목록 페이지로 리다이렉트
+    }
+  }, [company, router])
 
   const handleTradeComplete = (type: 'buy' | 'sell') => {
     setTradeType(type)

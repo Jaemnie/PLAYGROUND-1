@@ -80,7 +80,7 @@ export function MarketOverview({ companies: initialCompanies }: MarketOverviewPr
       <CardContent>
         <div className="space-y-3 h-[280px] overflow-hidden">
           <AnimatePresence mode="popLayout">
-            {displayedCompanies.map((company) => {
+            {displayedCompanies.map((company, index) => {
               const currentPrice = company.current_price
               const lastClosingPrice = company.last_closing_price
               const priceChangePercent = ((currentPrice - lastClosingPrice) / lastClosingPrice) * 100
@@ -88,7 +88,7 @@ export function MarketOverview({ companies: initialCompanies }: MarketOverviewPr
 
               return (
                 <motion.div
-                  key={company.id}
+                  key={`${company.id}-${currentPage}-${index}`}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}

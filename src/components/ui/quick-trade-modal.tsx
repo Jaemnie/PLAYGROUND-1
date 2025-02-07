@@ -27,6 +27,45 @@ export function QuickTradeModal({
   holding,
   onTradeComplete
 }: QuickTradeModalProps) {
+  if (company?.is_delisted) {
+    return (
+      <AnimatePresence>
+        {isOpen && (
+          <div>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.5 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/70 z-[100]"
+              onClick={onClose}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ type: "spring", duration: 0.5 }}
+              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 
+                         bg-gray-900 rounded-2xl p-8 shadow-2xl z-[101] w-[90%] max-w-[360px]
+                         border border-gray-800"
+            >
+              <div className="flex flex-col items-center gap-5">
+                <div className="text-center">
+                  <h2 className="text-2xl font-bold text-white">거래 불가</h2>
+                  <p className="text-gray-400">
+                    이 기업은 상장폐지 상태입니다. 거래가 불가능합니다.
+                  </p>
+                </div>
+                <Button onClick={onClose}>
+                  닫기
+                </Button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    )
+  }
+
   const [type, setType] = useState<'buy' | 'sell'>('buy')
   const [shares, setShares] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -109,7 +148,7 @@ export function QuickTradeModal({
       />
       <AnimatePresence>
         {isOpen && (
-          <>
+          <div>
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 0.5 }}
@@ -121,9 +160,10 @@ export function QuickTradeModal({
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ type: "spring", duration: 0.5 }}
               className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 
-                        bg-gray-900/95 rounded-2xl p-6 shadow-2xl z-[101] w-[90%] 
-                        max-w-[400px] border border-gray-800 backdrop-blur-xl"
+                         bg-gray-900 rounded-2xl p-6 shadow-2xl z-[101] w-[90%] 
+                         max-w-[400px] border border-gray-800 backdrop-blur-xl"
             >
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
@@ -219,7 +259,7 @@ export function QuickTradeModal({
                 </p>
               </div>
             </motion.div>
-          </>
+          </div>
         )}
       </AnimatePresence>
     </>
