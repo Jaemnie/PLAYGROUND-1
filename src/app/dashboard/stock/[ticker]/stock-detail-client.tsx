@@ -6,7 +6,6 @@ import { toast } from 'sonner'
 import { CompanyInfo } from './components/company-info'
 import { PriceChart } from './components/price-chart'
 import { TradingForm } from './components/trading-form'
-import { OrderBook } from './components/order-book'
 import { Card } from '@/components/ui/card'
 import { BackButton } from '@/components/back-button'
 import { TradeAlert } from '@/components/ui/trade-alert'
@@ -81,11 +80,6 @@ export function StockDetailClient({
             onTimeframeChange={setSelectedTimeframe}
             formatPrice={(value: number) => Math.round(value).toString()}
           />
-        </Card>
-        
-        {/* 호가창 */}
-        <Card className="mt-6 bg-black/40 backdrop-blur-sm border-gray-800">
-          <OrderBook company={company} />
         </Card>
       </div>
     </div>

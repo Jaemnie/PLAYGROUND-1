@@ -42,8 +42,8 @@ export async function GET() {
       return acc
     }, [])
 
-    // 결과를 Redis에 캐싱 (50초 동안 캐시)
-    await redis.set('scheduler-status', JSON.stringify(latestStatus), { ex: 60 })
+    // 결과를 Redis에 캐싱 (5초 동안 캐싱 - TTL을 매우 짧게 설정)
+    await redis.set('scheduler-status', JSON.stringify(latestStatus), { ex: 5 })
 
     return NextResponse.json({ status: latestStatus, cached: false })
   } catch (error) {

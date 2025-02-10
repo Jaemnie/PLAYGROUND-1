@@ -2,7 +2,6 @@ import { createClient } from '@/lib/supabase/server'
 import cron from 'node-cron'
 import { PortfolioTracker } from '@/services/portfolio-tracker'
 import type { PostgrestResponse } from '@supabase/supabase-js'
-import {  simulateMarketControlBot } from '@/services/simulation-bot'
 import { getDbTimeXMinutesAgo } from '@/lib/timeUtils'
 
 interface NewsTemplate {
@@ -13,6 +12,7 @@ interface NewsTemplate {
   type: 'market' | 'company';
   volatility?: number; // 뉴스의 파급 정도
   company_id?: string;
+  industry?: string; // 추가: 뉴스와 관련된 산업 정보
 }
 
 interface NewsRecord {
@@ -35,24 +35,7 @@ interface SchedulerStatus {
   jobType: 'market_update' | 'news_generation' | 'price_update';
 }
 
-type Industry =
-  | 'IT' 
-  | 'IT 서비스'
-  | '소프트웨어'
-  | '전자'
-  | '반도체'
-  | '바이오'
-  | '제약'
-  | '금융'
-  | '건설'
-  | '식품'
-  | '소비재'
-  | '자동차'
-  | '운송'
-  | '에너지'
-  | '디자인'
-  | '제조'
-  | string;
+type Industry = '전자' | 'IT' | '제조' | '건설' | '식품';
 
 interface Company {
   id: string;
@@ -78,13 +61,12 @@ export class MarketScheduler {
   private lastMarketUpdate: Date | null = null;
   private lastNewsUpdate: Date | null = null;
   private newsTemplateCache: Map<string, NewsTemplate[]> = new Map();
-  private dynamicRecoveryFactor: number = 1.0;
-  private recoveryTimer: NodeJS.Timeout | null = null;
-  private recoveryInterval: NodeJS.Timeout | null = null;
-  private readonly recoveryStep: number = 0.005;             // 매 회복 단계마다 증가하는 값 (느린 회복)
-  private readonly recoveryDelay: number = 180000;           // 뉴스/이벤트 발생 후 3분 지연 (ms)
-  private readonly recoveryIntervalTime: number = 10000;     // 10초마다 복구 단계 진행 (ms)
   private priceCache: Map<string, number> = new Map();
+  private priceMovementCache: Map<string, {
+    direction: 'up' | 'down' | 'neutral',
+    consecutiveCount: number,
+    lastChange: number
+  }> = new Map();
 
   // 시장 뉴스 템플릿 (Market News Templates)
   private readonly marketNewsTemplates: NewsTemplate[] = [
@@ -448,12 +430,7 @@ export class MarketScheduler {
     });
     this.tasks.set('companyNews', companyNewsJob);
 
-    // 5분마다 고급 시뮬레이션 봇 실행
-    const advancedBotJob = cron.schedule('*/5 * * * *', async () => {
-      console.log('고급 시뮬레이션 봇 주문 생성 시작:', new Date().toISOString());
-      await simulateMarketControlBot();
-    });
-    this.tasks.set('advancedSimulationBot', advancedBotJob);
+    // 시뮬레이션 봇 관련 스케줄은 더 이상 실행하지 않습니다.
   }
 
   public async cleanup() {
@@ -550,12 +527,8 @@ export class MarketScheduler {
       const recentNews = recentNewsResult.data;
       const companies = companiesResult.data;
       
-      // 먼저 시장 뉴스 영향(글로벌 뉴스)을 계산하여 동적 복구 요인에 반영 (전체 시장에 영향을 주도록)
+      // 먼저 시장 뉴스 영향(글로벌 뉴스)을 계산
       const marketNewsImpact = this.calculateMarketNewsImpact(recentNews);
-      if (marketNewsImpact < 0) {
-        // 시장 뉴스에 의해 복구 요인을 조정 (동일 로직 사용)
-        this.applyDynamicRecovery(marketNewsImpact);
-      }
       
       if (companies && companies.length > 0) {
         await Promise.all(
@@ -573,12 +546,21 @@ export class MarketScheduler {
               0
             );
             
-            // 주가 계산 함수 (호가창 데이터 및 이벤트 반영)
-            const cacheKey = `${company.id}-${totalHoldingShares}`;
+            // 캐시 키는 회사 고유의 ID만을 사용 (보유 주식 수는 제거)
+            const cacheKey = `${company.id}`;
+            let newPrice: number;
+
             if (this.priceCache.has(cacheKey)) {
-              return this.priceCache.get(cacheKey);
+              newPrice = this.priceCache.get(cacheKey)!;
+            } else {
+              // 새로운 주가 계산 (호가창 데이터 및 이벤트 반영)
+              newPrice = await this.calculateNewPrice(company, activeEvents);
+              // 캐시 저장 후 5초 후 자동 삭제 (TTL 적용)
+              this.priceCache.set(cacheKey, newPrice);
+              setTimeout(() => {
+                this.priceCache.delete(cacheKey);
+              }, 5000);
             }
-            const newPrice = await this.calculateNewPrice(company, totalHoldingShares, activeEvents);
             
             // 회사 뉴스 영향은 해당 기업에만 직접 반영
             const companyNewsImpact = this.calculateCompanyNewsImpact(company.id, recentNews);
@@ -586,8 +568,8 @@ export class MarketScheduler {
             // 주가 변화율 계산: (새로 계산된 가격 / 전일 종가) - 1
             const relativeChange = newPrice / company.last_closing_price - 1;
             
-            // 최종 주가 계산: 전일 종가에 relativeChange에 동적 회복 요인을 적용한 값과 회사 뉴스 영향을 반영
-            const finalPrice = company.last_closing_price * (1 + relativeChange * this.dynamicRecoveryFactor + companyNewsImpact);
+            // 최종 주가 계산 (recovery factor 제거)
+            const finalPrice = company.last_closing_price * (1 + relativeChange + companyNewsImpact);
             
             await this.retryOperation(() =>
               this.supabase
@@ -599,7 +581,6 @@ export class MarketScheduler {
                 .eq('id', company.id)
             );
             await this.checkDelisting(company, finalPrice);
-            this.priceCache.set(cacheKey, newPrice);
           })
         );
       }
@@ -634,13 +615,18 @@ export class MarketScheduler {
 
   private async generateMarketNews() {
     if (Math.random() < 0.05) {
+      // 산업 목록에서 임의로 선택 (필요에 따라 확장 가능)
+      const industriesForMarketNews: Industry[] = ['전자','IT','제조','건설','식품'];
+      const selectedIndustry = industriesForMarketNews[Math.floor(Math.random() * industriesForMarketNews.length)];
+
       const marketNews = this.selectRandomNews(this.marketNewsTemplates);
       await this.createNews({
         ...marketNews,
-        title: `[시장 전체] ${marketNews.title}`,
-        content: `${marketNews.content} - 전체 시장에 영향`
+        industry: selectedIndustry,  // 새로운 칼럼 값 추가
+        title: `[${selectedIndustry} 시장] ${marketNews.title}`,
+        content: `${marketNews.content} - ${selectedIndustry} 산업 전반에 미치는 영향`
       });
-      console.log('시장 전체 뉴스 발생:', marketNews.title);
+      console.log(`[${selectedIndustry} 시장 뉴스 발생]`, marketNews.title);
     }
   }
 
@@ -688,11 +674,12 @@ export class MarketScheduler {
           title: news.title,
           content: news.content,
           company_id: news.company_id || null,
-          sentiment: news.sentiment,
-          impact: news.impact,
           published_at: new Date().toISOString(),
           type: news.type,
-          volatility: news.volatility
+          sentiment: news.sentiment,
+          impact: news.impact,
+          volatility: news.volatility,
+          industry: news.industry || null
         })
       );
       if (error) throw error;
@@ -730,40 +717,47 @@ export class MarketScheduler {
 
   private async calculateNewPrice(
     company: Company,
-    totalHoldingShares: number,
     events: any[]
   ): Promise<number> {
     try {
       const basePrice = company.current_price;
       
-      // 기존 로직: 전체 기업, 산업 내 추세, 주식 변동성, 이벤트 영향, 시간대 변동성 등을 계산
-      const { data: allCompanies } = await this.supabase.from('companies').select('*');
-      const marketTrend = this.calculateMarketTrend(allCompanies);
-      const industryCompanies = allCompanies.filter((c: Company) => c.industry === company.industry);
-      const industryTrend = this.calculateMarketTrend(industryCompanies);
-      const stockVolatility = this.calculateStockVolatility(company);
+      // 1. 이전 가격 움직임 데이터 가져오기
+      const movementKey = company.id;
+      const previousMovement = this.priceMovementCache.get(movementKey) || {
+        direction: 'neutral',
+        consecutiveCount: 0,
+        lastChange: 0
+      };
+
+      // 2. 기본 변동 요소 계산
       const eventImpact = this.calculateEventImpact(events, company.industry);
+      const industryVolatility = this.calculateIndustryVolatility(company.industry);
       const timeVolatility = this.calculateTimeVolatility(new Date().getHours());
+      
+      // 3. 모멘텀 계수 계산 (연속성 부여)
+      const momentumFactor = this.calculateMomentumFactor(previousMovement);
+      
+      // 4. 랜덤 변동성 (-0.5% ~ +0.5%)에 모멘텀 반영
+      const baseRandomChange = (Math.random() - 0.5) * 0.01;
+      const randomChange = baseRandomChange * momentumFactor;
+      
+      // 5. 최종 변화율 계산
       const totalChange = (
-        marketTrend * 0.45 +
-        industryTrend * 0.35 +
-        stockVolatility * 0.15 +
-        eventImpact * 0.05
-      ) * timeVolatility;
+        eventImpact * 0.3 +      // 이벤트 영향 30%
+        randomChange * 0.7       // 랜덤 변동성 70% (모멘텀 반영)
+      ) * timeVolatility * industryVolatility;
+
+      // 6. 새로운 가격 계산
+      const newPrice = basePrice * (1 + totalChange);
       
-      // holdings 테이블(호가창)의 거래량에 따른 추가 가격 영향
-      // 예시: 100주마다 가격에 0.05%의 상승 효과를 부여 (원하는 방식으로 조정 가능)
-      const orderFlowImpact = (totalHoldingShares / 100) * 0.0005;
-      
-      // 총 변화율에 주문체결(호가창) 영향 반영
-      const newPrice = basePrice * (1 + totalChange + orderFlowImpact);
-      
-      // 동적 가격 제한 적용
-      const historicalVolatility = stockVolatility;
-      const dynamicLimit = Math.min(0.15 + historicalVolatility * 0.05, 0.3);
-      const randomFactor = 1 + (Math.random() * 0.04 - 0.02);
-      const maxPrice = company.last_closing_price * (1 + dynamicLimit * randomFactor);
-      const minPrice = company.last_closing_price * (1 - dynamicLimit * randomFactor);
+      // 7. 가격 움직임 정보 업데이트
+      this.updatePriceMovement(movementKey, totalChange, previousMovement);
+
+      // 8. 가격 제한 (전일 종가 대비 ±30% 제한)
+      const maxPrice = company.last_closing_price * 1.3;
+      const minPrice = company.last_closing_price * 0.7;
+
       return Math.min(Math.max(newPrice, minPrice), maxPrice);
     } catch (error) {
       console.error('가격 계산 중 오류:', error);
@@ -771,34 +765,15 @@ export class MarketScheduler {
     }
   }
 
-  private calculateMarketTrend(companies: Company[]): number {
-    if (!companies.length) return 0;
-    const baseChange = (Math.random() - 0.5) * 0.006; // ±0.3% 변화
-    // 기존 모멘텀 확률(기존 70% 하락, 30% 상승)을 50:50로 조정합니다.
-    const momentum = Math.random() > 0.5 ? 1 : -1;
-    return baseChange * momentum;
-  }
-
-  private calculateStockVolatility(company: Company): number {
-    const industryVolatility = {
+  private calculateIndustryVolatility(industry: Industry): number {
+    const volatilityMap: Record<Industry, number> = {
+      '전자': 1.3,
       'IT': 1.4,
-      'IT 서비스': 1.3,
-      '소프트웨어': 1.3,
-      '전자': 1.2,
-      '반도체': 1.5,
-      '바이오': 1.6,
-      '제약': 1.2,
-      '금융': 0.9,
+      '제조': 0.9,
       '건설': 0.8,
       '식품': 0.7,
-      '소비재': 0.8,
-      '자동차': 1.1,
-      '운송': 0.9,
-      '에너지': 1.0,
-      '디자인': 1.1,
-      '제조': 0.9
-    }[company.industry] || 1.0;
-    return (Math.random() - 0.5) * 0.004 * industryVolatility;
+    };
+    return volatilityMap[industry] || 1.0;
   }
 
   private calculateEventImpact(events: any[], industry: string): number {
@@ -815,6 +790,53 @@ export class MarketScheduler {
     if (hour >= 11 && hour <= 13) return 0.7;
     if (hour >= 14) return 1.4;
     return 1.0;
+  }
+
+  private calculateMomentumFactor(movement: {
+    direction: 'up' | 'down' | 'neutral',
+    consecutiveCount: number,
+    lastChange: number
+  }): number {
+    // 연속 상승/하락에 따른 모멘텀 계수 계산
+    const baseMomentum = 1.0;
+    const momentumMultiplier = 1.2; // 모멘텀 강도
+    
+    if (movement.consecutiveCount <= 1) return baseMomentum;
+    
+    // 연속 횟수가 증가할수록 모멘텀도 강화 (최대 3회)
+    const momentum = Math.min(
+      baseMomentum * Math.pow(momentumMultiplier, Math.min(movement.consecutiveCount, 3) - 1),
+      2.0 // 최대 모멘텀 제한
+    );
+    
+    return momentum;
+  }
+
+  private updatePriceMovement(
+    key: string,
+    change: number,
+    previousMovement: {
+      direction: 'up' | 'down' | 'neutral',
+      consecutiveCount: number,
+      lastChange: number
+    }
+  ) {
+    const newDirection = change > 0 ? 'up' : change < 0 ? 'down' : 'neutral';
+    
+    let consecutiveCount = 
+      newDirection === previousMovement.direction ? 
+      previousMovement.consecutiveCount + 1 : 1;
+      
+    // 연속 상승/하락이 5회를 넘어가면 반전 확률 증가
+    if (consecutiveCount > 5 && Math.random() < 0.4) {
+      consecutiveCount = 1;
+    }
+
+    this.priceMovementCache.set(key, {
+      direction: newDirection,
+      consecutiveCount,
+      lastChange: change
+    });
   }
 
   private async setOpeningPrices() {
@@ -912,21 +934,13 @@ export class MarketScheduler {
     if (this.newsTemplateCache.has(industry)) {
       return this.newsTemplateCache.get(industry)!;
     }
+    // 5개의 분류에 맞게 템플릿 선택
     const templates = {
-      'IT': this.marketNewsTemplates,
-      'IT 서비스': this.marketNewsTemplates,
-      '소프트웨어': this.marketNewsTemplates,
       '전자': this.marketNewsTemplates,
-      '반도체': this.marketNewsTemplates,
-      '바이오': this.companyNewsTemplates,
-      '제약': this.companyNewsTemplates,
-      '금융': this.companyNewsTemplates,
+      'IT': this.marketNewsTemplates,
+      '제조': this.companyNewsTemplates,
       '건설': this.companyNewsTemplates,
-      '식품': this.companyNewsTemplates,
-      '소비재': this.companyNewsTemplates,
-      '자동차': this.companyNewsTemplates,
-      '운송': this.companyNewsTemplates,
-      '에너지': this.companyNewsTemplates
+      '식품': this.companyNewsTemplates
     }[industry] || this.companyNewsTemplates;
     this.newsTemplateCache.set(industry, templates);
     return templates;
@@ -976,40 +990,5 @@ export class MarketScheduler {
       .eq('id', company.id);
 
     return { ...company, current_price: newPrice };
-  }
-
-  // 뉴스나 이벤트로 인한 부정적 충격이 있을 경우 동적 복구 요인을 조정하는 함수
-  private applyDynamicRecovery(newsImpact: number): void {
-    if (newsImpact < 0) {
-      // 부정적 뉴스 영향에 따라 회복 가중치를 낮춤 (최소 0.7까지)
-      this.dynamicRecoveryFactor = Math.max(0.7, this.dynamicRecoveryFactor + newsImpact);
-      console.log(`동적 복구 요인 조정: ${this.dynamicRecoveryFactor.toFixed(2)}`);
-      
-      // 기존에 설정된 타이머가 있다면 초기화
-      if (this.recoveryTimer) {
-        clearTimeout(this.recoveryTimer);
-        this.recoveryTimer = null;
-      }
-      if (this.recoveryInterval) {
-        clearInterval(this.recoveryInterval);
-        this.recoveryInterval = null;
-      }
-      
-      // 일정 시간(recoveryDelay) 후부터 복구를 시작하여 일정 간격마다 recoveryStep 만큼 회복
-      this.recoveryTimer = setTimeout(() => {
-        this.recoveryInterval = setInterval(() => {
-          if (this.dynamicRecoveryFactor < 1.0) {
-            this.dynamicRecoveryFactor = Math.min(1.0, this.dynamicRecoveryFactor + this.recoveryStep);
-            console.log(`복구 진행: ${this.dynamicRecoveryFactor.toFixed(2)}`);
-          } else {
-            // 완전히 회복되면 타이머를 종료
-            if (this.recoveryInterval) {
-              clearInterval(this.recoveryInterval);
-              this.recoveryInterval = null;
-            }
-          }
-        }, this.recoveryIntervalTime);
-      }, this.recoveryDelay);
-    }
   }
 }
