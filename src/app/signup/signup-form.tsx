@@ -81,7 +81,7 @@ export default function SignUpForm() {
         transition={{ duration: 0.5 }}
       >
         <Card className="w-[400px] bg-black/40 backdrop-blur-sm border border-gray-800/50 shadow-xl">
-          <CardHeader className="space-y-1">
+          <CardHeader className="space-y-1 pb-4">
             <h2 className="text-2xl font-bold text-center bg-gradient-to-r from-blue-400 to-violet-400 bg-clip-text text-transparent">
               회원가입
             </h2>
@@ -89,9 +89,9 @@ export default function SignUpForm() {
               새로운 계정을 만들어보세요
             </p>
           </CardHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4 px-6 pb-6">
             <div className="space-y-2">
-              <label htmlFor="email" className="text-sm text-gray-300">
+              <label htmlFor="email" className="text-sm font-medium text-gray-300">
                 이메일
               </label>
               <Input
@@ -104,7 +104,7 @@ export default function SignUpForm() {
               />
             </div>
             <div className="space-y-2">
-              <label htmlFor="password" className="text-sm text-gray-300">
+              <label htmlFor="password" className="text-sm font-medium text-gray-300">
                 비밀번호
               </label>
               <Input
@@ -117,7 +117,7 @@ export default function SignUpForm() {
               />
             </div>
             <div className="space-y-2">
-              <label htmlFor="nickname" className="text-sm text-gray-300">
+              <label htmlFor="nickname" className="text-sm font-medium text-gray-300">
                 닉네임
               </label>
               <Input
@@ -129,13 +129,21 @@ export default function SignUpForm() {
                 placeholder="닉네임을 입력해주세요"
               />
             </div>
-            <Button
-              type="submit"
-              className="w-full bg-gradient-to-r from-blue-500 to-violet-500 hover:from-blue-600 hover:to-violet-600 text-white transition-all duration-300"
-              disabled={isLoading}
-            >
-              {isLoading ? '처리중...' : '회원가입'}
-            </Button>
+            <div className="pt-2">
+              <Button
+                type="submit"
+                className="w-full bg-gradient-to-r from-blue-500 to-violet-500 hover:from-blue-600 hover:to-violet-600 text-white transition-all duration-300"
+                disabled={isLoading}
+              >
+                {isLoading ? '처리중...' : '회원가입'}
+              </Button>
+              <p className="text-sm text-gray-400 text-center mt-4">
+                이미 계정이 있으신가요?{' '}
+                <Link href="/login" className="text-blue-400 hover:text-blue-300">
+                  로그인
+                </Link>
+              </p>
+            </div>
           </form>
         </Card>
       </motion.div>

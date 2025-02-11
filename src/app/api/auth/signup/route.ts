@@ -21,10 +21,10 @@ export async function POST(request: Request) {
       },
     })
 
-    if (signUpError) {
+    if (signUpError || !authData.user) {
       console.error('Supabase 회원가입 에러:', signUpError)
       return NextResponse.json({ 
-        error: signUpError.message,
+        error: signUpError?.message || '회원가입에 실패했습니다',
         status: 400 
       })
     }
