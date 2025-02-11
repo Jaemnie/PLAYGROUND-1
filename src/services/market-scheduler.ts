@@ -498,19 +498,18 @@ export class MarketScheduler {
   }
 
   private async scheduleTasks() {
-    // QStash에 작업 등록만 하고 즉시 실행은 하지 않음
+    // 마켓 업데이트 (1분마다)
     await this.qstash.publishJSON({
       url: `${process.env.NEXT_PUBLIC_APP_URL}/api/cron/market-update`,
-      cron: '* * * * *',
-      deduplicationId: 'market-update',
-      notBefore: Date.now() + 60000 // 1분 후부터 시작
+      cron: '* * * * *',  // 매분 실행
+      deduplicationId: 'market-update'
     });
 
+    // 뉴스 업데이트 (30분마다)
     await this.qstash.publishJSON({
       url: `${process.env.NEXT_PUBLIC_APP_URL}/api/cron/news-update`,
-      cron: '*/30 * * * *',
-      deduplicationId: 'news-update',
-      notBefore: Date.now() + 1800000 // 30분 후부터 시작
+      cron: '*/30 * * * *',  // 30분마다 실행
+      deduplicationId: 'news-update'
     });
 
     // 장 시작 (매일 9시)
