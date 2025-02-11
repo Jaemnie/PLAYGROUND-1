@@ -499,23 +499,15 @@ export class MarketScheduler {
 
   private async scheduleTasks() {
     const now = new Date();
-    const nextMinute = new Date(now);
-    nextMinute.setSeconds(0);
-    nextMinute.setMilliseconds(0);
-    nextMinute.setMinutes(nextMinute.getMinutes() + 1);
-
-    const nextNewsTime = new Date(now);
-    nextNewsTime.setSeconds(0);
-    nextNewsTime.setMilliseconds(0);
-    const minutes = nextNewsTime.getMinutes();
-    nextNewsTime.setMinutes(minutes >= 30 ? 60 : 30);
+    const secondsToNextMin = 60 - now.getSeconds();
+    const secondsToNextNews = (30 - (now.getMinutes() % 30)) * 60 - now.getSeconds();
 
     // 마켓 업데이트 (1분마다)
     await this.qstash.publishJSON({
       url: `${process.env.NEXT_PUBLIC_APP_URL}/api/cron/market-update`,
       cron: '* * * * *',
       deduplicationId: 'market-update',
-      notBefore: nextMinute.getTime()
+      delay: secondsToNextMin
     });
 
     // 뉴스 업데이트 (30분마다)
@@ -523,7 +515,7 @@ export class MarketScheduler {
       url: `${process.env.NEXT_PUBLIC_APP_URL}/api/cron/news-update`,
       cron: '*/30 * * * *',
       deduplicationId: 'news-update',
-      notBefore: nextNewsTime.getTime()
+      delay: secondsToNextNews
     });
 
     // 장 시작 (매일 9시)
