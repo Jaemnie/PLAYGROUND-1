@@ -100,19 +100,6 @@ export default function SignUpForm() {
                 placeholder="••••••••"
               />
             </div>
-            <div className="space-y-2">
-              <label htmlFor="nickname" className="text-sm font-medium text-gray-300">
-                닉네임
-              </label>
-              <Input
-                id="nickname"
-                name="nickname"
-                type="text"
-                required
-                className="bg-black/30 border-gray-800 focus:border-gray-700 focus:ring-gray-700 text-gray-100 placeholder:text-gray-500"
-                placeholder="닉네임을 입력해주세요"
-              />
-            </div>
             <div className="pt-2">
               <Button
                 type="submit"
