@@ -3,17 +3,26 @@
 import { useEffect, useState } from 'react'
 import { CardHeader, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 
 interface PerformanceChartProps {
   user: any
   portfolio: any[]
 }
 
+const TIMEFRAMES = {
+  '1M': '1분봉',
+  '30M': '30분봉',
+  '1H': '1시간봉',
+  '1D': '1일봉',
+  '7D': '7일봉'
+} as const
+
 export default function PerformanceChart({ user, portfolio }: PerformanceChartProps) {
   const [data, setData] = useState<Array<{ time: string; value: number }>>([])
   const [timeframe, setTimeframe] = useState('1M')
   const [isLoading, setIsLoading] = useState(true)
+  const [hasNoData, setHasNoData] = useState(false)
 
   useEffect(() => {
     if (!user?.id) return
@@ -21,11 +30,19 @@ export default function PerformanceChart({ user, portfolio }: PerformanceChartPr
     const fetchPerformance = async () => {
       try {
         setIsLoading(true)
+        setHasNoData(false)
         const response = await fetch(`/api/stock/portfolio/performance?user_id=${user.id}&timeframe=${timeframe}`)
         const result = await response.json()
-        setData(result.performance || [])
+        
+        if (!result.performance || result.performance.length === 0) {
+          setHasNoData(true)
+          setData([])
+        } else {
+          setData(result.performance)
+        }
       } catch (error) {
         console.error('성과 데이터 로딩 오류:', error)
+        setHasNoData(true)
       } finally {
         setIsLoading(false)
       }
@@ -34,15 +51,13 @@ export default function PerformanceChart({ user, portfolio }: PerformanceChartPr
     fetchPerformance()
   }, [timeframe, user?.id])
 
-  const timeframes = ['1D', '1W', '1M', '3M', '1Y']
-
   return (
     <>
       <CardHeader>
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold text-gray-100">포트폴리오 수익률</h2>
           <div className="flex gap-2">
-            {timeframes.map((tf) => (
+            {Object.entries(TIMEFRAMES).map(([tf, label]) => (
               <Button
                 key={tf}
                 variant={timeframe === tf ? "default" : "outline"}
@@ -53,7 +68,7 @@ export default function PerformanceChart({ user, portfolio }: PerformanceChartPr
                   : "border-gray-700 hover:bg-gray-800"
                 }
               >
-                {tf}
+                {label}
               </Button>
             ))}
           </div>
@@ -64,6 +79,12 @@ export default function PerformanceChart({ user, portfolio }: PerformanceChartPr
           {isLoading ? (
             <div className="flex items-center justify-center h-full">
               <span className="text-gray-400">로딩 중...</span>
+            </div>
+          ) : hasNoData ? (
+            <div className="flex flex-col h-full items-center justify-center gap-4">
+              <span className="text-gray-400">
+                선택한 시간대의 수익률 데이터가 없습니다
+              </span>
             </div>
           ) : (
             <ResponsiveContainer width="100%" height="100%">
@@ -76,7 +97,10 @@ export default function PerformanceChart({ user, portfolio }: PerformanceChartPr
                 <YAxis 
                   stroke="#4B5563" 
                   tick={{ fill: '#9CA3AF' }}
-                  tickFormatter={(value) => `${value}%`}
+                  tickFormatter={(value) => {
+                    const num = parseFloat(value)
+                    return isNaN(num) ? '0%' : `${num.toFixed(2)}%`
+                  }}
                 />
                 <Tooltip 
                   contentStyle={{ 
@@ -86,6 +110,7 @@ export default function PerformanceChart({ user, portfolio }: PerformanceChartPr
                   }}
                   formatter={(value: number) => [`${value}%`, '수익률']}
                 />
+                <CartesianGrid stroke="#374151" strokeDasharray="3 3" />
                 <Line 
                   type="monotone" 
                   dataKey="value" 

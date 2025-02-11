@@ -1,29 +1,43 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import { redis } from '@/lib/upstash-client'
 import { createClientBrowser } from '@/lib/supabase/client'
 
+interface StockPrice {
+  current_price: number;
+  last_closing_price: number;
+  previous_price: number;
+  timestamp: number;
+}
+
 export function useRealtimeStockData(companyIds: string[]) {
-  const [stockData, setStockData] = useState<Map<string, any>>(new Map())
-  const [changes, setChanges] = useState<Map<string, number>>(new Map())
-  
+  const [stockData, setStockData] = useState(new Map())
+  const [changes, setChanges] = useState(new Set())
+
   useEffect(() => {
-    const supabase = createClientBrowser()
-    
+    // 초기 데이터 로드
     const loadInitialData = async () => {
-      const { data } = await supabase
-        .from('companies')
-        .select('*')
-        .in('id', companyIds)
+      const cachedData = await Promise.all(
+        companyIds.map(async (id) => {
+          const key = `stock:${id}`
+          const cached = await redis.get(key)
+          return { id, data: cached }
+        })
+      )
       
-      if (data) {
-        const newStockData = new Map(data.map(company => [company.id, company]))
-        setStockData(newStockData)
-      }
+      const initialData = new Map()
+      cachedData.forEach(({ id, data }) => {
+        if (data) initialData.set(id, data)
+      })
+      
+      setStockData(initialData)
     }
     
     loadInitialData()
-    
-    const subscription = supabase
-      .channel('stock_updates')
+
+    // Supabase Realtime 구독
+    const supabase = createClientBrowser()
+    const channel = supabase
+      .channel('stock-updates')
       .on(
         'postgres_changes',
         {
@@ -33,28 +47,25 @@ export function useRealtimeStockData(companyIds: string[]) {
           filter: `id=in.(${companyIds.join(',')})`
         },
         (payload) => {
-          setStockData(prev => {
-            const newMap = new Map(prev)
-            const oldPrice = prev.get(payload.new.id)?.current_price || 0
-            const priceChange = payload.new.current_price - oldPrice
-            
+          setStockData(prev => new Map(prev).set(payload.new.id, payload.new))
+          setChanges(prev => new Set(prev).add(payload.new.id))
+          
+          // 변화 표시를 잠시 후 제거
+          setTimeout(() => {
             setChanges(prev => {
-              const newChanges = new Map(prev)
-              newChanges.set(payload.new.id, priceChange)
-              return newChanges
+              const next = new Set(prev)
+              next.delete(payload.new.id)
+              return next
             })
-            
-            newMap.set(payload.new.id, payload.new)
-            return newMap
-          })
+          }, 1000)
         }
       )
       .subscribe()
-      
+
     return () => {
-      subscription.unsubscribe()
+      supabase.removeChannel(channel)
     }
-  }, [companyIds])
-  
+  }, [JSON.stringify(companyIds)])
+
   return { stockData, changes }
 }

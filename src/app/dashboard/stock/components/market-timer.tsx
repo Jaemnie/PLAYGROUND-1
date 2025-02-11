@@ -102,26 +102,22 @@ export function MarketTimer() {
       const timeUntilNews = nextNews.getTime() - now.getTime()
       const timeUntilMarket = nextMarket.getTime() - now.getTime()
 
-      // 뉴스 발생 시 즉시 주가 업데이트 타이머도 재설정
-      if (timeUntilNews <= 1000 && timeUntilNews > 0) {
-        setFlashNews(true)
-        // 뉴스 발생 시 다음 주가 업데이트 시간을 1초 후로 설정
-        const immediateNextPrice = new Date(now.getTime() + 1000)
-        setNextPriceUpdate(immediateNextPrice)
-      }
-      
-      // 시장 업데이트 시에도 동일하게 적용
-      if (timeUntilMarket <= 1000 && timeUntilMarket > 0) {
-        setFlashMarket(true)
-        const immediateNextPrice = new Date(now.getTime() + 1000)
-        setNextPriceUpdate(immediateNextPrice)
-      }
-
-      // 일반 주가 업데이트 체크
-      if (timeUntilPrice <= 1000 && timeUntilPrice > 0) {
+      // 뉴스나 시장 업데이트 발생 시 즉시 주가 업데이트
+      if ((timeUntilNews <= 1000 && timeUntilNews > 0) || 
+          (timeUntilMarket <= 1000 && timeUntilMarket > 0)) {
+        if (timeUntilNews <= 1000 && timeUntilNews > 0) {
+          setFlashNews(true)
+        }
+        if (timeUntilMarket <= 1000 && timeUntilMarket > 0) {
+          setFlashMarket(true)
+        }
+        // 주가 업데이트는 뉴스/시장 업데이트와 동시에 발생
+        setFlashPrice(true)
+      } else if (timeUntilPrice <= 1000 && timeUntilPrice > 0) {
+        // 일반 주가 업데이트 체크
         setFlashPrice(true)
       }
-    }, 100) // 더 정확한 타이밍을 위해 interval 주기를 줄임
+    }, 100)
 
     return () => clearInterval(timer)
   }, [])

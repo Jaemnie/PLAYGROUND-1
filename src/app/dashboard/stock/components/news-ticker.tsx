@@ -6,7 +6,6 @@ import { NewspaperIcon } from '@heroicons/react/24/outline'
 import { Button } from '@/components/ui/button'
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useRealtimeNews } from '@/hooks/useRealtimeNews'
 
 interface NewsTickerProps {
   news: {
@@ -19,20 +18,12 @@ interface NewsTickerProps {
   }[]
 }
 
-export function NewsTicker({ news: initialNews }: NewsTickerProps) {
+export function NewsTicker({ news }: NewsTickerProps) {
   const [currentPage, setCurrentPage] = useState(1)
-  const { newsData, latestUpdate } = useRealtimeNews(initialNews)
   
   const itemsPerPage = 1
-  const totalPages = Math.ceil(newsData.length / itemsPerPage)
-  const currentNews = newsData[currentPage - 1]
-
-  // 새로운 뉴스가 추가되면 첫 페이지로 이동
-  useEffect(() => {
-    if (latestUpdate) {
-      setCurrentPage(1)
-    }
-  }, [latestUpdate])
+  const totalPages = Math.ceil(news.length / itemsPerPage)
+  const currentNews = news[currentPage - 1]
 
   // 자동 슬라이드 효과
   useEffect(() => {
@@ -92,7 +83,7 @@ export function NewsTicker({ news: initialNews }: NewsTickerProps) {
               className={`absolute inset-0 space-y-3 p-4 rounded-xl border ${getImpactStyle(currentNews?.impact || 'neutral')}`}
             >
               <div
-                className={latestUpdate === currentNews?.id ? 'ring-2 ring-blue-500/50 rounded-lg' : ''}
+                className={currentNews?.id ? 'ring-2 ring-blue-500/50 rounded-lg' : ''}
               >
                 <h3 className="font-bold text-gray-100 mb-2 line-clamp-1">
                   {currentNews?.title}
@@ -104,11 +95,6 @@ export function NewsTicker({ news: initialNews }: NewsTickerProps) {
                   <p className="text-xs text-gray-500">
                     {currentNews?.published_at && formatDate(currentNews.published_at)}
                   </p>
-                  {latestUpdate === currentNews?.id && (
-                    <span className="text-xs px-2 py-1 rounded-full bg-blue-500/20 text-blue-400">
-                      NEW
-                    </span>
-                  )}
                 </div>
               </div>
             </motion.div>

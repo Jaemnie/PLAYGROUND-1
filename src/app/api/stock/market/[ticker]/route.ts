@@ -1,26 +1,41 @@
+import { redis } from '@/lib/upstash-client'
+import { StockDataCache } from '@/lib/cache/stock-cache'
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse, NextRequest } from 'next/server'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ ticker: string }> }
+  { params }: { params: { ticker: string } }
 ) {
-  // await 키워드를 통해 비동기 params 값을 동기적으로 얻음
-  const { ticker } = await params
+  const { ticker } = params
+  const CACHE_TTL = 60 // 1분 캐시
+
+  // 1. Redis 캐시 확인
+  const redisKey = `stock:${ticker}`
+  const cachedData = await redis.get(redisKey)
+  
+  if (cachedData) {
+    return NextResponse.json({ company: cachedData, cached: true })
+  }
+
+  // 2. DB 조회
   const supabase = await createClient()
-  const { data, error } = await supabase
+  const { data: company, error } = await supabase
     .from('companies')
     .select('*')
     .eq('ticker', ticker)
-    .maybeSingle()
+    .single()
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  if (!data) {
-    return NextResponse.json({ error: '회사 정보를 찾을 수 없습니다.' }, { status: 404 })
+  if (!company) {
+    return NextResponse.json({ error: '회사를 찾을 수 없습니다.' }, { status: 404 })
   }
 
-  return NextResponse.json({ company: data })
+  // 3. Redis에 캐시 저장
+  await redis.set(redisKey, company, { ex: CACHE_TTL })
+
+  return NextResponse.json({ company, cached: false })
 } 

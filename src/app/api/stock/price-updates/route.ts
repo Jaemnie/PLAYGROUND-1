@@ -1,5 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { Redis } from 'ioredis'
+
+const redis = new Redis()
 
 async function calculatePriceChange(
   currentPrice: number,
@@ -42,36 +45,62 @@ export async function POST() {
       .from('companies')
       .select('id, current_price')
     
-    for (const company of companies || []) {
-      // 해당 기업의 거래량 계산
-      const companyTransactions = transactions?.filter(t => t.company_id === company.id) || []
-      const totalVolume = companyTransactions.reduce((sum, t) => sum + t.shares, 0)
-      
-      // 시장 이벤트 영향 계산
-      const eventImpact = marketEvents?.reduce((sum, event) => sum + (event.impact || 0), 0) || 0
-      
-      // 새로운 가격 계산
-      const newPrice = await calculatePriceChange(
-        company.current_price,
-        totalVolume,
-        eventImpact
-      )
-      
-      // 가격 업데이트 기록
-      await supabase.from('price_updates').insert({
-        company_id: company.id,
-        old_price: company.current_price,
-        new_price: newPrice,
-        change_percentage: ((newPrice - company.current_price) / company.current_price) * 100,
-        update_reason: 'Regular update'
+    const updates = await Promise.all(
+      (companies || []).map(async (company) => {
+        const companyTransactions = transactions?.filter(t => t.company_id === company.id) || [];
+        const totalVolume = companyTransactions.reduce((sum, t) => sum + t.shares, 0);
+        const eventImpact = marketEvents?.reduce((sum, event) => sum + (event.impact || 0), 0) || 0;
+        
+        const newPrice = await calculatePriceChange(
+          company.current_price,
+          totalVolume,
+          eventImpact
+        );
+
+        return {
+          id: crypto.randomUUID(), // UUID 생성
+          company_id: company.id,
+          old_price: Number(company.current_price), // numeric 타입으로 변환
+          new_price: Number(newPrice), // numeric 타입으로 변환
+          change_percentage: Number(((newPrice - company.current_price) / company.current_price) * 100),
+          update_reason: 'Regular update',
+          created_at: new Date().toISOString() // timestamptz 필드 추가
+        };
       })
-      
-      // 기업 현재가 업데이트
-      await supabase
-        .from('companies')
-        .update({ current_price: newPrice })
-        .eq('id', company.id)
+    );
+
+    // 배치 처리로 변경
+    const { error: insertError } = await supabase
+      .from('price_updates')
+      .insert(updates);
+
+    if (insertError) {
+      console.error('Price updates insert error:', insertError);
+      return NextResponse.json({ error: insertError.message }, { status: 500 });
     }
+
+    // 회사 정보 업데이트도 배치로 처리
+    const companyUpdates = updates.map(update => ({
+      id: update.company_id,
+      current_price: update.new_price
+    }));
+
+    const { error: updateError } = await supabase
+      .from('companies')
+      .upsert(companyUpdates, { onConflict: 'id' });
+
+    if (updateError) {
+      console.error('Companies update error:', updateError);
+      return NextResponse.json({ error: updateError.message }, { status: 500 });
+    }
+
+    // 캐시 무효화
+    await Promise.all(
+      companyUpdates.map(async (update) => {
+        const key = `stock:${update.id}`;
+        await redis.del(key);
+      })
+    );
     
     return NextResponse.json({ success: true })
   } catch (error) {

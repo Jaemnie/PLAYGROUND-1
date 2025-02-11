@@ -9,42 +9,105 @@ interface PriceChartProps {
   company: any
   timeframe: string
   onTimeframeChange: (timeframe: string) => void
-  formatPrice: (value: number) => string
 }
+
+const TIMEFRAMES = {
+  '1M': '1분봉',
+  '30M': '30분봉',
+  '1H': '1시간봉',
+  '1D': '1일봉',
+  '7D': '7일봉'
+} as const
 
 export function PriceChart({ 
   company, 
   timeframe, 
   onTimeframeChange 
 }: PriceChartProps) {
-  const [data, setData] = useState<Array<{ time: string; price: number }>>([])
+  const [data, setData] = useState<Array<{ 
+    time: string
+    price: number
+    changePercent: number 
+  }>>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [hasNoData, setHasNoData] = useState(false)
 
   useEffect(() => {
     if (company?.ticker && timeframe) {
       setIsLoading(true)
-      fetch(`/api/stock/prices?ticker=${company.ticker}&timeframe=${timeframe}`)
+      setHasNoData(false)
+      
+      fetch(`/api/stock/price-history?ticker=${company.ticker}&timeframe=${timeframe}`)
         .then((res) => res.json())
         .then((result) => {
-          setData(result.prices || [])
+          if (!result.priceUpdates || result.priceUpdates.length === 0) {
+            setHasNoData(true)
+            setData([{
+              time: '현재',
+              price: company.current_price,
+              changePercent: 0
+            }])
+          } else {
+            const formattedData = processChartData(result.priceUpdates)
+            setData(formattedData)
+          }
           setIsLoading(false)
         })
         .catch((error) => {
-          console.error('가격 데이터 로딩 오류:', error)
+          console.error('가격 기록 로딩 오류:', error)
+          setHasNoData(true)
           setIsLoading(false)
         })
     }
   }, [company, timeframe])
 
-  const timeframes = ['1D', '1W', '1M', '3M', '1Y']
-  
+  const formatTime = (timestamp: string, timeframe: string) => {
+    const date = new Date(timestamp)
+    switch (timeframe) {
+      case '1M':
+        return date.toLocaleTimeString('ko-KR', {
+          hour: '2-digit',
+          minute: '2-digit'
+        })
+      case '30M':
+      case '1H':
+        return date.toLocaleTimeString('ko-KR', {
+          hour: '2-digit',
+          minute: '2-digit'
+        })
+      case '1D':
+        return date.toLocaleDateString('ko-KR', {
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit'
+        })
+      case '7D':
+        return date.toLocaleDateString('ko-KR', {
+          month: 'short',
+          day: 'numeric'
+        })
+      default:
+        return date.toLocaleString('ko-KR')
+    }
+  }
+
+  const processChartData = (updates: any[]) => {
+    let lastValidPrice = company.current_price;
+    return updates.map(update => ({
+      time: formatTime(update.created_at, timeframe),
+      price: update.new_price || lastValidPrice,
+      changePercent: update.change_percentage || 0,
+      hasData: update.new_price !== null
+    }));
+  };
+
   return (
     <>
       <CardHeader>
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold text-gray-100">가격 차트</h2>
           <div className="flex gap-2">
-            {timeframes.map((tf) => (
+            {Object.entries(TIMEFRAMES).map(([tf, label]) => (
               <Button
                 key={tf}
                 variant={timeframe === tf ? "default" : "outline"}
@@ -55,7 +118,7 @@ export function PriceChart({
                   : "border-gray-700 hover:bg-gray-800"
                 }
               >
-                {tf}
+                {label}
               </Button>
             ))}
           </div>
@@ -63,44 +126,76 @@ export function PriceChart({
       </CardHeader>
       <CardContent>
         <div className="h-[400px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data}>
-              <XAxis 
-                dataKey="time" 
-                stroke="#4B5563"
-                tick={{ fill: '#9CA3AF' }}
-                tickLine={{ stroke: '#4B5563' }}
-                axisLine={{ stroke: '#4B5563' }}
-              />
-              <YAxis 
-                stroke="#4B5563"
-                tick={{ fill: '#9CA3AF' }}
-                tickLine={{ stroke: '#4B5563' }}
-                axisLine={{ stroke: '#4B5563' }}
-                domain={['auto', 'auto']}
-                tickFormatter={(value) => `${Math.round(value).toLocaleString()}원`}
-              />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: '#1F2937',
-                  border: '1px solid #374151',
-                  borderRadius: '0.375rem'
-                }}
-                labelStyle={{ color: '#9CA3AF' }}
-                itemStyle={{ color: '#60A5FA' }}
-                formatter={(value: any) => [`${Math.round(Number(value)).toLocaleString()}원`]}
-              />
-              <CartesianGrid stroke="#374151" strokeDasharray="3 3" />
-              <Line
-                type="monotone"
-                dataKey="price"
-                stroke="#60A5FA"
-                strokeWidth={2}
-                dot={false}
-                activeDot={{ r: 6, fill: '#60A5FA' }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
+          {isLoading ? (
+            <div className="flex h-full items-center justify-center">
+              <span className="text-gray-400">로딩 중...</span>
+            </div>
+          ) : hasNoData ? (
+            <div className="flex flex-col h-full items-center justify-center gap-4">
+              <span className="text-gray-400">
+                선택한 시간대의 거래 데이터가 없습니다
+              </span>
+              <p className="text-sm text-gray-500">
+                현재가: {Math.floor(company.current_price).toLocaleString()}원
+              </p>
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={data}>
+                <XAxis 
+                  dataKey="time" 
+                  stroke="#4B5563"
+                  tick={{ fill: '#9CA3AF' }}
+                />
+                <YAxis 
+                  stroke="#4B5563"
+                  tick={{ fill: '#9CA3AF' }}
+                  domain={['auto', 'auto']}
+                  tickFormatter={(value) => `${Math.round(value).toLocaleString()}원`}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#1F2937',
+                    border: '1px solid #374151',
+                  }}
+                  labelStyle={{ color: '#9CA3AF' }}
+                  formatter={(value: any, name: string) => [
+                    name === 'price' 
+                      ? `${Math.round(Number(value)).toLocaleString()}원`
+                      : `${value.toFixed(2)}%`,
+                    name === 'price' ? '가격' : '변동률'
+                  ]}
+                />
+                <CartesianGrid stroke="#374151" strokeDasharray="3 3" />
+                <Line
+                  type="monotone"
+                  dataKey="price"
+                  stroke="#60A5FA"
+                  dot={(props: any): React.ReactElement<SVGElement> => {
+                    const { payload, cx, cy } = props;
+                    return payload.hasData ? (
+                      <circle 
+                        key={`dot-${payload.time}`}
+                        cx={cx} 
+                        cy={cy} 
+                        r={3} 
+                        fill="#60A5FA" 
+                        stroke="#60A5FA" 
+                      />
+                    ) : (
+                      <circle 
+                        key={`dot-${payload.time}`}
+                        cx={cx} 
+                        cy={cy} 
+                        r={0}
+                      />
+                    );
+                  }}
+                  connectNulls={true}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          )}
         </div>
       </CardContent>
     </>

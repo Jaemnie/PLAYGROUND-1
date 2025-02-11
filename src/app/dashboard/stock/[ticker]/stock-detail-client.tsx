@@ -23,7 +23,7 @@ export function StockDetailClient({
   holding,
   points
 }: StockDetailClientProps) {
-  const [selectedTimeframe, setSelectedTimeframe] = useState('1D')
+  const [selectedTimeframe, setSelectedTimeframe] = useState('1M')
   const [showAlert, setShowAlert] = useState(false)
   const [tradeType, setTradeType] = useState<'buy' | 'sell'>('buy')
   const router = useRouter()
@@ -78,7 +78,6 @@ export function StockDetailClient({
             company={company}
             timeframe={selectedTimeframe}
             onTimeframeChange={setSelectedTimeframe}
-            formatPrice={(value: number) => Math.round(value).toString()}
           />
         </Card>
       </div>

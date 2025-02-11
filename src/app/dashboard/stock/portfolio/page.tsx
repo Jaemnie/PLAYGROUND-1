@@ -37,6 +37,7 @@ export default async function PortfolioPage() {
       price,
       transaction_type,
       created_at,
+      total_amount,
       company:companies(
         id,
         name,

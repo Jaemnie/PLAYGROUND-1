@@ -77,7 +77,7 @@ export default function TransactionHistory({ transactions }: TransactionHistoryP
               </div>
               <div className="text-right">
                 <div className="font-medium text-gray-100">
-                  {Math.floor(tx.total_amount).toLocaleString()}원
+                  {Math.floor(tx.shares * tx.price).toLocaleString()}원
                 </div>
                 <div className="text-sm text-gray-400">
                   {tx.shares.toLocaleString()}주 × {Math.floor(tx.price).toLocaleString()}원

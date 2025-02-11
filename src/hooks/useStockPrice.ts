@@ -1,43 +1,48 @@
 import { useEffect, useState } from 'react'
+import { redis } from '@/lib/upstash-client'
 import { createClientBrowser } from '@/lib/supabase/client'
 
-export function useStockPrice(companyId: string) {
+export function useStockPrice(ticker: string) {
   const [price, setPrice] = useState<number>(0)
-  
+
   useEffect(() => {
+    const fetchInitialPrice = async () => {
+      const cacheKey = `stock:${ticker}`
+      const cachedData = await redis.get(cacheKey) as { current_price: number } | null
+      
+      if (cachedData) {
+        setPrice(cachedData.current_price)
+      } else {
+        const response = await fetch(`/api/stock/market/${ticker}`)
+        const data = await response.json()
+        setPrice(data.company.current_price)
+      }
+    }
+
+    fetchInitialPrice()
+
+    // Supabase Realtime 구독
     const supabase = createClientBrowser()
-    
-    // 컴포넌트 마운트 시 처음 한번 현재 가격 조회 (초기 로드)
-    supabase
-      .from('companies')
-      .select('current_price')
-      .eq('id', companyId)
-      .single()
-      .then(({ data }) => {
-        if (data) setPrice(data.current_price)
-      })
-    
-    // 실시간 가격 업데이트 구독
-    const subscription = supabase
-      .channel('price_updates')
+    const channel = supabase
+      .channel(`stock-${ticker}`)
       .on(
         'postgres_changes',
         {
           event: 'UPDATE',
           schema: 'public',
           table: 'companies',
-          filter: `id=eq.${companyId}`
+          filter: `ticker=eq.${ticker}`
         },
         (payload) => {
           setPrice(payload.new.current_price)
         }
       )
       .subscribe()
-    
+
     return () => {
-      subscription.unsubscribe()
+      supabase.removeChannel(channel)
     }
-  }, [companyId])
-  
+  }, [ticker])
+
   return price
 }
