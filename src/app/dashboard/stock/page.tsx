@@ -8,7 +8,7 @@ export default async function StockDashboardPage() {
   const supabase = await createClient()
   
   try {
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    const { data: { user } } = await supabase.auth.getUser()
     
     if (!user) {
       redirect('/login')
@@ -61,7 +61,7 @@ export default async function StockDashboardPage() {
         />
       </Suspense>
     )
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error:', error)
     return <div>오류가 발생했습니다.</div>
   }

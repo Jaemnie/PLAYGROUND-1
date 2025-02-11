@@ -48,9 +48,9 @@ export function TradingForm({
 
   const totalAmount = Number(shares) * company.current_price
   const canBuy = points >= totalAmount && Number(shares) > 0
-  const canSell = holding?.shares >= Number(shares) && Number(shares) > 0
+  const canSell = holding ? holding.shares >= Number(shares) && Number(shares) > 0 : false
 
-  const handleTrade = async () => {
+  const handleTrade = async (): Promise<void> => {
     setIsLoading(true)
     
     try {
@@ -61,7 +61,7 @@ export function TradingForm({
       if (type === 'sell' && !canSell) {
         throw new Error('보유 주식이 부족합니다.')
       }
-
+      
       const { error: transactionError } = await supabase
         .from('transactions')
         .insert({
@@ -72,9 +72,9 @@ export function TradingForm({
           price: company.current_price,
           total_amount: totalAmount
         })
-
+      
       if (transactionError) throw transactionError
-
+      
       onTradeComplete(type)
       toast.success(
         type === 'buy' 
@@ -83,8 +83,12 @@ export function TradingForm({
       )
       
       setShares('')
-    } catch (error: any) {
-      toast.error(error.message)
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        toast.error(error.message)
+      } else {
+        toast.error('알 수 없는 오류가 발생했습니다.')
+      }
     } finally {
       setIsLoading(false)
     }

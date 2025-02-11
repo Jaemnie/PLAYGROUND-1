@@ -22,7 +22,7 @@ export function PortfolioClient({ user, portfolio: initialPortfolio, transaction
   const [portfolio, setPortfolio] = useState(initialPortfolio)
   const [transactions, setTransactions] = useState(initialTransactions)
   const [points, setPoints] = useState(initialPoints)
-  const [selectedHolding, setSelectedHolding] = useState<any>(null)
+  const [selectedHolding, setSelectedHolding] = useState<typeof initialPortfolio[number] | null>(null)
   const [showTradeModal, setShowTradeModal] = useState(false)
 
   // 실시간 주식 데이터 구독
@@ -38,7 +38,7 @@ export function PortfolioClient({ user, portfolio: initialPortfolio, transaction
     }
   }))
 
-  const refreshData = async () => {
+  const refreshData = async (): Promise<void> => {
     const supabase = createClientBrowser()
 
     const [holdingsResult, transactionsResult, profileResult] = await Promise.all([
@@ -71,7 +71,7 @@ export function PortfolioClient({ user, portfolio: initialPortfolio, transaction
     if (profileResult.data) setPoints(profileResult.data.points)
   }
 
-  const handleTradeComplete = async (type: 'buy' | 'sell') => {
+  const handleTradeComplete = async (type: 'buy' | 'sell'): Promise<void> => {
     setShowTradeModal(false)
     await refreshData()
   }

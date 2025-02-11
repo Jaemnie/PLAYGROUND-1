@@ -34,22 +34,23 @@ export function StockDashboardClient({
   const companyIds = [...initialCompanies.map(c => c.id), ...initialPortfolio.map(h => h.company.id)]
   const { stockData } = useRealtimeStockData(companyIds)
   
-  // 실시간 데이터로 companies와 portfolio 상태 업데이트
+  // 실시간 데이터로 companies와 portfolio 상태 업데이트 (함수형 업데이트 사용)
   useEffect(() => {
-    const updatedCompanies = companies.map(company => ({
-      ...company,
-      ...stockData.get(company.id)
-    }))
-    setCompanies(updatedCompanies)
-
-    const updatedPortfolio = portfolio.map(holding => ({
-      ...holding,
-      company: {
-        ...holding.company,
-        ...stockData.get(holding.company.id)
-      }
-    }))
-    setPortfolio(updatedPortfolio)
+    setCompanies(prevCompanies =>
+      prevCompanies.map(company => ({
+        ...company,
+        ...stockData.get(company.id)
+      }))
+    )
+    setPortfolio(prevPortfolio =>
+      prevPortfolio.map(holding => ({
+        ...holding,
+        company: {
+          ...holding.company,
+          ...stockData.get(holding.company.id)
+        }
+      }))
+    )
   }, [stockData])
 
   return (

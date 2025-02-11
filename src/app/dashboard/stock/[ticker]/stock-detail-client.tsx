@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { CompanyInfo } from './components/company-info'
@@ -35,13 +35,13 @@ export function StockDetailClient({
   // 실시간 주식 데이터 구독
   const { stockData } = useRealtimeStockData([initialCompany.id])
   
-  // 실시간 데이터로 company 업데이트
-  const company = {
+  // 실시간 데이터로 company 업데이트 (useMemo 사용)
+  const company = useMemo(() => ({
     ...initialCompany,
     ...stockData.get(initialCompany.id)
-  }
+  }), [initialCompany, stockData])
 
-  const refreshData = async () => {
+  const refreshData = async (): Promise<void> => {
     const supabase = createClientBrowser()
 
     const [holdingResult, profileResult] = await Promise.all([
@@ -79,7 +79,7 @@ export function StockDetailClient({
     }
   }, [company, router])
 
-  const handleTradeComplete = async (type: 'buy' | 'sell') => {
+  const handleTradeComplete = async (type: 'buy' | 'sell'): Promise<void> => {
     setTradeType(type)
     setShowAlert(true)
     await refreshData()

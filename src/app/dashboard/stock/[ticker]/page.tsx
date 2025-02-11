@@ -59,7 +59,7 @@ export default async function StockDetailPage({
         />
       </Suspense>
     )
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error:', error)
     return <div>오류가 발생했습니다.</div>
   }
