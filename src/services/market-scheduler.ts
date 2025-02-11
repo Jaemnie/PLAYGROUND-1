@@ -4,6 +4,7 @@ import type { PostgrestResponse, PostgrestSingleResponse } from '@supabase/supab
 import { getDbTimeXMinutesAgo } from '@/lib/timeUtils'
 import { SupabaseClient } from '@supabase/supabase-js'
 import { Client } from '@upstash/qstash'
+import { NextResponse } from 'next/server'
 
 interface NewsTemplate {
   title: string;
@@ -472,6 +473,7 @@ export class MarketScheduler {
   private isMarketOpen(): boolean {
     const now = new Date();
     const currentHour = now.getHours();
+    // 장 마감 시간을 24시로 설정
     return currentHour >= this.MARKET_OPEN_HOUR && currentHour < this.MARKET_CLOSE_HOUR;
   }
 
@@ -584,19 +586,13 @@ export class MarketScheduler {
   public async updateMarket() {
     console.log('마켓 업데이트 요청 받음:', new Date().toISOString());
     
-    if (!this.isScheduledTime('market')) {
-      console.log('마켓 업데이트 예약 시간이 아닙니다.');
+    if (!this.isMarketOpen()) {
+      console.log('장 마감 상태입니다. 마켓 업데이트를 건너뜁니다.');
       return;
     }
 
-    if (!this.isMarketOpen()) {
-      console.log('장 운영 시간이 아닙니다. 마켓 업데이트를 건너뜁니다.');
-      await this.updateStatus({
-        status: 'stopped',
-        lastRun: new Date(),
-        nextRun: this.calculateNextRun('market_update'),
-        jobType: 'market_update'
-      });
+    if (!this.isScheduledTime('market')) {
+      console.log('마켓 업데이트 예약 시간이 아닙니다.');
       return;
     }
 
@@ -1014,7 +1010,7 @@ export class MarketScheduler {
     }
   }
 
-  private async setClosingPrices() {
+  public async setClosingPrices() {
     const { data: companies } = await this.supabase.from('companies').select('*');
     if (companies && companies.length > 0) {
       await Promise.all(
@@ -1232,19 +1228,13 @@ export class MarketScheduler {
   public async updateNews(): Promise<void> {
     console.log('뉴스 업데이트 요청 받음:', new Date().toISOString());
 
-    if (!this.isScheduledTime('news')) {
-      console.log('뉴스 업데이트 예약 시간이 아닙니다.');
+    if (!this.isMarketOpen()) {
+      console.log('장 마감 상태입니다. 뉴스 업데이트를 건너뜁니다.');
       return;
     }
 
-    if (!this.isMarketOpen()) {
-      console.log('장 운영 시간이 아닙니다. 뉴스 업데이트를 건너뜁니다.');
-      await this.updateStatus({
-        status: 'stopped',
-        lastRun: new Date(),
-        nextRun: this.calculateNextRun('news_generation'),
-        jobType: 'news_generation'
-      });
+    if (!this.isScheduledTime('news')) {
+      console.log('뉴스 업데이트 예약 시간이 아닙니다.');
       return;
     }
 

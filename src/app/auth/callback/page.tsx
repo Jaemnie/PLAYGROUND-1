@@ -10,7 +10,7 @@ export default function AuthCallbackPage() {
   useEffect(() => {
     const handleCallback = async () => {
       try {
-        const supabase = createClientBrowser()
+        const supabase = createClientBrowser()!
         const { error } = await supabase.auth.getSession()
 
         if (error) {
