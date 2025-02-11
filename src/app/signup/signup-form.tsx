@@ -1,43 +1,27 @@
 "use client"
 
 import { useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/card'
+import { Card, CardHeader } from '@/components/ui/card'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { signup } from '@/lib/actions/auth'
 
 export default function SignUpForm() {
-  const router = useRouter()
   const searchParams = useSearchParams()
   const [isLoading, setIsLoading] = useState(false)
   const error = searchParams.get('error')
   const [isSuccess, setIsSuccess] = useState(false)
 
-  async function handleSignUp(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    setIsLoading(true)
-    const formData = new FormData(e.currentTarget)
-    try {
-      await signup(formData)
-      setIsSuccess(true)
-    } catch (error) {
-      console.error('회원가입 오류:', error)
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
   return (
     <>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
-        animate={{ 
-          opacity: isSuccess ? 0 : 1, 
+        animate={{
+          opacity: isSuccess ? 0 : 1,
           y: isSuccess ? -20 : 0,
-          scale: isSuccess ? 0.95 : 1 
+          scale: isSuccess ? 0.95 : 1,
         }}
         transition={{ duration: 0.5 }}
       >
@@ -50,9 +34,11 @@ export default function SignUpForm() {
               새로운 계정을 만들어보세요
             </p>
           </CardHeader>
-          <form action={signup} method="post" className="space-y-4">
+          <form action="/api/auth/signup" method="post" className="space-y-4">
             <div className="space-y-2">
-              <label htmlFor="email" className="text-sm text-gray-300">이메일</label>
+              <label htmlFor="email" className="text-sm text-gray-300">
+                이메일
+              </label>
               <Input
                 id="email"
                 name="email"
@@ -63,7 +49,9 @@ export default function SignUpForm() {
               />
             </div>
             <div className="space-y-2">
-              <label htmlFor="password" className="text-sm text-gray-300">비밀번호</label>
+              <label htmlFor="password" className="text-sm text-gray-300">
+                비밀번호
+              </label>
               <Input
                 id="password"
                 name="password"
@@ -74,7 +62,9 @@ export default function SignUpForm() {
               />
             </div>
             <div className="space-y-2">
-              <label htmlFor="nickname" className="text-sm text-gray-300">닉네임</label>
+              <label htmlFor="nickname" className="text-sm text-gray-300">
+                닉네임
+              </label>
               <Input
                 id="nickname"
                 name="nickname"
@@ -85,8 +75,8 @@ export default function SignUpForm() {
               />
             </div>
             {error && <p className="text-red-400 text-sm">{error}</p>}
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               className="w-full bg-gradient-to-r from-blue-500 to-violet-500 hover:from-blue-600 hover:to-violet-600 text-white transition-all duration-300"
               disabled={isLoading}
             >

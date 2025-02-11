@@ -3,7 +3,6 @@
 import { LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { motion } from "framer-motion"
-import { logout } from '@/lib/actions/auth'
 
 export function LogoutButton() {
   return (
@@ -13,7 +12,7 @@ export function LogoutButton() {
       transition={{ duration: 0.3 }}
       className="fixed top-4 left-4 z-50"
     >
-      <form action={logout}>
+      <form action="/api/auth/logout" method="post">
         <Button
           type="submit"
           variant="ghost"
