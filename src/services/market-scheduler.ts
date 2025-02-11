@@ -124,14 +124,339 @@ export class MarketScheduler {
     consecutiveCount: number,
     lastChange: number
   }> = new Map();
-  private qstash: Client
-
-  constructor() {
-    this.qstash = new Client({
-      token: process.env.QSTASH_TOKEN!
-    })
-  }
-
+  private qstash: Client = new Client({
+    token: process.env.QSTASH_TOKEN!
+  });
+  private companyNewsTemplates: NewsTemplate[] = [
+    {
+      title: '대규모 회계부정 의혹 제기',
+      content: '내부 고발로 드러난 분식회계 의혹… 금융당국의 특별 감리와 함께 주가 급락 우려!',
+      sentiment: 'negative',
+      impact: -0.45,
+      type: 'company',
+      volatility: 3.0
+    },
+    {
+      title: '획기적인 신기술 특허 취득',
+      content: '글로벌 시장을 선도할 핵심 기술 확보! 향후 5년간 독점권이 보장될 전망입니다.',
+      sentiment: 'positive',
+      impact: 0.40,
+      type: 'company',
+      volatility: 2.8
+    },
+    {
+      title: '실적 서프라이즈 달성',
+      content: '시장 예상치를 30% 상회하는 영업이익 기록! 주력 사업의 호조가 눈에 띕니다.',
+      sentiment: 'positive',
+      impact: 0.18,
+      type: 'company',
+      volatility: 2.0
+    },
+    {
+      title: '대규모 리콜 발표',
+      content: '품질 결함으로 인한 전량 리콜 결정… 막대한 비용 부담과 함께 이미지 타격 우려!',
+      sentiment: 'negative',
+      impact: -0.20,
+      type: 'company',
+      volatility: 2.1
+    },
+    {
+      title: '대형 공급계약 체결',
+      content: '3년간의 납품 계약 성사! 향후 매출 신장이 기대됩니다.',
+      sentiment: 'positive',
+      impact: 0.14,
+      type: 'company',
+      volatility: 1.7
+    },
+    {
+      title: '신임 CEO 선임',
+      content: '전문경영인 출신의 신임 대표이사 선임… 조직 개편과 경영 혁신이 예고됩니다.',
+      sentiment: 'neutral',
+      impact: 0.06,
+      type: 'company',
+      volatility: 1.4
+    },
+    {
+      title: '해외 시장 진출',
+      content: '동남아 시장에 첫 진출! 현지 유통망 구축에 박차를 가하고 있습니다.',
+      sentiment: 'positive',
+      impact: 0.10,
+      type: 'company',
+      volatility: 1.5
+    },
+    {
+      title: '신제품 출시 일정 지연',
+      content: '부품 수급 차질로 인해 신제품 출시가 3개월 연기… 소비자 우려 증폭',
+      sentiment: 'negative',
+      impact: -0.08,
+      type: 'company',
+      volatility: 1.3
+    },
+    {
+      title: '우수 인재 영입',
+      content: '경쟁사 핵심 개발자 영입 성공! 기술력 강화와 함께 혁신적 변화 기대',
+      sentiment: 'positive',
+      impact: 0.05,
+      type: 'company',
+      volatility: 1.2
+    },
+    {
+      title: '친환경 설비 투자',
+      content: 'ESG 경영 강화의 일환으로 친환경 설비에 대규모 투자… 탄소 배출 20% 감축 목표!',
+      sentiment: 'positive',
+      impact: 0.04,
+      type: 'company',
+      volatility: 1.0
+    },
+    {
+      title: '노사 임금 협상 타결',
+      content: '올해 임금 3.5% 인상 합의! 노사 간 무분규 타결로 안정된 경영 환경 조성',
+      sentiment: 'neutral',
+      impact: 0.03,
+      type: 'company',
+      volatility: 1.0
+    },
+    {
+      title: '사내 복지 제도 개선',
+      content: '직원 만족도 향상을 위한 복리후생 제도 대폭 확대',
+      sentiment: 'positive',
+      impact: 0.03,
+      type: 'company',
+      volatility: 1.0
+    },
+    {
+      title: '소규모 기업 인수',
+      content: '기술력 보유 스타트업 인수로 시너지 효과 기대, 시장 경쟁력 강화',
+      sentiment: 'neutral',
+      impact: 0.04,
+      type: 'company',
+      volatility: 1.2
+    },
+    {
+      title: '정기 임원 인사',
+      content: '상반기 임원 인사 단행… 조직 효율화와 혁신 경영 추진',
+      sentiment: 'neutral',
+      impact: 0.02,
+      type: 'company',
+      volatility: 0.9
+    },
+    {
+      title: '업무 협약 체결',
+      content: '동종 업계 선두 기업과 기술 협력 MOU 체결, 공동 성장 기대',
+      sentiment: 'positive',
+      impact: 0.03,
+      type: 'company',
+      volatility: 1.0
+    },
+    {
+      title: '전설의 CEO 복귀',
+      content: '퇴임 후 갑작스럽게 복귀한 전설의 CEO가 회사에 새로운 바람을 예고합니다!',
+      sentiment: 'positive',
+      impact: 0.25,
+      type: 'company',
+      volatility: 2.0
+    },
+    {
+      title: '신비로운 연구 성과 공개',
+      content: '비밀리에 진행된 혁신 연구 결과가 공개되어 미래 기술에 대한 기대감이 폭발합니다!',
+      sentiment: 'positive',
+      impact: 0.20,
+      type: 'company',
+      volatility: 2.2
+    },
+    {
+      title: '대규모 사이버 보안 사고',
+      content: '회사 시스템 해킹으로 인한 데이터 유출 발생, 신속한 복구 조치 중입니다.',
+      sentiment: 'negative',
+      impact: -0.22,
+      type: 'company',
+      volatility: 2.3
+    },
+    {
+      title: '특별 주주총회 소집',
+      content: '예상치 못한 안건 상정으로 주주들이 뜨거운 관심을 보입니다.',
+      sentiment: 'neutral',
+      impact: 0.03,
+      type: 'company',
+      volatility: 1.1
+    },
+    {
+      title: '인공지능 챗봇 서비스 출시',
+      content: '혁신적인 AI 기술을 적용한 고객 서비스로 시장을 선도합니다!',
+      sentiment: 'positive',
+      impact: 0.15,
+      type: 'company',
+      volatility: 1.8
+    },
+    {
+      title: '직원 대량 이직 사태',
+      content: '핵심 인재들의 잇따른 퇴사로 기업 경쟁력 약화 우려가 제기됩니다.',
+      sentiment: 'negative',
+      impact: -0.12,
+      type: 'company',
+      volatility: 1.6
+    },
+    {
+      title: '블록체인 기술 도입',
+      content: '전사적 블록체인 시스템 구축으로 업무 혁신을 이뤄냅니다!',
+      sentiment: 'positive',
+      impact: 0.10,
+      type: 'company',
+      volatility: 1.5
+    },
+    {
+      title: '환경 규제 위반 적발',
+      content: '환경부 특별 단속에서 규정 위반 사실이 드러나 과징금 부과가 예상됩니다.',
+      sentiment: 'negative',
+      impact: -0.15,
+      type: 'company',
+      volatility: 1.7
+    },
+    {
+      title: '우주 사업 진출 선언',
+      content: '민간 우주산업 참여를 선언하며 미래 성장동력 확보에 나섭니다!',
+      sentiment: 'positive',
+      impact: 0.30,
+      type: 'company',
+      volatility: 2.5
+    },
+    {
+      title: '사내 스타 탄생, 비밀 프로젝트 성과 공개',
+      content: '깜짝 놀랄 혁신 프로젝트가 성공적으로 완료되어, 사내 스타로 떠오른 팀이 주목받고 있습니다!',
+      sentiment: 'positive',
+      impact: 0.35,
+      type: 'company',
+      volatility: 2.3
+    },
+    {
+      title: '미래를 여는 AI 비서, 상용화 임박',
+      content: '최첨단 인공지능 비서가 실제 업무에 투입되어, 직원들의 업무 효율성이 급상승하고 있습니다!',
+      sentiment: 'positive',
+      impact: 0.30,
+      type: 'company',
+      volatility: 2.0
+    },
+    {
+      title: '사내 VR 체험존 오픈, 현실을 넘나드는 체험',
+      content: '직원들을 위한 최첨단 VR 체험존 개장이 발표되어, 업무 중 스트레스 해소와 창의력 증진에 도움을 주고 있습니다.',
+      sentiment: 'positive',
+      impact: 0.20,
+      type: 'company',
+      volatility: 1.8
+    },
+    {
+      title: '비밀의 연말 파티, 예상치 못한 대반전',
+      content: '회사가 비밀리에 진행한 연말 파티에서 깜짝 이벤트와 대반전이 연속으로 펼쳐져, 전 직원이 놀라움과 웃음을 터트렸습니다.',
+      sentiment: 'neutral',
+      impact: 0.10,
+      type: 'company',
+      volatility: 1.5
+    },
+    {
+      title: '사내 펫 페스티벌, 동물들의 대소동',
+      content: '반려동물을 데려온 직원들이 참여한 사내 펫 페스티벌에서 귀여운 동물들의 해프닝이 화제를 모으고 있습니다.',
+      sentiment: 'positive',
+      impact: 0.08,
+      type: 'company',
+      volatility: 1.3
+    },
+    {
+      title: '이색 기업 전시회, 창의력의 향연',
+      content: '사내 창의적 아이디어 전시회가 개최되어, 독특한 작품들과 혁신적 컨셉이 전 직원에게 영감을 주고 있습니다.',
+      sentiment: 'positive',
+      impact: 0.12,
+      type: 'company',
+      volatility: 1.7
+    },
+    {
+      title: '직원 맞춤형 복지 시스템 도입',
+      content: '개인의 라이프스타일을 반영한 맞춤형 복지 시스템이 도입되어, 직원 만족도와 업무 효율성이 크게 향상되고 있습니다.',
+      sentiment: 'positive',
+      impact: 0.15,
+      type: 'company',
+      volatility: 1.2
+    },
+    {
+      title: '미래 지향적 사내 교육 프로그램 개편',
+      content: '4차 산업혁명 시대에 발맞춘 새로운 사내 교육 프로그램 개편으로, 직원들의 전문성과 창의력이 증진될 전망입니다.',
+      sentiment: 'positive',
+      impact: 0.07,
+      type: 'company',
+      volatility: 1.1
+    },
+    {
+      title: '사내 커뮤니티 앱, 소통의 혁명',
+      content: '새롭게 출시된 사내 커뮤니티 앱이 직원 간 소통과 협업의 문화를 혁신적으로 변화시키고 있습니다.',
+      sentiment: 'positive',
+      impact: 0.09,
+      type: 'company',
+      volatility: 1.0
+    },
+    {
+      title: '의외의 기업 간 합작, 신사업 도전',
+      content: '전혀 다른 업계의 기업과 손잡아 새로운 신사업에 도전, 예상치 못한 시너지 효과로 업계에 신선한 바람을 불어넣고 있습니다.',
+      sentiment: 'neutral',
+      impact: 0.05,
+      type: 'company',
+      volatility: 1.4
+    },
+    {
+      title: '사내 혁신 아이디어 공모전, 놀라운 결과 발표',
+      content: '직원들이 제출한 창의적 아이디어가 빛을 발하며, 회사 전반에 새로운 혁신의 물결을 일으키고 있습니다.',
+      sentiment: 'positive',
+      impact: 0.18,
+      type: 'company',
+      volatility: 1.9
+    },
+    {
+      title: '비상식적인 마케팅 전략, 매출 급증 효과',
+      content: '독특한 마케팅 전략이 예상 밖의 성과를 내며, 단기간 내에 매출 증가에 기여하는 결과를 가져왔습니다.',
+      sentiment: 'positive',
+      impact: 0.22,
+      type: 'company',
+      volatility: 2.1
+    },
+    {
+      title: '사내 "해적의 날" 이벤트, 모두의 참여 열기',
+      content: '전 직원이 해적 복장을 착용하고 참여한 이색 이벤트가 사내 분위기를 한층 밝게 만들어 주고 있습니다.',
+      sentiment: 'positive',
+      impact: 0.10,
+      type: 'company',
+      volatility: 1.3
+    },
+    {
+      title: '사내 로봇 도입, 업무 혁신과 재미 동시에',
+      content: '최첨단 로봇이 도입되어 반복 업무는 물론, 창의적 아이디어 실현에도 도움을 주며 업무 환경에 신선한 변화를 가져오고 있습니다.',
+      sentiment: 'positive',
+      impact: 0.16,
+      type: 'company',
+      volatility: 1.8
+    },
+    {
+      title: '회사 대표, SNS 생방송 토크쇼 진행',
+      content: '회사의 대표가 SNS 생방송을 통해 직원 및 고객과 소통하며, 인간적인 매력과 투명한 경영 철학을 선보이고 있습니다.',
+      sentiment: 'neutral',
+      impact: 0.07,
+      type: 'company',
+      volatility: 1.5
+    },
+    {
+      title: '예상치 못한 디자인 리뉴얼, 사용자 반응 뜨거워',
+      content: '웹사이트와 앱의 파격적인 디자인 리뉴얼이 고객들 사이에서 큰 호응을 얻으며, 브랜드 이미지에 긍정적 영향을 미치고 있습니다.',
+      sentiment: 'positive',
+      impact: 0.12,
+      type: 'company',
+      volatility: 1.4
+    },
+    {
+      title: '기발한 신제품 광고, 소셜 미디어를 강타',
+      content: '창의적인 신제품 광고 캠페인이 소셜 미디어에서 폭발적인 반응을 이끌어내며, 브랜드 인지도를 한층 높이고 있습니다.',
+      sentiment: 'positive',
+      impact: 0.20,
+      type: 'company',
+      volatility: 1.9
+    }
+  ];
   static async getInstance(): Promise<MarketScheduler> {
     if (!MarketScheduler.instance) {
       MarketScheduler.instance = new MarketScheduler();
@@ -221,7 +546,7 @@ export class MarketScheduler {
     }
   }
 
-  private async updateMarket() {
+  public async updateMarket() {
     try {
       await this.updateStatus({
         status: 'running',
