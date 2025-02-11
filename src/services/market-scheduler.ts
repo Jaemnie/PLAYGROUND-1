@@ -110,8 +110,8 @@ const SIMULATION_PARAMS = {
 export class MarketScheduler {
   private static instance: MarketScheduler | null = null;
   private isInitialized: boolean = false;
-  private supabase!: SupabaseClient;
   private _isRunning: boolean = false;
+  private supabase!: SupabaseClient;
   private tasks: Map<string, cron.ScheduledTask> = new Map();
   private readonly MARKET_OPEN_HOUR = 9;    // 장 시작 시간
   private readonly MARKET_CLOSE_HOUR = 24;   // 장 마감 시간 (자정)
@@ -458,6 +458,7 @@ export class MarketScheduler {
       volatility: 1.9
     }
   ];
+
   static async getInstance(): Promise<MarketScheduler> {
     if (!MarketScheduler.instance) {
       MarketScheduler.instance = new MarketScheduler();
@@ -482,39 +483,51 @@ export class MarketScheduler {
     }
 
     try {
-      // 1분마다 마켓 업데이트 (cron 표현식: * * * * *)
-      await this.qstash.publishJSON({
-        url: `${process.env.NEXT_PUBLIC_APP_URL}/api/cron/market-update`,
-        cron: '* * * * *'  // 매분 실행
-      })
-
-      // 30분마다 뉴스 생성 (cron 표현식: */30 * * * *)
-      await this.qstash.publishJSON({
-        url: `${process.env.NEXT_PUBLIC_APP_URL}/api/cron/news-update`,
-        cron: '*/30 * * * *'  // 30분마다 실행
-      })
-
-      this._isRunning = true
-      console.log('마켓 스케줄러가 시작되었습니다.')
+      await this.initialize();
+      this._isRunning = true;
+      await this.scheduleTasks();
+      console.log('마켓 스케줄러가 시작되었습니다.');
     } catch (error) {
       console.error('스케줄러 시작 실패:', error)
       throw error
     }
   }
 
+  private async scheduleTasks() {
+    // 매 분 마켓 업데이트
+    await this.qstash.publishJSON({
+      url: `${process.env.NEXT_PUBLIC_APP_URL}/api/cron/market-update`,
+      cron: '* * * * *',
+      deduplicationId: 'market-update'
+    });
+
+    // 30분마다 뉴스 업데이트
+    await this.qstash.publishJSON({
+      url: `${process.env.NEXT_PUBLIC_APP_URL}/api/cron/news-update`,
+      cron: '*/30 * * * *',
+      deduplicationId: 'news-update'
+    });
+
+    // 장 시작 (매일 9시)
+    await this.qstash.publishJSON({
+      url: `${process.env.NEXT_PUBLIC_APP_URL}/api/cron/market-open`,
+      cron: '0 9 * * *',
+      deduplicationId: 'market-open'
+    });
+
+    // 장 마감 (매일 24시)
+    await this.qstash.publishJSON({
+      url: `${process.env.NEXT_PUBLIC_APP_URL}/api/cron/market-close`,
+      cron: '0 0 * * *',
+      deduplicationId: 'market-close'
+    });
+  }
+
   public async cleanup() {
-    console.log('마켓 스케줄러 정리 시작');
-    await this.cleanupTasks();
+    // QStash 작업 취소 로직 추가 필요
     this._isRunning = false;
     MarketScheduler.instance = null;
     console.log('마켓 스케줄러 정리 완료');
-  }
-
-  private async cleanupTasks() {
-    for (const task of this.tasks.values()) {
-      task.stop();
-    }
-    this.tasks.clear();
   }
 
   private async initialize() {
@@ -904,7 +917,11 @@ export class MarketScheduler {
     return 1.0;
   }
 
-  private async setOpeningPrices() {
+  public async setOpeningPrices(): Promise<void> {
+    if (!this.isMarketOpen()) {
+      console.log('마켓이 닫혀있습니다.');
+      return;
+    }
     const { data: companies } = await this.supabase.from('companies').select('*');
     if (companies && companies.length > 0) {
       await Promise.all(
