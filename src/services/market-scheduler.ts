@@ -501,7 +501,7 @@ export class MarketScheduler {
     }
   }
 
-  private async cleanup() {
+  public async cleanup() {
     console.log('마켓 스케줄러 정리 시작');
     await this.cleanupTasks();
     this._isRunning = false;
