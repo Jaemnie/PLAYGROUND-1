@@ -151,28 +151,28 @@ export class MarketScheduler {
 
   async start() {
     if (this._isRunning) {
-      console.log('마켓 스케줄러가 이미 실행 중입니다.');
-      return;
+      console.log('마켓 스케줄러가 이미 실행 중입니다.')
+      return
     }
 
     try {
       // 1분마다 마켓 업데이트
-      await this.qstash.schedules.create({
-        destination: `${process.env.NEXT_PUBLIC_APP_URL}/api/cron/market-update`,
+      await this.qstash.publishJSON({
+        url: `${process.env.NEXT_PUBLIC_APP_URL}/api/cron/market-update`,
         cron: '* * * * *'
-      });
+      })
 
       // 30분마다 뉴스 생성
-      await this.qstash.schedules.create({
-        destination: `${process.env.NEXT_PUBLIC_APP_URL}/api/cron/news-update`,
+      await this.qstash.publishJSON({
+        url: `${process.env.NEXT_PUBLIC_APP_URL}/api/cron/news-update`,
         cron: '*/30 * * * *'
-      });
+      })
 
-      this._isRunning = true;
-      console.log('마켓 스케줄러가 시작되었습니다.');
+      this._isRunning = true
+      console.log('마켓 스케줄러가 시작되었습니다.')
     } catch (error) {
-      console.error('스케줄러 시작 실패:', error);
-      throw error;
+      console.error('스케줄러 시작 실패:', error)
+      throw error
     }
   }
 
