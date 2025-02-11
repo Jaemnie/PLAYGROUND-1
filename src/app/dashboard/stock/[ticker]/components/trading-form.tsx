@@ -8,12 +8,32 @@ import { createClientBrowser } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { TradeAlert } from '@/components/ui/trade-alert'
 
+interface User {
+  id: string;
+  name: string;
+  // 필요한 추가 필드들
+}
+
+interface Company {
+  id: string;
+  name: string;
+  ticker: string;
+  current_price: number;
+  is_delisted?: boolean; // 상장폐지 여부
+  // 필요한 추가 필드들
+}
+
+interface Holding {
+  shares: number;
+  // 필요한 추가 필드들
+}
+
 interface TradingFormProps {
-  user: any
-  company: any
-  holding: any
-  points: number
-  onTradeComplete: (type: 'buy' | 'sell') => void
+  user: User;
+  company: Company;
+  holding: Holding | null;
+  points: number;
+  onTradeComplete: (type: 'buy' | 'sell') => void;
 }
 
 export function TradingForm({ 
@@ -23,22 +43,7 @@ export function TradingForm({
   points,
   onTradeComplete
 }: TradingFormProps) {
-  // 상장폐지 상태이면 거래 폼 대신 안내 메시지만 렌더링합니다.
-  if (company?.is_delisted) {
-    return (
-      <>
-        <CardHeader>
-          <h2 className="text-xl font-semibold text-gray-100">거래 불가</h2>
-        </CardHeader>
-        <CardContent>
-          <p className="text-gray-400">
-            이 기업은 상장폐지 상태이므로 거래할 수 없습니다.
-          </p>
-        </CardContent>
-      </>
-    )
-  }
-
+  // React Hook은 조건부가 아닌 최상위에서 항상 호출해야합니다.
   const [type, setType] = useState<'buy' | 'sell'>('buy')
   const [shares, setShares] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -92,6 +97,22 @@ export function TradingForm({
     } finally {
       setIsLoading(false)
     }
+  }
+
+  // 조건에 따라 다른 UI를 렌더링하도록 return 내부에서 조건부 분기합니다.
+  if (company?.is_delisted) {
+    return (
+      <>
+        <CardHeader>
+          <h2 className="text-xl font-semibold text-gray-100">거래 불가</h2>
+        </CardHeader>
+        <CardContent>
+          <p className="text-gray-400">
+            이 기업은 상장폐지 상태이므로 거래할 수 없습니다.
+          </p>
+        </CardContent>
+      </>
+    )
   }
 
   return (

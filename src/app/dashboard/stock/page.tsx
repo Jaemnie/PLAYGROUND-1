@@ -14,6 +14,12 @@ export default async function StockDashboardPage() {
       redirect('/login')
     }
 
+    // user 객체에 name 프로퍼티 추가 (예시: user_metadata.full_name 또는 email 사용)
+    const enrichedUser = {
+      ...user,
+      name: user.user_metadata?.full_name || user.email || ''
+    }
+
     // 필요한 초기 데이터 병렬로 가져오기
     const [
       portfolioResult,
@@ -53,7 +59,7 @@ export default async function StockDashboardPage() {
     return (
       <Suspense fallback={<LoadingSpinner />}>
         <StockDashboardClient 
-          user={user}
+          user={enrichedUser}
           initialPortfolio={portfolioResult.data || []}
           initialCompanies={companiesResult.data || []}
           initialNews={newsResult.data || []}

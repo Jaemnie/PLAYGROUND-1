@@ -12,11 +12,32 @@ import { TradeAlert } from '@/components/ui/trade-alert'
 import { useRealtimeStockData } from '@/hooks/useRealtimeStockData'
 import { createClientBrowser } from '@/lib/supabase/client'
 
+interface User {
+  id: string;
+  name: string;
+  // 필요한 추가 필드들
+}
+
+interface Company {
+  id: string;
+  name: string;
+  ticker: string;
+  current_price: number;
+  is_delisted?: boolean;
+  // 필요한 추가 필드들
+}
+
+interface Holding {
+  id: string;
+  shares: number;
+  // 필요한 추가 필드들
+}
+
 interface StockDetailClientProps {
-  user: any
-  company: any
-  holding: any
-  points: number
+  user: User;
+  company: Company;
+  holding: Holding | null;
+  points: number;
 }
 
 export function StockDetailClient({

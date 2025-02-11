@@ -20,6 +20,12 @@ export default async function StockDetailPage({
       redirect('/login')
     }
 
+    // user 객체에 name 프로퍼티 추가
+    const enrichedUser = {
+      ...user,
+      name: user.user_metadata?.full_name || user.email || ''
+    }
+
     // 기업 정보 먼저 조회
     const companyResult = await supabase
       .from('companies')
@@ -52,7 +58,7 @@ export default async function StockDetailPage({
     return (
       <Suspense fallback={<LoadingSpinner />}>
         <StockDetailClient 
-          user={user}
+          user={enrichedUser}
           company={companyResult.data}
           holding={holdingResult.data || null}
           points={profileResult.data?.points || 0}

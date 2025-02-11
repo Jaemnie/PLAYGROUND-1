@@ -11,11 +11,42 @@ import PortfolioAnalysis from './components/portfolio-analysis'
 import { useRealtimeStockData } from '@/hooks/useRealtimeStockData'
 import { createClientBrowser } from '@/lib/supabase/client'
 
+interface User {
+  id: string;
+  username: string;
+  // 필요한 추가 필드들
+}
+
+interface Company {
+  id: string;
+  name: string;
+  ticker: string;
+  current_price: number;
+  last_closing_price: number;
+  // 필요한 추가 필드들
+}
+
+interface PortfolioItem {
+  company: Company;
+  quantity: number;
+  // 필요한 추가 필드들
+}
+
+interface Transaction {
+  id: string;
+  transaction_type: 'buy' | 'sell';
+  shares: number;
+  total_amount: number;
+  price: number;
+  created_at: string;
+  company: Company;
+}
+
 interface PortfolioClientProps {
-  user: any
-  portfolio: any[]
-  transactions: any[]
-  points: number
+  user: User;
+  portfolio: PortfolioItem[];
+  transactions: Transaction[];
+  points: number;
 }
 
 export function PortfolioClient({ user, portfolio: initialPortfolio, transactions: initialTransactions, points: initialPoints }: PortfolioClientProps) {
@@ -71,7 +102,7 @@ export function PortfolioClient({ user, portfolio: initialPortfolio, transaction
     if (profileResult.data) setPoints(profileResult.data.points)
   }
 
-  const handleTradeComplete = async (type: 'buy' | 'sell'): Promise<void> => {
+  const handleTradeComplete = async (): Promise<void> => {
     setShowTradeModal(false)
     await refreshData()
   }

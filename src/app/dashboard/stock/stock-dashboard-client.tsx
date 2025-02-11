@@ -9,19 +9,49 @@ import { Card } from '@/components/ui/card'
 import { BackButton } from '@/components/back-button'
 import { MarketTimer } from './components/market-timer'
 import { useRealtimeStockData } from '@/hooks/useRealtimeStockData'
-import { createClientBrowser } from '@/lib/supabase/client'
 import { PortfolioDiversification } from './components/portfolio-diversification'
 
+interface User {
+  id: string;
+  name: string;
+  // 추가 필드
+}
+
+interface Company {
+  id: string;
+  name: string;
+  ticker: string;
+  current_price: number;
+  last_closing_price: number;
+  market_cap: number;
+  industry: string;
+  // 추가 필드
+}
+
+interface PortfolioItem {
+  company: Company;
+  quantity: number;
+  // 추가 필드
+}
+
+interface News {
+  id: string;
+  title: string;
+  content: string;
+  published_at: string;
+  impact: "positive" | "negative" | "neutral";
+  related_company_id?: string;
+}
+
 interface StockDashboardClientProps {
-  user: any
-  initialPortfolio: any[]
-  initialCompanies: any[]
-  initialNews: any[]
-  points: number
+  user: User;
+  initialPortfolio: PortfolioItem[];
+  initialCompanies: Company[];
+  initialNews: News[];
+  points: number;
 }
 
 export function StockDashboardClient({
-  user,
   initialPortfolio,
   initialCompanies,
   initialNews,

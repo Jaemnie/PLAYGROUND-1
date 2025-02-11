@@ -1,5 +1,4 @@
 import { redis } from '@/lib/upstash-client'
-import { StockDataCache } from '@/lib/cache/stock-cache'
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse, NextRequest } from 'next/server'
 

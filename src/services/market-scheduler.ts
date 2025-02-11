@@ -1,11 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
 import cron from 'node-cron'
 import { PortfolioTracker } from '@/services/portfolio-tracker'
-import type { PostgrestResponse } from '@supabase/supabase-js'
+import type { PostgrestResponse, PostgrestSingleResponse } from '@supabase/supabase-js'
 import { getDbTimeXMinutesAgo } from '@/lib/timeUtils'
-import { useStockStore } from '@/stores/stockStore'
-import { redis } from '@/lib/upstash-client'
-import { StockCache } from '@/lib/cache/stock-cache'
+import { SupabaseClient } from '@supabase/supabase-js'
 
 interface NewsTemplate {
   title: string;
@@ -51,6 +49,16 @@ interface Company {
   is_delisted?: boolean;
   consecutive_down_days?: number;
   market_cap: number;
+}
+
+interface Holdings {
+  company_id: string;
+  shares: number;
+  updated_at: string;
+}
+
+interface Profile {
+  id: string;
 }
 
 // 시뮬레이션 파라미터 상수 수정
@@ -101,7 +109,7 @@ const SIMULATION_PARAMS = {
 export class MarketScheduler {
   private static instance: MarketScheduler | null = null;
   private isInitialized: boolean = false;
-  private supabase: any;
+  private supabase!: SupabaseClient;
   private _isRunning: boolean = false;
   private tasks: Map<string, cron.ScheduledTask> = new Map();
   private readonly MARKET_OPEN_HOUR = 9;    // 장 시작 시간
@@ -352,7 +360,7 @@ export class MarketScheduler {
     },
     {
       title: '이색 기업 전시회, 창의력의 향연',
-      content: '사내 창의적 아이디어 전시회가 개최되어, 독특한 작품들과 혁신적인 컨셉이 전 직원에게 영감을 주고 있습니다.',
+      content: '사내 창의적 아이디어 전시회가 개최되어, 독특한 작품들과 혁신적 컨셉이 전 직원에게 영감을 주고 있습니다.',
       sentiment: 'positive',
       impact: 0.12,
       type: 'company',
@@ -541,13 +549,14 @@ export class MarketScheduler {
       if (companies && companies.length > 0) {
         const BATCH_SIZE = 50;  // 배치 처리 도입
         for (let i = 0; i < companies.length; i += BATCH_SIZE) {
-          await Promise.all(companies.slice(i, i + BATCH_SIZE).map((company: any) =>
-            this.retryOperation(() =>
-              this.supabase
+          await Promise.all(companies.slice(i, i + BATCH_SIZE).map((company: Company) =>
+            this.retryOperation(async () => {
+              const result = await this.supabase
                 .from('companies')
                 .update({ last_closing_price: company.current_price })
                 .eq('id', company.id)
-            )
+              return result
+            })
           ));
         }
       }
@@ -585,27 +594,22 @@ export class MarketScheduler {
         .from('companies')
         .select('*');
         
-      const [
-        holdingsResult,
-        recentNewsResult,
-        companiesResult
-      ]: [
-        PostgrestResponse<any>,
-        PostgrestResponse<NewsRecord>,
-        PostgrestResponse<Company>
-      ] = await Promise.all([
+      const [, recentNewsResult, companiesResult] = await Promise.all([
         holdingsPromise,
         recentNewsPromise,
         companiesPromise
-      ]);
+      ]) as [
+        PostgrestResponse<Holdings>,
+        PostgrestResponse<NewsRecord>,
+        PostgrestResponse<Company>
+      ];
       
-      const holdingsData = holdingsResult.data || [];
       const recentNews = recentNewsResult.data || [];
       const companies = companiesResult.data;
       
       if (companies && companies.length > 0) {
         const updates = await Promise.all(
-          companies.map(async (company) => {
+          companies.map(async (company: Company) => {
             if (company.is_delisted) return;
             
             const newBasePrice = await this.calculateNewPrice(company);
@@ -623,8 +627,7 @@ export class MarketScheduler {
             };
             
             this.updatePriceMovement(company.id, priceChange, previousMovement);
-            
-            const updatedCompany = await this.checkDelisting(company, finalPrice);
+          
             
             return {
               id: crypto.randomUUID(),
@@ -640,21 +643,23 @@ export class MarketScheduler {
 
         await Promise.all(
           updates.filter(Boolean).map(async (update) => {
-            await this.retryOperation(() =>
-              this.supabase
+            await this.retryOperation(async () => {
+              const result = await this.supabase
                 .from('price_updates')
                 .insert(update!)
-            );
+              return result;
+            });
 
-            await this.retryOperation(() =>
-              this.supabase
+            await this.retryOperation(async () => {
+              const result = await this.supabase
                 .from('companies')
                 .update({
                   previous_price: update!.old_price,
                   current_price: update!.new_price,
                 })
                 .eq('id', update!.company_id)
-            );
+              return result;
+            });
           })
         );
       }
@@ -666,7 +671,7 @@ export class MarketScheduler {
       if (users && users.length > 0) {
         const portfolioTracker = new PortfolioTracker();
         await Promise.all(
-          users.map((user: any) => portfolioTracker.recordPerformance(user.id))
+          users.map((user: Profile) => portfolioTracker.recordPerformance(user.id))
         );
       }
       await this.updateStatus({
@@ -718,7 +723,7 @@ export class MarketScheduler {
     
     if (movement.consecutiveCount >= 5) {
       return movement.direction === 'up' ? 
-        1 - (momentumStrength * 1.2) :
+        1 - (momentumStrength * 1.2) : 
         1 + (momentumStrength * 1.5);
     }
     
@@ -800,26 +805,20 @@ export class MarketScheduler {
     };
   }
 
-  private async createNews(news: NewsTemplate) {
+  private async createNews(news: NewsTemplate & { company_id?: string }) {
     try {
       const supabase = await this.ensureConnection();
       const seoulTime = new Date(
         new Date().toLocaleString('en-US', { timeZone: 'Asia/Seoul' })
       ).toISOString();
 
-      const { error } = await this.retryOperation<PostgrestResponse<any>>(() =>
-        supabase.from('news').insert({
-          title: news.title,
-          content: news.content,
-          company_id: news.company_id || null,
-          published_at: seoulTime,  // 서울 시간대로 변경
-          type: news.type,
-          sentiment: news.sentiment,
-          impact: news.impact,
-          volatility: news.volatility,
-          industry: news.industry || null
-        })
-      );
+      const { error } = await this.retryOperation(async () => {
+        const result = await supabase.from('news').insert({
+          ...news,
+          published_at: seoulTime
+        });
+        return result;
+      });
       if (error) throw error;
     } catch (error) {
       console.error('뉴스 생성 중 오류 발생:', error);
@@ -843,6 +842,11 @@ export class MarketScheduler {
       .eq('id', companyId)
       .single();
     const company = companyResponse.data;
+
+    if (!company) {
+      throw new Error(`회사 데이터를 찾을 수 없습니다. ID: ${companyId}`);
+    }
+
     const marketCapMultiplier = this.calculateMarketCapNewsMultiplier(company.market_cap);
 
     const now = new Date();
@@ -923,13 +927,13 @@ export class MarketScheduler {
     const { data: companies } = await this.supabase.from('companies').select('*');
     if (companies && companies.length > 0) {
       await Promise.all(
-        companies.map(async (company: any) => {
+        companies.map(async (company: Company) => {
           const priceChange = (Math.random() - 0.5) * 0.1; // -5% ~ +5%
           const openingPrice = company.last_closing_price * (1 + priceChange);
           
           // price_updates 테이블에 기록
-          await this.retryOperation(() =>
-            this.supabase
+          await this.retryOperation(async () => {
+            return await this.supabase
               .from('price_updates')
               .insert({
                 id: crypto.randomUUID(),
@@ -939,19 +943,19 @@ export class MarketScheduler {
                 change_percentage: Number((priceChange * 100).toFixed(4)),
                 update_reason: '장 시작',
                 created_at: new Date().toISOString()
-              })
-          );
+              });
+          });
 
           // companies 테이블 업데이트
-          return this.retryOperation(() =>
-            this.supabase
+          await this.retryOperation(async () => {
+            return await this.supabase
               .from('companies')
               .update({
                 previous_price: company.current_price,
                 current_price: openingPrice,
               })
-              .eq('id', company.id)
-          );
+              .eq('id', company.id);
+          });
         })
       );
     }
@@ -961,10 +965,10 @@ export class MarketScheduler {
     const { data: companies } = await this.supabase.from('companies').select('*');
     if (companies && companies.length > 0) {
       await Promise.all(
-        companies.map(async (company: any) => {
+        companies.map(async (company: Company) => {
           // price_updates 테이블에 기록
-          await this.retryOperation(() =>
-            this.supabase
+          await this.retryOperation(async () => {
+            return await this.supabase
               .from('price_updates')
               .insert({
                 id: crypto.randomUUID(),
@@ -974,16 +978,16 @@ export class MarketScheduler {
                 change_percentage: 0,
                 update_reason: '장 마감',
                 created_at: new Date().toISOString()
-              })
-          );
+              });
+          });
 
           // companies 테이블 업데이트
-          return this.retryOperation(() =>
-            this.supabase
+          await this.retryOperation(async () => {
+            return await this.supabase
               .from('companies')
               .update({ last_closing_price: company.current_price })
-              .eq('id', company.id)
-          );
+              .eq('id', company.id);
+          });
         })
       );
     }
@@ -1060,14 +1064,16 @@ export class MarketScheduler {
   }
 
   // 재시도 로직: 비동기 작업을 지정 횟수만큼 재시도합니다.
-  private async retryOperation<T>(operation: () => Promise<T>, retries: number = 3, delay: number = 1000): Promise<T> {
+  private async retryOperation<T>(
+    operation: () => Promise<PostgrestResponse<T> | PostgrestSingleResponse<T>>
+  ): Promise<PostgrestResponse<T> | PostgrestSingleResponse<T>> {
     let lastError;
-    for (let i = 0; i < retries; i++) {
+    for (let i = 0; i < 3; i++) {
       try {
         return await operation();
       } catch (e) {
         lastError = e;
-        await new Promise((resolve) => setTimeout(resolve, delay));
+        await new Promise((resolve) => setTimeout(resolve, 1000));
       }
     }
     throw lastError;
@@ -1129,9 +1135,14 @@ export class MarketScheduler {
       
     if (!leaders?.length) return 0;
     
-    return leaders.reduce((sum: number, leader: Company) => {
-      const priceChange = (leader.current_price - leader.previous_price) / leader.previous_price;
-      return sum + priceChange;
-    }, 0) / leaders.length * 0.5; // 영향력 50% 감소
+    const averageChange = leaders.reduce(
+      (sum: number, leader: { current_price: number; previous_price: number }) => {
+        const priceChange = (leader.current_price - leader.previous_price) / leader.previous_price;
+        return sum + (priceChange / leaders.length);
+      },
+      0
+    );
+
+    return averageChange;
   }
 }
