@@ -1,12 +1,12 @@
 import { redis } from '@/lib/upstash-client'
 import { createClient } from '@/lib/supabase/server'
-import { NextResponse, NextRequest } from 'next/server'
+import { NextResponse } from 'next/server'
 
 export async function GET(
-  request: NextRequest,
-  context: { params: { ticker: string } }
+  request: Request,
+  { params }: { params: { ticker: string } }
 ) {
-  const { ticker } = context.params
+  const { ticker } = params
   const CACHE_TTL = 60 // 1분 캐시
 
   // 1. Redis 캐시 확인
