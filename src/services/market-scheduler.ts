@@ -125,7 +125,8 @@ export class MarketScheduler {
     lastChange: number
   }> = new Map();
   private qstash: Client = new Client({
-    token: process.env.QSTASH_TOKEN!
+    token: process.env.QSTASH_TOKEN!,
+    baseUrl: process.env.QSTASH_URL
   });
   private companyNewsTemplates: NewsTemplate[] = [
     {
