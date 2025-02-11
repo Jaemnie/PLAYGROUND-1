@@ -920,6 +920,8 @@ export class MarketScheduler {
   }
 
   private async calculateNewPrice(company: Company): Promise<number> {
+    if (company.is_delisted) return 0;
+    
     const basePrice = company.current_price;
     
     const randomChange = (Math.random() - 0.5) * SIMULATION_PARAMS.PRICE.BASE_RANDOM_CHANGE;
@@ -928,10 +930,8 @@ export class MarketScheduler {
     const timeVolatility = this.calculateTimeVolatility(new Date().getHours());
     const marketCapVolatility = this.calculateMarketCapVolatility(company.market_cap);
     
-    // 산업 선도기업 영향도 계산
     const industryLeaderImpact = await this.calculateIndustryLeaderImpact(company.industry, company.id);
     
-    // 모멘텀 팩터 계산
     const previousMovement = this.priceMovementCache.get(company.id) || {
       direction: 'neutral',
       consecutiveCount: 0,
@@ -944,9 +944,20 @@ export class MarketScheduler {
       industryLeaderImpact * SIMULATION_PARAMS.PRICE.WEIGHTS.INDUSTRY_LEADER
     ) * industryVolatility * timeVolatility * marketCapVolatility * momentumFactor;
 
-    const newPrice = basePrice * (1 + baseChange);
+    let newPrice = basePrice * (1 + baseChange);
     
-    // 가격 변동 방향 업데이트
+    // 주가가 0원 이하면 상장폐지 처리
+    if (newPrice <= 0) {
+      await this.supabase
+        .from('companies')
+        .update({
+          is_delisted: true,
+          current_price: 0
+        })
+        .eq('id', company.id);
+      return 0;
+    }
+    
     this.updatePriceMovement(
       company.id,
       baseChange,
