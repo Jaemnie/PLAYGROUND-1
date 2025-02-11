@@ -2,11 +2,13 @@ import { redis } from '@/lib/upstash-client'
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
-export async function GET(
-  request: Request,
-  { params }: { params: { ticker: string } }
-) {
-  const { ticker } = params
+export async function GET(request: Request) {
+  const { pathname } = new URL(request.url)
+  // 예를 들어, URL이 "/api/stock/market/AAPL"인 경우:
+  // pathname.split('/') => ["", "api", "stock", "market", "AAPL"]
+  const segments = pathname.split('/')
+  const ticker = segments[segments.indexOf('market') + 1]
+
   const CACHE_TTL = 60 // 1분 캐시
 
   // 1. Redis 캐시 확인
