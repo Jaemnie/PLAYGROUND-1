@@ -24,7 +24,16 @@ export async function POST(req: Request) {
     }
     
     const scheduler = await MarketScheduler.getInstance()
-    // updateNews 메서드가 구현되어 있다고 가정합니다.
+    
+    // 장 운영 시간 체크 추가
+    if (!scheduler.isMarketOpen()) {
+      console.log('장 운영 시간이 아닙니다. 요청을 거부합니다.')
+      return NextResponse.json({ 
+        success: false, 
+        message: '장 운영 시간이 아닙니다.' 
+      }, { status: 400 })
+    }
+
     await scheduler.updateNews()
     return NextResponse.json({ success: true })
   } catch (error) {

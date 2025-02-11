@@ -470,7 +470,7 @@ export class MarketScheduler {
     return MarketScheduler.instance;
   }
 
-  private isMarketOpen(): boolean {
+  public isMarketOpen(): boolean {
     const now = new Date();
     const currentHour = now.getHours();
     // 장 마감 시간을 24시로 설정

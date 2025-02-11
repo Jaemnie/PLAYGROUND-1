@@ -29,6 +29,15 @@ export async function POST(req: Request) {
     }
 
     const scheduler = await MarketScheduler.getInstance()
+    
+    if (!scheduler.isMarketOpen()) {
+      console.log('장 운영 시간이 아닙니다. 요청을 거부합니다.')
+      return NextResponse.json({ 
+        success: false, 
+        message: '장 운영 시간이 아닙니다.' 
+      }, { status: 400 })
+    }
+
     await scheduler.updateMarket()
     return NextResponse.json({ success: true })
   } catch (error) {
