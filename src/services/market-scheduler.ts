@@ -1126,4 +1126,37 @@ export class MarketScheduler {
 
     return averageChange;
   }
+
+  public async updateNews(): Promise<void> {
+    try {
+      console.log("뉴스 업데이트 실행 중");
+      
+      // 기업 뉴스 생성
+      await this.generateCompanyNews();
+      
+      // 마지막 뉴스 업데이트 시간 기록
+      this.lastNewsUpdate = new Date();
+      
+      // 다음 실행 시간 계산 및 상태 업데이트
+      const nextRun = this.calculateNextRun('news_generation');
+      await this.updateStatus({
+        status: 'running',
+        lastRun: new Date(),
+        nextRun,
+        jobType: 'news_generation'
+      });
+
+      console.log('뉴스 업데이트 완료');
+    } catch (error) {
+      console.error('뉴스 업데이트 중 오류 발생:', error);
+      await this.updateStatus({
+        status: 'error',
+        lastRun: new Date(),
+        nextRun: null,
+        errorMessage: error instanceof Error ? error.message : '알 수 없는 오류입니다.',
+        jobType: 'news_generation'
+      });
+      throw error;
+    }
+  }
 }
