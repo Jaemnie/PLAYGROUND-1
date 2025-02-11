@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { CardHeader, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -20,10 +20,52 @@ interface Company {
   last_closing_price: number
   market_cap: number
   is_delisted?: boolean
+  industry: string
 }
 
 interface StockListProps {
   companies: Company[]
+}
+
+// 가격 변동 애니메이션을 위한 컴포넌트
+function PriceCell({ 
+  currentPrice, 
+  lastClosingPrice, 
+  isChanged 
+}: { 
+  currentPrice: number
+  lastClosingPrice: number
+  isChanged: boolean
+}) {
+  const isPriceUp = currentPrice > lastClosingPrice
+  const priceColor = isPriceUp ? 'text-green-500' : currentPrice < lastClosingPrice ? 'text-red-500' : 'text-gray-400'
+
+  return (
+    <div className="text-right relative">
+      <motion.div 
+        className={`inline-flex items-center gap-1 px-2 py-1 rounded overflow-hidden relative
+          ${isPriceUp ? 'bg-green-500/10' : currentPrice < lastClosingPrice ? 'bg-red-500/10' : 'bg-gray-500/10'}`}
+        animate={isChanged ? {
+          scale: [1, 1.02, 1],
+        } : {}}
+        transition={{ 
+          duration: 0.3,
+          ease: [0.32, 0.72, 0, 1]
+        }}
+      >
+        {currentPrice > lastClosingPrice ? (
+          <ChevronUpIcon className="w-4 h-4 text-green-500" />
+        ) : currentPrice < lastClosingPrice ? (
+          <ChevronDownIcon className="w-4 h-4 text-red-500" />
+        ) : (
+          <span className="w-4 h-4" />
+        )}
+        <span className={`${priceColor} relative z-10`}>
+          {Math.floor(currentPrice).toLocaleString()}원
+        </span>
+      </motion.div>
+    </div>
+  )
 }
 
 export function StockList({ companies: initialCompanies }: StockListProps) {
@@ -33,6 +75,7 @@ export function StockList({ companies: initialCompanies }: StockListProps) {
     key: 'market_cap',
     direction: 'desc'
   })
+  const [animatingPrices, setAnimatingPrices] = useState<Set<string>>(new Set())
 
   const companyIds = initialCompanies.map(c => c.id)
   const { stockData, changes } = useRealtimeStockData(companyIds)
@@ -60,13 +103,15 @@ export function StockList({ companies: initialCompanies }: StockListProps) {
     return 0
   })
 
-  // 가격 변동 스타일 지정
-  const getPriceChangeStyle = (current: number, lastClose: number) => {
-    const change = ((current - lastClose) / lastClose) * 100
-    if (change > 0) return 'text-green-500'
-    if (change < 0) return 'text-red-500'
-    return 'text-gray-400'
-  }
+  useEffect(() => {
+    if (changes.size > 0) {
+      setAnimatingPrices(new Set<string>(changes as Iterable<string>))
+      const timer = setTimeout(() => {
+        setAnimatingPrices(new Set<string>())
+      }, 600)
+      return () => clearTimeout(timer)
+    }
+  }, [changes])
 
   // 정렬 핸들러
   const requestSort = (key: keyof Company) => {
@@ -148,6 +193,12 @@ export function StockList({ companies: initialCompanies }: StockListProps) {
                   종목코드
                 </TableHead>
                 <TableHead 
+                  className="cursor-pointer font-medium text-sm text-gray-400 hover:text-blue-400 transition-colors"
+                  onClick={() => requestSort('industry')}
+                >
+                  산업
+                </TableHead>
+                <TableHead 
                   className="text-right cursor-pointer font-medium text-sm text-gray-400 hover:text-blue-400 transition-colors"
                   onClick={() => requestSort('current_price')}
                 >
@@ -194,28 +245,17 @@ export function StockList({ companies: initialCompanies }: StockListProps) {
                         {company.ticker}
                       </span>
                     </TableCell>
+                    <TableCell>
+                      <span className="text-gray-400">
+                        {company.industry}
+                      </span>
+                    </TableCell>
                     <TableCell className="text-right">
-                      <div className={`inline-flex items-center gap-1 px-2 py-1 rounded ${
-                        company.current_price > company.last_closing_price 
-                          ? 'bg-green-500/10' 
-                          : company.current_price < company.last_closing_price 
-                            ? 'bg-red-500/10'
-                            : 'bg-gray-500/10'
-                      }`}>
-                        {company.current_price > company.last_closing_price ? (
-                          <ChevronUpIcon className="w-4 h-4 text-green-500" />
-                        ) : company.current_price < company.last_closing_price ? (
-                          <ChevronDownIcon className="w-4 h-4 text-red-500" />
-                        ) : (
-                          <span className="w-4 h-4" />
-                        )}
-                        <span className={getPriceChangeStyle(
-                          company.current_price,
-                          company.last_closing_price
-                        )}>
-                          {Math.floor(company.current_price).toLocaleString()}원
-                        </span>
-                      </div>
+                      <PriceCell
+                        currentPrice={company.current_price}
+                        lastClosingPrice={company.last_closing_price}
+                        isChanged={animatingPrices.has(company.id)}
+                      />
                     </TableCell>
                     <TableCell className="text-right">
                       <span className="text-gray-400">

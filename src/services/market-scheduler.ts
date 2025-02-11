@@ -12,10 +12,10 @@ interface NewsTemplate {
   content: string;
   sentiment: 'positive' | 'negative' | 'neutral';
   impact: number;
-  type: 'market' | 'company';
-  volatility?: number; // 뉴스의 파급 정도
+  type: 'company';
+  volatility?: number;
   company_id?: string;
-  industry?: string; // 추가: 뉴스와 관련된 산업 정보
+  industry?: string;
 }
 
 interface NewsRecord {
@@ -24,7 +24,7 @@ interface NewsRecord {
   content: string;
   company_id?: string;
   published_at: string;
-  type: 'market' | 'company';
+  type: 'company';
   sentiment: 'positive' | 'negative' | 'neutral';
   impact: number;
   volatility: number;
@@ -56,7 +56,6 @@ interface Company {
 // 시뮬레이션 파라미터 상수 수정
 const SIMULATION_PARAMS = {
   NEWS: {
-    MARKET_NEWS_HOURLY_CHANCE: 1.0,     // 100% 확률로 변경
     COMPANY_NEWS_CHANCE: 1.0,           // 100% 확률로 변경
     IMPACT_VARIATION_MIN: 1.0,          // 뉴스 영향력 증가 (100% ~ 150%)
     IMPACT_VARIATION_MAX: 1.5,
@@ -104,7 +103,6 @@ export class MarketScheduler {
   private isInitialized: boolean = false;
   private supabase: any;
   private _isRunning: boolean = false;
-  // 기존 개별 작업 변수 대신 타스크를 관리할 Map 사용
   private tasks: Map<string, cron.ScheduledTask> = new Map();
   private readonly MARKET_OPEN_HOUR = 9;    // 장 시작 시간
   private readonly MARKET_CLOSE_HOUR = 24;   // 장 마감 시간 (자정)
@@ -117,98 +115,6 @@ export class MarketScheduler {
     consecutiveCount: number,
     lastChange: number
   }> = new Map();
-
-  // 시장 뉴스 템플릿 (Market News Templates)
-  private readonly marketNewsTemplates: NewsTemplate[] = [
-    {
-      title: '글로벌 금융 위기 발생',
-      content: '주요국 증시 폭락과 함께 전세계 금융시장이 마치 지진처럼 흔들립니다!',
-      sentiment: 'negative',
-      impact: -0.30,
-      type: 'market',
-      volatility: 3.0
-    },
-    {
-      title: '획기적인 AI 기술 발전',
-      content: '신세대 AI 도입으로 모든 산업이 혁신의 물결을 타고 있습니다. 미래가 달라집니다!',
-      sentiment: 'positive',
-      impact: 0.20,
-      type: 'market',
-      volatility: 2.2
-    },
-    {
-      title: '중앙은행 기준금리 인상',
-      content: '예상보다 높은 금리 인상으로 금융시장이 긴장 상태에 돌입합니다.',
-      sentiment: 'negative',
-      impact: -0.10,
-      type: 'market',
-      volatility: 1.6
-    },
-    {
-      title: '주요국 경기부양책 발표',
-      content: '각국 정부가 대규모 경기부양책을 발표, 시장 활성화에 대한 기대감 상승!',
-      sentiment: 'positive',
-      impact: 0.10,
-      type: 'market',
-      volatility: 1.5
-    },
-    {
-      title: '국제유가 소폭 상승',
-      content: '원자재 가격이 소폭 상승하면서 에너지 관련 기업에 미미한 영향 발생',
-      sentiment: 'neutral',
-      impact: -0.03,
-      type: 'market',
-      volatility: 1.2
-    },
-    {
-      title: '글로벌 사이버 공격 발생',
-      content: '전 세계 증권 거래소가 사이버 공격으로 일시 마비, 시장에 혼란을 초래합니다!',
-      sentiment: 'negative',
-      impact: -0.15,
-      type: 'market',
-      volatility: 2.0
-    },
-    {
-      title: '세계 각국 축제 열풍',
-      content: '국제 문화 축제가 동시에 열리며 소비 심리가 급상승, 긍정적 분위기 확산!',
-      sentiment: 'positive',
-      impact: 0.08,
-      type: 'market',
-      volatility: 1.3
-    },
-    {
-      title: '메타버스 혁명 시작',
-      content: '가상현실과 현실의 경계가 무너지며 새로운 경제 패러다임이 열립니다!',
-      sentiment: 'positive',
-      impact: 0.15,
-      type: 'market',
-      volatility: 2.0
-    },
-    {
-      title: '글로벌 공급망 대란',
-      content: '주요 물류 허브 마비로 전 세계 공급망에 비상이 걸렸습니다.',
-      sentiment: 'negative',
-      impact: -0.18,
-      type: 'market',
-      volatility: 2.1
-    },
-    {
-      title: '양자컴퓨터 상용화 임박',
-      content: '양자 우위 달성! 기존 암호체계와 금융시스템의 대변혁이 예고됩니다.',
-      sentiment: 'positive',
-      impact: 0.25,
-      type: 'market',
-      volatility: 2.4
-    },
-    {
-      title: '글로벌 기후 위기 심화',
-      content: '이상기후 현상으로 인한 산업계 전반의 비상상황 발생!',
-      sentiment: 'negative',
-      impact: -0.12,
-      type: 'market',
-      volatility: 1.8
-    }
-  ];
 
   // 기업 뉴스 템플릿 (Company News Templates)
   private readonly companyNewsTemplates: NewsTemplate[] = [
@@ -403,6 +309,142 @@ export class MarketScheduler {
       impact: 0.30,
       type: 'company',
       volatility: 2.5
+    },
+    {
+      title: '사내 스타 탄생, 비밀 프로젝트 성과 공개',
+      content: '깜짝 놀랄 혁신 프로젝트가 성공적으로 완료되어, 사내 스타로 떠오른 팀이 주목받고 있습니다!',
+      sentiment: 'positive',
+      impact: 0.35,
+      type: 'company',
+      volatility: 2.3
+    },
+    {
+      title: '미래를 여는 AI 비서, 상용화 임박',
+      content: '최첨단 인공지능 비서가 실제 업무에 투입되어, 직원들의 업무 효율성이 급상승하고 있습니다!',
+      sentiment: 'positive',
+      impact: 0.30,
+      type: 'company',
+      volatility: 2.0
+    },
+    {
+      title: '사내 VR 체험존 오픈, 현실을 넘나드는 체험',
+      content: '직원들을 위한 최첨단 VR 체험존 개장이 발표되어, 업무 중 스트레스 해소와 창의력 증진에 도움을 주고 있습니다.',
+      sentiment: 'positive',
+      impact: 0.20,
+      type: 'company',
+      volatility: 1.8
+    },
+    {
+      title: '비밀의 연말 파티, 예상치 못한 대반전',
+      content: '회사가 비밀리에 진행한 연말 파티에서 깜짝 이벤트와 대반전이 연속으로 펼쳐져, 전 직원이 놀라움과 웃음을 터트렸습니다.',
+      sentiment: 'neutral',
+      impact: 0.10,
+      type: 'company',
+      volatility: 1.5
+    },
+    {
+      title: '사내 펫 페스티벌, 동물들의 대소동',
+      content: '반려동물을 데려온 직원들이 참여한 사내 펫 페스티벌에서 귀여운 동물들의 해프닝이 화제를 모으고 있습니다.',
+      sentiment: 'positive',
+      impact: 0.08,
+      type: 'company',
+      volatility: 1.3
+    },
+    {
+      title: '이색 기업 전시회, 창의력의 향연',
+      content: '사내 창의적 아이디어 전시회가 개최되어, 독특한 작품들과 혁신적인 컨셉이 전 직원에게 영감을 주고 있습니다.',
+      sentiment: 'positive',
+      impact: 0.12,
+      type: 'company',
+      volatility: 1.7
+    },
+    {
+      title: '직원 맞춤형 복지 시스템 도입',
+      content: '개인의 라이프스타일을 반영한 맞춤형 복지 시스템이 도입되어, 직원 만족도와 업무 효율성이 크게 향상되고 있습니다.',
+      sentiment: 'positive',
+      impact: 0.15,
+      type: 'company',
+      volatility: 1.2
+    },
+    {
+      title: '미래 지향적 사내 교육 프로그램 개편',
+      content: '4차 산업혁명 시대에 발맞춘 새로운 사내 교육 프로그램 개편으로, 직원들의 전문성과 창의력이 증진될 전망입니다.',
+      sentiment: 'positive',
+      impact: 0.07,
+      type: 'company',
+      volatility: 1.1
+    },
+    {
+      title: '사내 커뮤니티 앱, 소통의 혁명',
+      content: '새롭게 출시된 사내 커뮤니티 앱이 직원 간 소통과 협업의 문화를 혁신적으로 변화시키고 있습니다.',
+      sentiment: 'positive',
+      impact: 0.09,
+      type: 'company',
+      volatility: 1.0
+    },
+    {
+      title: '의외의 기업 간 합작, 신사업 도전',
+      content: '전혀 다른 업계의 기업과 손잡아 새로운 신사업에 도전, 예상치 못한 시너지 효과로 업계에 신선한 바람을 불어넣고 있습니다.',
+      sentiment: 'neutral',
+      impact: 0.05,
+      type: 'company',
+      volatility: 1.4
+    },
+    {
+      title: '사내 혁신 아이디어 공모전, 놀라운 결과 발표',
+      content: '직원들이 제출한 창의적 아이디어가 빛을 발하며, 회사 전반에 새로운 혁신의 물결을 일으키고 있습니다.',
+      sentiment: 'positive',
+      impact: 0.18,
+      type: 'company',
+      volatility: 1.9
+    },
+    {
+      title: '비상식적인 마케팅 전략, 매출 급증 효과',
+      content: '독특한 마케팅 전략이 예상 밖의 성과를 내며, 단기간 내에 매출 증가에 기여하는 결과를 가져왔습니다.',
+      sentiment: 'positive',
+      impact: 0.22,
+      type: 'company',
+      volatility: 2.1
+    },
+    {
+      title: '사내 "해적의 날" 이벤트, 모두의 참여 열기',
+      content: '전 직원이 해적 복장을 착용하고 참여한 이색 이벤트가 사내 분위기를 한층 밝게 만들어 주고 있습니다.',
+      sentiment: 'positive',
+      impact: 0.10,
+      type: 'company',
+      volatility: 1.3
+    },
+    {
+      title: '사내 로봇 도입, 업무 혁신과 재미 동시에',
+      content: '최첨단 로봇이 도입되어 반복 업무는 물론, 창의적 아이디어 실현에도 도움을 주며 업무 환경에 신선한 변화를 가져오고 있습니다.',
+      sentiment: 'positive',
+      impact: 0.16,
+      type: 'company',
+      volatility: 1.8
+    },
+    {
+      title: '회사 대표, SNS 생방송 토크쇼 진행',
+      content: '회사의 대표가 SNS 생방송을 통해 직원 및 고객과 소통하며, 인간적인 매력과 투명한 경영 철학을 선보이고 있습니다.',
+      sentiment: 'neutral',
+      impact: 0.07,
+      type: 'company',
+      volatility: 1.5
+    },
+    {
+      title: '예상치 못한 디자인 리뉴얼, 사용자 반응 뜨거워',
+      content: '웹사이트와 앱의 파격적인 디자인 리뉴얼이 고객들 사이에서 큰 호응을 얻으며, 브랜드 이미지에 긍정적 영향을 미치고 있습니다.',
+      sentiment: 'positive',
+      impact: 0.12,
+      type: 'company',
+      volatility: 1.4
+    },
+    {
+      title: '기발한 신제품 광고, 소셜 미디어를 강타',
+      content: '창의적인 신제품 광고 캠페인이 소셜 미디어에서 폭발적인 반응을 이끌어내며, 브랜드 인지도를 한층 높이고 있습니다.',
+      sentiment: 'positive',
+      impact: 0.20,
+      type: 'company',
+      volatility: 1.9
     }
   ];
 
@@ -439,25 +481,16 @@ export class MarketScheduler {
   }
 
   private scheduleTasks() {
-    // 1분마다 주가 업데이트
-    const marketUpdateJob = cron.schedule('*/1 * * * *', async () => {
+    // 매 분 정각에 실행되도록 수정
+    const marketUpdateJob = cron.schedule('0 * * * * *', async () => {
       if (this.isMarketOpen()) {
         await this.updateMarket();
       }
     });
     this.tasks.set('marketUpdate', marketUpdateJob);
 
-    // 1시간마다 마켓 뉴스 생성 (100% 확률)
-    const marketNewsJob = cron.schedule('0 * * * *', async () => {
-      if (this.isMarketOpen()) {
-        console.log('마켓 뉴스 생성 시작:', new Date().toISOString());
-        await this.generateMarketNews();
-      }
-    });
-    this.tasks.set('marketNews', marketNewsJob);
-
-    // 30분마다 기업 뉴스 생성 (100% 확률)
-    const companyNewsJob = cron.schedule('*/30 * * * *', async () => {
+    // 30분마다 기업 뉴스 생성 (0분, 30분)
+    const companyNewsJob = cron.schedule('0 */30 * * * *', async () => {
       if (this.isMarketOpen()) {
         console.log('기업 뉴스 생성 시작:', new Date().toISOString());
         await this.generateCompanyNews();
@@ -478,8 +511,6 @@ export class MarketScheduler {
       await this.setClosingPrices();
     });
     this.tasks.set('closing', closingJob);
-
-    // 시뮬레이션 봇 관련 스케줄은 더 이상 실행하지 않습니다.
   }
 
   public async cleanup() {
@@ -545,11 +576,6 @@ export class MarketScheduler {
         .select('company_id, shares')
         .gte('updated_at', getDbTimeXMinutesAgo(5));
         
-      const eventsPromise = this.supabase
-        .from('market_events')
-        .select('*')
-        .eq('is_active', true);
-        
       const recentNewsPromise = this.supabase
         .from('news')
         .select('*')
@@ -561,23 +587,19 @@ export class MarketScheduler {
         
       const [
         holdingsResult,
-        activeEventsResult,
         recentNewsResult,
         companiesResult
       ]: [
-        PostgrestResponse<any>,
         PostgrestResponse<any>,
         PostgrestResponse<NewsRecord>,
         PostgrestResponse<Company>
       ] = await Promise.all([
         holdingsPromise,
-        eventsPromise,
         recentNewsPromise,
         companiesPromise
       ]);
       
       const holdingsData = holdingsResult.data || [];
-      const activeEvents = activeEventsResult.data;
       const recentNews = recentNewsResult.data || [];
       const companies = companiesResult.data;
       
@@ -586,18 +608,13 @@ export class MarketScheduler {
           companies.map(async (company) => {
             if (company.is_delisted) return;
             
-            const newBasePrice = await this.calculateNewPrice(company, activeEvents || []);
+            const newBasePrice = await this.calculateNewPrice(company);
             const companyNewsImpact = await this.calculateCompanyNewsImpact(company.id, recentNews);
-            const marketNewsImpact = this.calculateMarketNewsImpact(recentNews);
             
-            // 일일 제한폭 대신 모멘텀 기반 가격 조정
             const finalPrice = newBasePrice * (
-              1 + 
-              (companyNewsImpact * SIMULATION_PARAMS.PRICE.WEIGHTS.NEWS) +
-              (marketNewsImpact * SIMULATION_PARAMS.PRICE.WEIGHTS.NEWS * 0.5)
+              1 + (companyNewsImpact * SIMULATION_PARAMS.PRICE.WEIGHTS.NEWS)
             );
 
-            // 가격 변동 추적 및 모멘텀 반전 처리
             const priceChange = (finalPrice - company.current_price) / company.current_price;
             const previousMovement = this.priceMovementCache.get(company.id) || {
               direction: 'neutral',
@@ -607,21 +624,20 @@ export class MarketScheduler {
             
             this.updatePriceMovement(company.id, priceChange, previousMovement);
             
-            // 상장폐지 체크 (0원 이하일 경우만)
             const updatedCompany = await this.checkDelisting(company, finalPrice);
             
             return {
+              id: crypto.randomUUID(),
               company_id: company.id,
-              old_price: company.current_price,
-              new_price: finalPrice,
-              change_percentage: priceChange * 100,
-              update_reason: this.generateUpdateReason(companyNewsImpact, marketNewsImpact),
-              timestamp: new Date()
+              old_price: Number(company.current_price.toFixed(4)),
+              new_price: Number(finalPrice.toFixed(4)),
+              change_percentage: Number((priceChange * 100).toFixed(4)),
+              update_reason: this.generateUpdateReason(companyNewsImpact),
+              created_at: new Date().toISOString()
             };
           })
         );
 
-        // 일괄 업데이트 처리
         await Promise.all(
           updates.filter(Boolean).map(async (update) => {
             await this.retryOperation(() =>
@@ -659,14 +675,6 @@ export class MarketScheduler {
         nextRun: this.calculateNextRun('market_update'),
         jobType: 'market_update'
       });
-
-      // 가격 업데이트 후 캐시 무효화
-      await Promise.all(
-        (companies || []).map(async (company: Company) => {
-          const key = `stock:${company.ticker}`;
-          await redis.del(key);
-        })
-      );
     } catch (error) {
       await this.updateStatus({
         status: 'error',
@@ -679,17 +687,11 @@ export class MarketScheduler {
     }
   }
 
-  private generateUpdateReason(
-    companyNewsImpact: number,
-    marketNewsImpact: number
-  ): string {
+  private generateUpdateReason(companyNewsImpact: number): string {
     const reasons: string[] = [];
     
     if (Math.abs(companyNewsImpact) > 0.01) {
       reasons.push(`기업 뉴스 영향 (${(companyNewsImpact * 100).toFixed(2)}%)`);
-    }
-    if (Math.abs(marketNewsImpact) > 0.01) {
-      reasons.push(`시장 뉴스 영향 (${(marketNewsImpact * 100).toFixed(2)}%)`);
     }
     
     return reasons.length > 0 ? reasons.join(', ') : '일반 시장 변동';
@@ -702,13 +704,11 @@ export class MarketScheduler {
   }): number {
     if (movement.consecutiveCount <= 1) return 1.0;
     
-    // 연속성이 증가할수록 모멘텀 강도 증가
     const momentumStrength = Math.min(
-      movement.consecutiveCount * Math.abs(movement.lastChange) * 0.3, // 30%로 감소
-      0.05  // 최대 5%로 제한
+      movement.consecutiveCount * Math.abs(movement.lastChange) * 0.3,
+      0.05
     );
     
-    // 연속성이 증가할수록 반전 확률 급격히 증가
     const baseReversalChance = SIMULATION_PARAMS.PRICE.REVERSAL.BASE_CHANCE;
     const reversalChance = Math.min(
       baseReversalChance + 
@@ -716,11 +716,10 @@ export class MarketScheduler {
       SIMULATION_PARAMS.PRICE.REVERSAL.MAX_CHANCE
     );
     
-    // 연속 횟수가 많을수록 반전 확률 증가
     if (movement.consecutiveCount >= 5) {
       return movement.direction === 'up' ? 
-        1 - (momentumStrength * 1.2) : // 상승 시 더 강한 하락 반전
-        1 + (momentumStrength * 1.5);  // 하락 시 더 강한 상승 반전
+        1 - (momentumStrength * 1.2) :
+        1 + (momentumStrength * 1.5);
     }
     
     if (Math.random() < reversalChance) {
@@ -730,8 +729,8 @@ export class MarketScheduler {
     }
     
     return movement.direction === 'up' ? 
-      1 + (momentumStrength * 0.8) : // 상승 모멘텀 약화
-      1 - (momentumStrength * 0.7);  // 하락 모멘텀 약화
+      1 + (momentumStrength * 0.8) :
+      1 - (momentumStrength * 0.7);
   }
 
   private updatePriceMovement(
@@ -745,16 +744,13 @@ export class MarketScheduler {
   ) {
     const newDirection = change > 0 ? 'up' : change < 0 ? 'down' : 'neutral';
     
-    // 연속성 카운트 업데이트
     let consecutiveCount = 
       newDirection === previousMovement.direction ? 
       previousMovement.consecutiveCount + 1 : 1;
       
-    // 연속 상승/하락이 길어질수록 반전 확률 증가
     const reversalThreshold = Math.min(0.3 + (consecutiveCount * 0.1), 0.9);
     if (consecutiveCount > 3 && Math.random() < reversalThreshold) {
       consecutiveCount = 1;
-      // 반전 시 변동폭 감소
       change *= 0.5;
     }
 
@@ -763,77 +759,6 @@ export class MarketScheduler {
       consecutiveCount,
       lastChange: change
     });
-  }
-
-  private async generateMarketNews() {
-    try {
-      const industriesForMarketNews: Industry[] = ['전자','IT','제조','건설','식품'];
-      const selectedIndustry = industriesForMarketNews[Math.floor(Math.random() * industriesForMarketNews.length)];
-
-      const marketNews = this.selectRandomNews(this.marketNewsTemplates);
-      
-      // 마켓 뉴스는 특정 기업이 아닌 산업군 전체에 영향을 미치도록 수정
-      await this.createNews({
-        ...marketNews,
-        title: `[${selectedIndustry}] ${marketNews.title}`,
-        content: `${marketNews.content} - ${selectedIndustry} 산업 전반에 미치는 영향`,
-        company_id: undefined,  // null 대신 undefined 사용
-        industry: selectedIndustry,
-        type: 'market'
-      });
-
-      // 해당 산업군의 모든 기업에 영향을 주기 위해 관련 기업들의 가격을 업데이트
-      const { data: affectedCompanies } = await this.supabase
-        .from('companies')
-        .select('*')
-        .eq('industry', selectedIndustry);
-
-      if (affectedCompanies) {
-        // 해당 산업군의 모든 기업 가격 업데이트
-        await Promise.all(
-          affectedCompanies.map(async (company: Company) => {
-            const priceImpact = marketNews.impact * 
-              SIMULATION_PARAMS.INDUSTRY.VOLATILITY[company.industry as Industry] * 
-              this.calculateMarketCapVolatility(company.market_cap);
-            
-            const newPrice = company.current_price * (1 + priceImpact);
-            
-            // 가격 업데이트 기록
-            await this.retryOperation(() =>
-              this.supabase
-                .from('price_updates')
-                .insert({
-                  company_id: company.id,
-                  old_price: company.current_price,
-                  new_price: newPrice,
-                  change_percentage: priceImpact * 100,
-                  update_reason: `${selectedIndustry} 산업 뉴스 영향: ${marketNews.title}`
-                })
-            );
-
-            // 기업 가격 업데이트
-            await this.retryOperation(() =>
-              this.supabase
-                .from('companies')
-                .update({
-                  previous_price: company.current_price,
-                  current_price: newPrice
-                })
-                .eq('id', company.id)
-            );
-
-            // 캐시 무효화
-            const key = `stock:${company.ticker}`;
-            await redis.del(key);
-          })
-        );
-      }
-
-      console.log(`[${selectedIndustry} 산업 뉴스 발생]`, marketNews.title);
-    } catch (error) {
-      console.error('마켓 뉴스 생성 중 오류:', error);
-      throw new Error('마켓 뉴스 생성 실패');
-    }
   }
 
   private async generateCompanyNews() {
@@ -911,58 +836,50 @@ export class MarketScheduler {
   }
 
   private async calculateCompanyNewsImpact(companyId: string, recentNews: NewsRecord[]): Promise<number> {
+    // 해당 회사의 시가총액 정보 가져오기
     const companyResponse = await this.supabase
       .from('companies')
       .select('market_cap')
       .eq('id', companyId)
       .single();
-    
     const company = companyResponse.data;
     const marketCapMultiplier = this.calculateMarketCapNewsMultiplier(company.market_cap);
-    
-    const companyNews = recentNews.filter((news: NewsRecord) => 
-      news.type === 'company' && 
-      news.company_id === companyId
-    );
 
-    let totalImpact = companyNews.reduce((sum: number, news: NewsRecord) => {
-      const timeElapsed = (Date.now() - new Date(news.published_at).getTime()) / (1000 * 60);
-      // 뉴스 영향 시간을 30분에서 10분으로 단축
-      const decayFactor = Math.max(0, 1 - (timeElapsed / 10));
-      
-      // 뉴스 방향의 불확실성 추가 (70% 확률로 뉴스 방향대로, 30% 확률로 반대 방향)
+    const now = new Date();
+    // 해당 회사의 뉴스 필터 (뉴스 타입과 회사 ID 체크) 및 각 뉴스마다 1~20분 사이 랜덤 유효시간 할당
+    const eligibleNews = recentNews
+      .filter((news) => news.type === 'company' && news.company_id === companyId)
+      .map((news) => {
+        const effectiveDuration = Math.floor(Math.random() * 20) + 1; // 1~20분 사이의 랜덤 유효시간
+        const timeElapsed = (now.getTime() - new Date(news.published_at).getTime()) / (60 * 1000);
+        return { news, effectiveDuration, timeElapsed };
+      })
+      .filter(({ timeElapsed, effectiveDuration }) => timeElapsed <= effectiveDuration);
+
+    const newsCount = eligibleNews.length;
+    // 뉴스 개수가 많을수록 개별 뉴스 영향력 감쇠 (원래 로직 유지)
+    const diminishingFactor = newsCount > 0 ? Math.pow(0.7, newsCount - 1) : 1;
+
+    let totalImpact = eligibleNews.reduce((sum, { news, effectiveDuration, timeElapsed }) => {
+      // 감쇠 계수: 뉴스 발행 후 시간에 따라 선형적으로 감소
+      const decayFactor = Math.max(0, 1 - (timeElapsed / effectiveDuration));
       const directionMultiplier = Math.random() < 0.7 ? 1 : -0.5;
-      
-      const impactVariation = 
-        SIMULATION_PARAMS.NEWS.IMPACT_VARIATION_MIN + 
-        Math.random() * (
-          SIMULATION_PARAMS.NEWS.IMPACT_VARIATION_MAX - 
-          SIMULATION_PARAMS.NEWS.IMPACT_VARIATION_MIN
-        );
-      
+      const impactVariation =
+        SIMULATION_PARAMS.NEWS.IMPACT_VARIATION_MIN +
+        Math.random() *
+          (SIMULATION_PARAMS.NEWS.IMPACT_VARIATION_MAX - SIMULATION_PARAMS.NEWS.IMPACT_VARIATION_MIN);
       const baseImpact = news.impact * impactVariation * directionMultiplier;
-      
-      // 연속된 뉴스의 경우 한계 효용 더 강하게 감소 (70%)
-      const diminishingFactor = Math.pow(0.7, companyNews.length - 1);
-      
       const sentimentMultiplier = this.calculateSentimentMultiplier(news.sentiment);
       const volatilityMultiplier = news.volatility >= 1.8 ? 1.2 : 1.0;
-      
-      // 각 뉴스의 개별 영향력 상한 적용 (±2%)
-      const newsImpact = Math.max(
-        Math.min(
-          baseImpact * sentimentMultiplier * volatilityMultiplier * decayFactor * marketCapMultiplier * diminishingFactor,
-          0.02
-        ),
-        -0.02
-      );
-      
-      return sum + newsImpact;
+
+      const newsImpact = baseImpact * sentimentMultiplier * volatilityMultiplier * decayFactor * marketCapMultiplier * diminishingFactor;
+
+      // 뉴스 별 영향력 범위를 -0.02 ~ 0.02로 제한
+      return sum + Math.max(Math.min(newsImpact, 0.02), -0.02);
     }, 0);
 
-    // 누적 뉴스 영향 상한/하한 적용 (±5%)
+    // 전체 뉴스 영향력 범위를 -0.05 ~ 0.05로 제한
     totalImpact = Math.max(Math.min(totalImpact, 0.05), -0.05);
-    
     return totalImpact;
   }
 
@@ -970,46 +887,12 @@ export class MarketScheduler {
     // 시가총액이 클수록 뉴스 영향력 증가
     if (marketCap > 100000000000) return 1.4;  // 1000억 이상
     if (marketCap > 10000000000) return 1.2;   // 100억 이상
-    if (marketCap > 1000000000) return 1.1;    // 10억 이상
+    if (marketCap > 10000000000) return 1.1;    // 10억 이상
     return 1.0;
   }
 
-  private calculateMarketNewsImpact(recentNews: NewsRecord[]): number {
-    const marketNews = recentNews.filter((news: NewsRecord) => news.type === 'market');
-    
-    let totalImpact = marketNews.reduce((sum: number, news: NewsRecord) => {
-      const timeElapsed = (Date.now() - new Date(news.published_at).getTime()) / (1000 * 60);
-      const decayFactor = Math.max(0, 1 - (timeElapsed / 10));  // 10분으로 단축
-
-      // 뉴스 방향의 불확실성 추가
-      const directionMultiplier = Math.random() < 0.7 ? 1 : -0.5;
-      
-      const sentimentMultiplier = this.calculateSentimentMultiplier(news.sentiment);
-      const volatilityMultiplier = news.volatility >= 1.8 ? 1.2 : 1.0;
-      
-      // 각 뉴스의 개별 영향력 상한 적용 (±2%)
-      const newsImpact = Math.max(
-        Math.min(
-          news.impact * news.volatility * sentimentMultiplier * volatilityMultiplier * decayFactor * directionMultiplier,
-          0.02
-        ),
-        -0.02
-      );
-      
-      return sum + newsImpact;
-    }, 0);
-
-    // 누적 시장 뉴스 영향 상한/하한 적용 (±5%)
-    totalImpact = Math.max(Math.min(totalImpact, 0.05), -0.05);
-    
-    return totalImpact;
-  }
-
-  private async calculateNewPrice(company: Company, events: any[]): Promise<number> {
+  private async calculateNewPrice(company: Company): Promise<number> {
     const basePrice = company.current_price;
-    
-    // 산업 리더 영향도 계산 추가
-    const industryLeaderImpact = await this.calculateIndustryLeaderImpact(company.industry, company.id);
     
     const randomChange = (Math.random() - 0.5) * SIMULATION_PARAMS.PRICE.BASE_RANDOM_CHANGE;
     
@@ -1018,8 +901,7 @@ export class MarketScheduler {
     const marketCapVolatility = this.calculateMarketCapVolatility(company.market_cap);
     
     const baseChange = (
-      randomChange * SIMULATION_PARAMS.PRICE.WEIGHTS.RANDOM +
-      industryLeaderImpact * SIMULATION_PARAMS.PRICE.WEIGHTS.INDUSTRY
+      randomChange * SIMULATION_PARAMS.PRICE.WEIGHTS.RANDOM
     ) * industryVolatility * timeVolatility * marketCapVolatility;
 
     return basePrice * (1 + baseChange);
@@ -1027,14 +909,6 @@ export class MarketScheduler {
 
   private calculateIndustryVolatility(industry: Industry): number {
     return SIMULATION_PARAMS.INDUSTRY.VOLATILITY[industry] || 1.0;
-  }
-
-  private calculateEventImpact(events: any[], industry: string): number {
-    if (!events?.length) return 0;
-    return events.reduce((impact, event) => {
-      const industryWeight = event.affected_industries?.includes(industry) ? 1.5 : 1;
-      return impact + (event.impact * industryWeight);
-    }, 0);
   }
 
   // 시간대별 변동성 계산 (타임존 관련 처리는 기존대로 유지)
@@ -1058,11 +932,13 @@ export class MarketScheduler {
             this.supabase
               .from('price_updates')
               .insert({
+                id: crypto.randomUUID(),
                 company_id: company.id,
-                old_price: company.current_price,
-                new_price: openingPrice,
-                change_percentage: ((openingPrice - company.current_price) / company.current_price) * 100,
-                update_reason: '장 시작'
+                old_price: Number(company.current_price.toFixed(4)),
+                new_price: Number(openingPrice.toFixed(4)),
+                change_percentage: Number((priceChange * 100).toFixed(4)),
+                update_reason: '장 시작',
+                created_at: new Date().toISOString()
               })
           );
 
@@ -1091,11 +967,13 @@ export class MarketScheduler {
             this.supabase
               .from('price_updates')
               .insert({
+                id: crypto.randomUUID(),
                 company_id: company.id,
-                old_price: company.current_price,
-                new_price: company.current_price,
+                old_price: Number(company.current_price.toFixed(4)),
+                new_price: Number(company.current_price.toFixed(4)),
                 change_percentage: 0,
-                update_reason: '장 마감'
+                update_reason: '장 마감',
+                created_at: new Date().toISOString()
               })
           );
 
@@ -1136,7 +1014,7 @@ export class MarketScheduler {
       case 'market_update':
         return new Date(now.getTime() + 10 * 60000); // 10분 후
       case 'news_generation':
-        return new Date(now.getTime() + 60 * 60000); // 1시간 후
+        return new Date(now.getTime() + 30 * 60000); // 30분 후로 수정
       default:
         return now;
     }
@@ -1171,8 +1049,8 @@ export class MarketScheduler {
     }
     // 5개의 분류에 맞게 템플릿 선택
     const templates = {
-      '전자': this.marketNewsTemplates,
-      'IT': this.marketNewsTemplates,
+      '전자': this.companyNewsTemplates,
+      'IT': this.companyNewsTemplates,
       '제조': this.companyNewsTemplates,
       '건설': this.companyNewsTemplates,
       '식품': this.companyNewsTemplates

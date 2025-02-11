@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { CardHeader, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
+import { motion, AnimatePresence } from 'framer-motion'
 
 interface PriceChartProps {
   company: any
@@ -31,11 +32,15 @@ export function PriceChart({
   }>>([])
   const [isLoading, setIsLoading] = useState(true)
   const [hasNoData, setHasNoData] = useState(false)
+  const [prevData, setPrevData] = useState<any[]>([]) // 이전 데이터 저장용
 
   useEffect(() => {
     if (company?.ticker && timeframe) {
       setIsLoading(true)
-      setHasNoData(false)
+      // 현재 데이터를 이전 데이터로 저장
+      if (data.length > 0) {
+        setPrevData(data)
+      }
       
       fetch(`/api/stock/price-history?ticker=${company.ticker}&timeframe=${timeframe}`)
         .then((res) => res.json())
@@ -125,12 +130,21 @@ export function PriceChart({
         </div>
       </CardHeader>
       <CardContent>
-        <div className="h-[400px] w-full">
-          {isLoading ? (
-            <div className="flex h-full items-center justify-center">
-              <span className="text-gray-400">로딩 중...</span>
-            </div>
-          ) : hasNoData ? (
+        <div className="relative h-[400px] w-full">
+          <AnimatePresence>
+            {isLoading && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 z-10 flex items-center justify-center bg-black/20 backdrop-blur-sm"
+              >
+                <span className="text-gray-400">로딩 중...</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
+          
+          {hasNoData ? (
             <div className="flex flex-col h-full items-center justify-center gap-4">
               <span className="text-gray-400">
                 선택한 시간대의 거래 데이터가 없습니다
@@ -140,61 +154,68 @@ export function PriceChart({
               </p>
             </div>
           ) : (
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={data}>
-                <XAxis 
-                  dataKey="time" 
-                  stroke="#4B5563"
-                  tick={{ fill: '#9CA3AF' }}
-                />
-                <YAxis 
-                  stroke="#4B5563"
-                  tick={{ fill: '#9CA3AF' }}
-                  domain={['auto', 'auto']}
-                  tickFormatter={(value) => `${Math.round(value).toLocaleString()}원`}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#1F2937',
-                    border: '1px solid #374151',
-                  }}
-                  labelStyle={{ color: '#9CA3AF' }}
-                  formatter={(value: any, name: string) => [
-                    name === 'price' 
-                      ? `${Math.round(Number(value)).toLocaleString()}원`
-                      : `${value.toFixed(2)}%`,
-                    name === 'price' ? '가격' : '변동률'
-                  ]}
-                />
-                <CartesianGrid stroke="#374151" strokeDasharray="3 3" />
-                <Line
-                  type="monotone"
-                  dataKey="price"
-                  stroke="#60A5FA"
-                  dot={(props: any): React.ReactElement<SVGElement> => {
-                    const { payload, cx, cy } = props;
-                    return payload.hasData ? (
-                      <circle 
-                        key={`dot-${payload.time}`}
-                        cx={cx} 
-                        cy={cy} 
-                        r={3} 
-                        fill="#60A5FA" 
-                        stroke="#60A5FA" 
-                      />
-                    ) : (
-                      <circle 
-                        key={`dot-${payload.time}`}
-                        cx={cx} 
-                        cy={cy} 
-                        r={0}
-                      />
-                    );
-                  }}
-                  connectNulls={true}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.3 }}
+              className="h-full"
+            >
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={isLoading ? prevData : data}>
+                  <XAxis 
+                    dataKey="time" 
+                    stroke="#4B5563"
+                    tick={{ fill: '#9CA3AF' }}
+                  />
+                  <YAxis 
+                    stroke="#4B5563"
+                    tick={{ fill: '#9CA3AF' }}
+                    domain={['auto', 'auto']}
+                    tickFormatter={(value) => `${Math.round(value).toLocaleString()}원`}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#1F2937',
+                      border: '1px solid #374151',
+                    }}
+                    labelStyle={{ color: '#9CA3AF' }}
+                    formatter={(value: any, name: string) => [
+                      name === 'price' 
+                        ? `${Math.round(Number(value)).toLocaleString()}원`
+                        : `${value.toFixed(2)}%`,
+                      name === 'price' ? '가격' : '변동률'
+                    ]}
+                  />
+                  <CartesianGrid stroke="#374151" strokeDasharray="3 3" />
+                  <Line
+                    type="monotone"
+                    dataKey="price"
+                    stroke="#60A5FA"
+                    dot={(props: any): React.ReactElement<SVGElement> => {
+                      const { payload, cx, cy } = props;
+                      return payload.hasData ? (
+                        <circle 
+                          key={`dot-${payload.time}`}
+                          cx={cx} 
+                          cy={cy} 
+                          r={3} 
+                          fill="#60A5FA" 
+                          stroke="#60A5FA" 
+                        />
+                      ) : (
+                        <circle 
+                          key={`dot-${payload.time}`}
+                          cx={cx} 
+                          cy={cy} 
+                          r={0}
+                        />
+                      );
+                    }}
+                    connectNulls={true}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </motion.div>
           )}
         </div>
       </CardContent>

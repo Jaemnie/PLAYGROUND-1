@@ -9,6 +9,8 @@ import { TradingForm } from './components/trading-form'
 import { Card } from '@/components/ui/card'
 import { BackButton } from '@/components/back-button'
 import { TradeAlert } from '@/components/ui/trade-alert'
+import { useRealtimeStockData } from '@/hooks/useRealtimeStockData'
+import { createClientBrowser } from '@/lib/supabase/client'
 
 interface StockDetailClientProps {
   user: any
@@ -19,25 +21,68 @@ interface StockDetailClientProps {
 
 export function StockDetailClient({
   user,
-  company,
-  holding,
-  points
+  company: initialCompany,
+  holding: initialHolding,
+  points: initialPoints
 }: StockDetailClientProps) {
   const [selectedTimeframe, setSelectedTimeframe] = useState('1M')
   const [showAlert, setShowAlert] = useState(false)
   const [tradeType, setTradeType] = useState<'buy' | 'sell'>('buy')
+  const [points, setPoints] = useState(initialPoints)
+  const [holding, setHolding] = useState(initialHolding)
   const router = useRouter()
+
+  // 실시간 주식 데이터 구독
+  const { stockData } = useRealtimeStockData([initialCompany.id])
+  
+  // 실시간 데이터로 company 업데이트
+  const company = {
+    ...initialCompany,
+    ...stockData.get(initialCompany.id)
+  }
+
+  const refreshData = async () => {
+    const supabase = createClientBrowser()
+
+    const [holdingResult, profileResult] = await Promise.all([
+      // 보유 주식 정보 업데이트
+      supabase
+        .from('holdings')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('company_id', company.id)
+        .maybeSingle(),
+      
+      // 포인트 정보 업데이트
+      supabase
+        .from('profiles')
+        .select('points')
+        .eq('id', user.id)
+        .single()
+    ])
+
+    if (holdingResult.data) {
+      setHolding(holdingResult.data)
+    } else {
+      setHolding(null)
+    }
+    
+    if (profileResult.data) {
+      setPoints(profileResult.data.points)
+    }
+  }
 
   useEffect(() => {
     if (company?.is_delisted) {
       toast.error('해당 기업은 상장폐지 상태입니다. 페이지를 조회할 수 없습니다.')
-      router.push('/dashboard') // 대시보드나 목록 페이지로 리다이렉트
+      router.push('/dashboard')
     }
   }, [company, router])
 
-  const handleTradeComplete = (type: 'buy' | 'sell') => {
+  const handleTradeComplete = async (type: 'buy' | 'sell') => {
     setTradeType(type)
     setShowAlert(true)
+    await refreshData()
     setTimeout(() => setShowAlert(false), 2000)
   }
 

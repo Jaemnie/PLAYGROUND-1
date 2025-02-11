@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { CardHeader, CardContent } from '@/components/ui/card'
 import { ArrowUpIcon, ArrowDownIcon } from '@heroicons/react/24/outline'
 import { Button } from '@/components/ui/button'
@@ -18,18 +18,74 @@ interface MarketOverviewProps {
   }[]
 }
 
+// 가격 변동 애니메이션을 위한 컴포넌트 (필요시 추후 재사용 가능)
+function PriceCell({ 
+  currentPrice, 
+  lastClosingPrice, 
+  isChanged,
+  priceChangePercent 
+}: { 
+  currentPrice: number
+  lastClosingPrice: number
+  isChanged: boolean
+  priceChangePercent: number
+}) {
+  const isPriceUp = currentPrice > lastClosingPrice
+
+  return (
+    <div className="text-right relative">
+      <motion.div 
+        className={`inline-block px-1 py-1 rounded overflow-hidden relative
+          ${isPriceUp ? 'bg-green-500/10' : 'bg-red-500/10'}`}
+      >
+        <p className="font-medium text-gray-100 relative z-10 text-xs">
+          {Math.floor(currentPrice).toLocaleString()}원
+        </p>
+      </motion.div>
+      <motion.div 
+        className="flex items-center justify-end gap-1 mt-1"
+        animate={isChanged ? {
+          y: [-2, 0],
+          transition: { duration: 0.2 }
+        } : {}}
+      >
+        {isPriceUp ? (
+          <ArrowUpIcon className="w-3 h-3 text-green-500" />
+        ) : (
+          <ArrowDownIcon className="w-3 h-3 text-red-500" />
+        )}
+        <span className={`text-xs ${isPriceUp ? 'text-green-500' : 'text-red-500'}`}>
+          {Math.abs(priceChangePercent).toFixed(2)}%
+        </span>
+      </motion.div>
+    </div>
+  )
+}
+
 export function MarketOverview({ companies: initialCompanies }: MarketOverviewProps) {
   const [currentPage, setCurrentPage] = useState(1)
   const [sortConfig, setSortConfig] = useState({
     key: 'priceChange',
     direction: 'desc'
   })
-  const itemsPerPage = 3
+  const itemsPerPage = 4
   
   const companyIds = initialCompanies.map(c => c.id)
   const { stockData, changes } = useRealtimeStockData(companyIds)
   
-  // 실시간 데이터로 업데이트 및 변동폭 계산
+  const [animatingPrices, setAnimatingPrices] = useState<Set<string>>(new Set())
+
+  useEffect(() => {
+    if (changes.size > 0) {
+      setAnimatingPrices(new Set<string>(changes as Iterable<string>))
+      const timer = setTimeout(() => {
+        setAnimatingPrices(new Set<string>())
+      }, 600)
+      return () => clearTimeout(timer)
+    }
+  }, [changes])
+  
+  // 실시간 데이터 업데이트 및 변동폭 계산
   const companies = initialCompanies.map(company => {
     const currentPrice = stockData.get(company.id)?.current_price || company.current_price
     const lastClosingPrice = company.last_closing_price
@@ -78,53 +134,52 @@ export function MarketOverview({ companies: initialCompanies }: MarketOverviewPr
         </div>
       </CardHeader>
       <CardContent>
-        <div className="space-y-3 h-[280px] overflow-hidden">
-          <AnimatePresence mode="popLayout">
-            {displayedCompanies.map((company, index) => {
-              const currentPrice = company.current_price
-              const lastClosingPrice = company.last_closing_price
-              const priceChangePercent = ((currentPrice - lastClosingPrice) / lastClosingPrice) * 100
-              const isPriceUp = priceChangePercent > 0
+        {/* 페이지네이션 시 스크롤 깜빡임 방지를 위해 overflow-hidden과 최소 높이 설정 */}
+        <div className="overflow-hidden min-h-[160px]">
+          <div className="grid grid-cols-2 gap-1">
+            <AnimatePresence mode="popLayout">
+              {displayedCompanies.map((company, index) => {
+                const currentPrice = company.current_price
+                const lastClosingPrice = company.last_closing_price
+                const priceChangePercent = ((currentPrice - lastClosingPrice) / lastClosingPrice) * 100
+                const isPriceUp = priceChangePercent > 0
 
-              return (
-                <motion.div
-                  key={`${company.id}-${currentPage}-${index}`}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  className="p-3 rounded-xl border border-white/10 hover:bg-white/5 transition-colors"
-                >
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <p className={`font-medium ${isPriceUp ? 'text-green-500' : 'text-red-500'}`}>
-                        {company.name}
-                      </p>
-                      <p className="text-sm text-gray-400">{company.ticker}</p>
-                    </div>
-                    <div className="text-right">
-                      <div className={`inline-block px-2 py-1 rounded ${
-                        isPriceUp ? 'bg-green-500/10' : 'bg-red-500/10'
-                      }`}>
-                        <p className="font-medium text-gray-100">
-                          {Math.floor(company.current_price).toLocaleString()}원
+                return (
+                  <motion.div
+                    key={`${company.id}-${Math.floor(currentPrice)}-${currentPage}-${index}`}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    className="p-1 rounded border border-white/10 hover:bg-white/5 transition-colors"
+                  >
+                    <div className="flex flex-col gap-0.5">
+                      <div className="min-w-0">
+                        <p className={`font-medium text-sm truncate ${isPriceUp ? 'text-green-500' : 'text-red-500'}`}>
+                          {company.name}
                         </p>
+                        <p className="text-xs text-gray-400 truncate">{company.ticker}</p>
                       </div>
-                      <div className="flex items-center justify-end gap-1 mt-1">
-                        {isPriceUp ? (
-                          <ArrowUpIcon className="w-3 h-3 text-green-500" />
-                        ) : (
-                          <ArrowDownIcon className="w-3 h-3 text-red-500" />
-                        )}
-                        <span className={`text-sm ${isPriceUp ? 'text-green-500' : 'text-red-500'}`}>
-                          {Math.abs(priceChangePercent).toFixed(2)}%
-                        </span>
+                      <div className="text-right flex-shrink-0">
+                        <p className="font-medium text-sm text-gray-100">
+                          {Math.floor(currentPrice).toLocaleString()}원
+                        </p>
+                        <div className="flex items-center justify-end gap-0.5">
+                          {isPriceUp ? (
+                            <ArrowUpIcon className="w-3 h-3 text-green-500" />
+                          ) : (
+                            <ArrowDownIcon className="w-3 h-3 text-red-500" />
+                          )}
+                          <span className={`text-xs ${isPriceUp ? 'text-green-500' : 'text-red-500'}`}>
+                            {Math.abs(priceChangePercent).toFixed(2)}%
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </motion.div>
-              )
-            })}
-          </AnimatePresence>
+                  </motion.div>
+                )
+              })}
+            </AnimatePresence>
+          </div>
         </div>
 
         <div className="flex justify-between items-center mt-4">
@@ -137,7 +192,7 @@ export function MarketOverview({ companies: initialCompanies }: MarketOverviewPr
           >
             <ChevronLeftIcon className="w-4 h-4" />
           </Button>
-          <span className="text-sm text-gray-400">
+          <span className="text-xs text-gray-400">
             {currentPage} / {totalPages}
           </span>
           <Button

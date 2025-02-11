@@ -1,42 +1,53 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { ClockIcon, ChartBarIcon, NewspaperIcon, BuildingOfficeIcon } from '@heroicons/react/24/outline'
+import { ChartBarIcon, NewspaperIcon } from '@heroicons/react/24/outline'
 import { motion, AnimatePresence } from 'framer-motion'
+import { CardHeader, CardContent } from '@/components/ui/card'
+import { ClockIcon } from '@heroicons/react/24/outline'
 
 interface AnimatedLabelProps {
   show: boolean;
-  type: 'price' | 'news' | 'market';
+  type: 'price' | 'news';
 }
 
 const colors = {
-  price: 'text-green-400',
-  news: 'text-yellow-400',
-  market: 'text-blue-400'
+  price: 'text-blue-400',
+  news: 'text-blue-400'
 } as const;
 
 function AnimatedLabel({ show, type }: AnimatedLabelProps) {
   const labels = {
     price: '주가',
-    news: '뉴스',
-    market: '시장'
+    news: '뉴스'
   }
 
   return (
     <AnimatePresence>
       {show && (
         <motion.div
-          initial={{ opacity: 0, y: 10, rotateX: -90 }}
-          animate={{ opacity: 1, y: 0, rotateX: 0 }}
-          exit={{ opacity: 0, y: -10, rotateX: 90 }}
-          transition={{ type: 'spring', stiffness: 200, damping: 15 }}
-          className={`absolute -top-4 left-1/2 -translate-x-1/2 px-1.5 py-0.5 rounded text-[10px] font-bold ${colors[type]} bg-black/50 backdrop-blur-sm whitespace-nowrap shadow-lg`}
+          initial={{ opacity: 0, scale: 0.8, y: 10 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.8, y: -10 }}
+          transition={{ 
+            type: "spring",
+            stiffness: 400,
+            damping: 30
+          }}
+          className={`absolute -top-4 left-1/2 -translate-x-1/2 px-2 py-1 rounded-full text-[11px] font-bold ${colors[type]} bg-blue-500/20 border border-blue-500/30 backdrop-blur-sm whitespace-nowrap`}
         >
           {labels[type]} 변동!
           <motion.div 
-            className="absolute inset-0 rounded bg-current opacity-10"
-            animate={{ scale: [1, 1.5, 1] }}
-            transition={{ duration: 1.5, repeat: Infinity }}
+            className="absolute inset-0 rounded-full bg-blue-400/20"
+            animate={{ 
+              scale: [1, 1.2, 1],
+              opacity: [0.5, 0.8, 0.5]
+            }}
+            transition={{ 
+              duration: 1.2,
+              repeat: Infinity,
+              ease: "easeInOut"
+            }}
           />
         </motion.div>
       )}
@@ -47,23 +58,20 @@ function AnimatedLabel({ show, type }: AnimatedLabelProps) {
 type IconType = {
   price: typeof ChartBarIcon;
   news: typeof NewspaperIcon;
-  market: typeof BuildingOfficeIcon;
 };
 
 const IconMap: IconType = {
   price: ChartBarIcon,
-  news: NewspaperIcon,
-  market: BuildingOfficeIcon
+  news: NewspaperIcon
 };
 
 export function MarketTimer() {
   const [nextPriceUpdate, setNextPriceUpdate] = useState<Date | null>(null)
   const [nextNewsUpdate, setNextNewsUpdate] = useState<Date | null>(null)
-  const [nextMarketUpdate, setNextMarketUpdate] = useState<Date | null>(null)
   const [flashPrice, setFlashPrice] = useState(false)
   const [flashNews, setFlashNews] = useState(false)
-  const [flashMarket, setFlashMarket] = useState(false)
   const [currentTime, setCurrentTime] = useState(new Date())
+  const [showNumbers, setShowNumbers] = useState(true)
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -82,41 +90,34 @@ export function MarketTimer() {
       nextPrice.setMilliseconds(0)
       nextPrice.setSeconds(0)
       nextPrice.setMinutes(nextPrice.getMinutes() + 1)
-      setNextPriceUpdate(nextPrice)
       
       // 다음 뉴스 업데이트 시간 계산 (30분 간격)
       const nextNews = new Date(now)
-      nextNews.setMinutes(Math.ceil(nextNews.getMinutes() / 30) * 30)
       nextNews.setSeconds(0)
-      setNextNewsUpdate(nextNews)
-      
-      // 다음 시장 업데이트 시간 계산 (1시간 간격)
-      const nextMarket = new Date(now)
-      nextMarket.setHours(nextMarket.getHours() + 1)
-      nextMarket.setMinutes(0)
-      nextMarket.setSeconds(0)
-      setNextMarketUpdate(nextMarket)
+      nextNews.setMilliseconds(0)
+      const minutes = nextNews.getMinutes()
 
-      // 반짝임 효과 체크 - 더 정확한 시간 비교
-      const timeUntilPrice = nextPrice.getTime() - now.getTime()
-      const timeUntilNews = nextNews.getTime() - now.getTime()
-      const timeUntilMarket = nextMarket.getTime() - now.getTime()
-
-      // 뉴스나 시장 업데이트 발생 시 즉시 주가 업데이트
-      if ((timeUntilNews <= 1000 && timeUntilNews > 0) || 
-          (timeUntilMarket <= 1000 && timeUntilMarket > 0)) {
-        if (timeUntilNews <= 1000 && timeUntilNews > 0) {
-          setFlashNews(true)
-        }
-        if (timeUntilMarket <= 1000 && timeUntilMarket > 0) {
-          setFlashMarket(true)
-        }
-        // 주가 업데이트는 뉴스/시장 업데이트와 동시에 발생
-        setFlashPrice(true)
-      } else if (timeUntilPrice <= 1000 && timeUntilPrice > 0) {
-        // 일반 주가 업데이트 체크
-        setFlashPrice(true)
+      if (minutes >= 30) {
+        nextNews.setHours(nextNews.getHours() + 1)
+        nextNews.setMinutes(0)
+      } else if (minutes < 30) {
+        nextNews.setMinutes(30)
       }
+
+      setNextPriceUpdate(nextPrice)
+      setNextNewsUpdate(nextNews)
+
+      // 업데이트 시간 체크 및 플래시 효과
+      const checkAndSetFlash = (targetTime: Date, setFlash: (value: boolean) => void) => {
+        const timeUntil = targetTime.getTime() - now.getTime()
+        if (timeUntil <= 1000 && timeUntil > 0) {
+          setFlash(true)
+        }
+      }
+
+      checkAndSetFlash(nextPrice, setFlashPrice)
+      checkAndSetFlash(nextNews, setFlashNews)
+
     }, 100)
 
     return () => clearInterval(timer)
@@ -126,15 +127,19 @@ export function MarketTimer() {
   useEffect(() => {
     const resetFlash = (flash: boolean, setFlash: (value: boolean) => void) => {
       if (flash) {
-        const timer = setTimeout(() => setFlash(false), 1000)
-        return () => clearTimeout(timer)
+        setShowNumbers(false)
+        const flashTimer = setTimeout(() => setFlash(false), 1000)
+        const numberTimer = setTimeout(() => setShowNumbers(true), 1000)
+        return () => {
+          clearTimeout(flashTimer)
+          clearTimeout(numberTimer)
+        }
       }
     }
 
     resetFlash(flashPrice, setFlashPrice)
     resetFlash(flashNews, setFlashNews)
-    resetFlash(flashMarket, setFlashMarket)
-  }, [flashPrice, flashNews, flashMarket])
+  }, [flashPrice, flashNews])
 
   const getTimeRemaining = (targetDate: Date) => {
     const diff = targetDate.getTime() - currentTime.getTime()
@@ -149,69 +154,105 @@ export function MarketTimer() {
     return hour >= 9 && hour < 24
   }
 
-  const type = 'price'
-  const IconComponent = IconMap[type as keyof IconType]
-
-  const nextUpdates = {
-    price: nextPriceUpdate,
-    news: nextNewsUpdate,
-    market: nextMarketUpdate
-  }
-
   return (
-    <div className="grid grid-cols-4 gap-3 p-3 text-sm">
-      {['price', 'news', 'market'].map((type, index) => {
-        const currentFlash = {
-          price: flashPrice,
-          news: flashNews,
-          market: flashMarket
-        }[type] ?? false
-        
-        const IconComponent = IconMap[type as keyof IconType]
+    <>
+      <CardHeader>
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="flex items-center gap-2"
+        >
+          <ClockIcon className="w-5 h-5 text-blue-400" />
+          <h2 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent">
+            시장 타이머
+          </h2>
+        </motion.div>
+      </CardHeader>
+      <CardContent>
+        <div className="flex justify-center gap-4 w-full">
+          {['price', 'news'].map((type, index) => {
+            const currentFlash = {
+              price: flashPrice,
+              news: flashNews
+            }[type as keyof typeof colors] ?? false
+            
+            const IconComponent = IconMap[type as keyof IconType]
+            const nextUpdate = {
+              price: nextPriceUpdate,
+              news: nextNewsUpdate
+            }[type as keyof typeof colors]
 
-        return (
-          <div key={type} className="relative">
-            <AnimatedLabel show={currentFlash} type={type as any} />
-            <motion.div 
-              className="flex items-center gap-2 p-3 rounded-lg bg-black/20 border border-white/5 h-full cursor-pointer hover:bg-white/5 transition-colors"
-              animate={{ 
-                scale: currentFlash ? [1, 1.05, 1] : 1,
-                rotateY: currentFlash ? [0, 5, -5, 0] : 0,
-                background: currentFlash 
-                  ? 'linear-gradient(45deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02))' 
-                  : 'rgba(0,0,0,0.2)'
-              }}
-              transition={{ 
-                duration: 0.5, 
-                delay: index * 0.1,
-                type: 'spring', 
-                stiffness: 300 
-              }}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              <IconComponent className={`w-4 h-4 ${colors[type as keyof typeof colors]}`} />
-              <div>
-                <div className="text-gray-400 capitalize">{type}</div>
-                <div className="font-medium text-gray-100">
-                  {nextUpdates[type as keyof typeof nextUpdates] 
-                    ? getTimeRemaining(nextUpdates[type as keyof typeof nextUpdates]!) 
-                    : '0:00'}
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        )
-      })}
-      
-      <div className="flex items-center justify-center">
-        <div className={`
-          px-2 py-1 rounded-full text-xs font-medium
-          ${isMarketOpen() ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}
-        `}>
-          {isMarketOpen() ? '장 운영중' : '장 마감'}
+            return (
+              <motion.div 
+                key={type} 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ 
+                  delay: index * 0.1,
+                  type: "spring",
+                  stiffness: 400,
+                  damping: 30
+                }}
+                className="relative flex-1"
+              >
+                <motion.div 
+                  className="flex flex-col items-center gap-2 p-3 rounded-xl bg-black/20 border border-white/5 backdrop-blur-sm"
+                  animate={{ 
+                    scale: currentFlash ? [1, 1.02, 1] : 1,
+                    background: currentFlash 
+                      ? ['rgba(0, 0, 0, 0.2)', 'rgba(0, 0, 0, 0.3)', 'rgba(0, 0, 0, 0.2)']
+                      : 'rgba(0, 0, 0, 0.2)'
+                  }}
+                  transition={{ 
+                    duration: 0.6,
+                    ease: [0.32, 0.72, 0, 1]
+                  }}
+                >
+                  <IconComponent className={`w-5 h-5 ${colors[type as keyof typeof colors]}`} />
+                  <div className="text-center">
+                    <div className="text-gray-400 text-xs font-medium mb-0.5">
+                      {type === 'price' ? '다음 주가 갱신' : '다음 뉴스 갱신'}
+                    </div>
+                    <motion.div 
+                      className="font-bold text-white text-lg tracking-tight"
+                      animate={currentFlash ? {
+                        scale: [1, 1.1, 1],
+                        color: ['#ffffff', '#3b82f6', '#ffffff']
+                      } : {}}
+                      transition={{ duration: 0.4 }}
+                    >
+                      {currentFlash && !showNumbers ? '변동!' : (nextUpdate ? getTimeRemaining(nextUpdate) : '0:00')}
+                    </motion.div>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )
+          })}
         </div>
-      </div>
-    </div>
+        
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="mt-4 flex items-center justify-center"
+        >
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/20 border border-white/5">
+            <motion.div 
+              animate={{ scale: [1, 1.2, 1] }}
+              transition={{ 
+                duration: 2,
+                repeat: Infinity,
+                ease: "easeInOut"
+              }}
+              className={`w-2 h-2 rounded-full ${isMarketOpen() ? 'bg-blue-400' : 'bg-red-400'}`} 
+            />
+            <span className={`text-sm font-medium ${isMarketOpen() ? 'text-blue-400' : 'text-red-400'}`}>
+              {isMarketOpen() ? '장 운영중' : '장 마감'}
+            </span>
+          </div>
+        </motion.div>
+      </CardContent>
+    </>
   )
 } 
