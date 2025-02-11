@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardHeader } from '@/components/ui/card'
-import { AlertDialog } from '@/components/ui/alert-dialog'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 
@@ -13,15 +12,12 @@ export default function SignUpForm() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
-  const [alertState, setAlertState] = useState({
-    isOpen: false,
-    message: '',
-    isError: false
-  })
+  const [error, setError] = useState<string | null>(null)
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setIsLoading(true)
+    setError(null)
     
     try {
       const formData = new FormData(e.currentTarget)
@@ -33,29 +29,16 @@ export default function SignUpForm() {
       const data = await response.json()
       
       if (!response.ok) {
-        setAlertState({
-          isOpen: true,
-          message: data.error,
-          isError: true
-        })
-      } else {
-        setAlertState({
-          isOpen: true,
-          message: data.message,
-          isError: false
-        })
-        // 성공 메시지를 보여준 후 로그인 페이지로 이동
-        setTimeout(() => {
-          router.push('/login')
-        }, 2000)
-        setIsSuccess(true)
+        setError(data.error)
+        return
       }
+
+      setIsSuccess(true)
+      setTimeout(() => {
+        router.push('/login')
+      }, 2000)
     } catch (error) {
-      setAlertState({
-        isOpen: true,
-        message: '오류가 발생했습니다. 다시 시도해주세요.',
-        isError: true
-      })
+      setError('오류가 발생했습니다. 다시 시도해주세요.')
     } finally {
       setIsLoading(false)
     }
@@ -63,14 +46,6 @@ export default function SignUpForm() {
 
   return (
     <>
-      <AlertDialog
-        isOpen={alertState.isOpen}
-        message={alertState.message}
-        onClose={() => {
-          setAlertState(prev => ({ ...prev, isOpen: false }))
-          if (!alertState.isError) setIsSuccess(true)
-        }}
-      />
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{
@@ -88,6 +63,15 @@ export default function SignUpForm() {
             <p className="text-sm text-gray-400 text-center">
               새로운 계정을 만들어보세요
             </p>
+            {error && (
+              <motion.p
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-sm text-red-500 text-center mt-2"
+              >
+                {error}
+              </motion.p>
+            )}
           </CardHeader>
           <form onSubmit={handleSubmit} className="space-y-4 px-6 pb-6">
             <div className="space-y-2">

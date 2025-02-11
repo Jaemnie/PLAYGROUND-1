@@ -12,11 +12,28 @@ export async function POST(request: Request) {
     
     const supabase = await createClient()
 
-    // 1. 사용자 생성
+    // 1. profiles 테이블에서 닉네임 중복 체크
+    const { data: existingProfile } = await supabase
+      .from('profiles')
+      .select('nickname')
+      .eq('nickname', nickname)
+      .single()
+
+    if (existingProfile) {
+      return NextResponse.json({ 
+        error: '이미 사용 중인 닉네임입니다',
+        status: 400 
+      })
+    }
+
+    // 2. 사용자 생성
     const { data: authData, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
       options: {
+        data: {
+          nickname: nickname // user_metadata에 닉네임 저장
+        },
         emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`,
       },
     })
@@ -29,14 +46,14 @@ export async function POST(request: Request) {
       })
     }
 
-    // 2. profiles 테이블에 사용자 정보 저장
+    // 3. profiles 테이블에 사용자 정보 저장
     const { error: profileError } = await supabase
       .from('profiles')
       .insert([
         {
-          id: authData.user.id,  // uuid 타입의 id 컬럼
-          nickname: nickname,     // text 타입의 nickname 컬럼
-          points: 0,             // numeric 타입의 points 컬럼 (기본값 0)
+          id: authData.user.id,
+          nickname: nickname,
+          points: 0,
         }
       ])
 
