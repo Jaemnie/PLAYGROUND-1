@@ -1,5 +1,4 @@
 import { createClient } from '@/lib/supabase/server'
-import cron from 'node-cron'
 import { PortfolioTracker } from '@/services/portfolio-tracker'
 import type { PostgrestResponse, PostgrestSingleResponse } from '@supabase/supabase-js'
 import { getDbTimeXMinutesAgo } from '@/lib/timeUtils'
@@ -112,7 +111,6 @@ export class MarketScheduler {
   private isInitialized: boolean = false;
   private _isRunning: boolean = false;
   private supabase!: SupabaseClient;
-  private tasks: Map<string, cron.ScheduledTask> = new Map();
   private readonly MARKET_OPEN_HOUR = 9;    // 장 시작 시간
   private readonly MARKET_CLOSE_HOUR = 24;   // 장 마감 시간 (자정)
   private lastMarketUpdate: Date | null = null;
@@ -498,24 +496,18 @@ export class MarketScheduler {
   }
 
   private async scheduleTasks() {
-    const now = new Date();
-    const secondsToNextMin = 60 - now.getSeconds();
-    const secondsToNextNews = (30 - (now.getMinutes() % 30)) * 60 - now.getSeconds();
-
     // 마켓 업데이트 (1분마다)
     await this.qstash.publishJSON({
       url: `${process.env.NEXT_PUBLIC_APP_URL}/api/cron/market-update`,
       cron: '* * * * *',
-      deduplicationId: 'market-update',
-      delay: secondsToNextMin
+      deduplicationId: 'market-update'
     });
 
     // 뉴스 업데이트 (30분마다)
     await this.qstash.publishJSON({
       url: `${process.env.NEXT_PUBLIC_APP_URL}/api/cron/news-update`,
       cron: '*/30 * * * *',
-      deduplicationId: 'news-update',
-      delay: secondsToNextNews
+      deduplicationId: 'news-update'
     });
 
     // 장 시작 (매일 9시)
@@ -570,7 +562,25 @@ export class MarketScheduler {
     }
   }
 
+  private isScheduledTime(type: 'market' | 'news'): boolean {
+    const now = new Date();
+    
+    if (type === 'market') {
+      return now.getSeconds() === 0; // 정각 분에만 실행
+    }
+    
+    if (type === 'news') {
+      return now.getMinutes() % 30 === 0 && now.getSeconds() === 0; // 30분 단위에만 실행
+    }
+    
+    return false;
+  }
+
   public async updateMarket() {
+    if (!this.isScheduledTime('market')) {
+      console.log('마켓 업데이트 예약 시간이 아닙니다.');
+      return;
+    }
     try {
       await this.updateStatus({
         status: 'running',
@@ -1155,6 +1165,10 @@ export class MarketScheduler {
   }
 
   public async updateNews(): Promise<void> {
+    if (!this.isScheduledTime('news')) {
+      console.log('뉴스 업데이트 예약 시간이 아닙니다.');
+      return;
+    }
     try {
       console.log("뉴스 업데이트 실행 중");
       
