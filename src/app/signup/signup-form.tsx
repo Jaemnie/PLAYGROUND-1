@@ -1,55 +1,28 @@
 "use client"
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { createClientBrowser } from '@/lib/supabase/client'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/card'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
+import { signup } from '@/lib/actions/auth'
 
 export function SignUpForm() {
   const router = useRouter()
-  const supabase = createClientBrowser()
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [nickname, setNickname] = useState('')
+  const searchParams = useSearchParams()
   const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const error = searchParams.get('error')
   const [isSuccess, setIsSuccess] = useState(false)
 
-  const handleSignUp = async (e: React.FormEvent) => {
-    e.preventDefault()
+  async function handleSignUp(formData: FormData) {
     setIsLoading(true)
-    setError(null)
-
     try {
-      const { data: { user }, error: signUpError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: `${location.origin}/auth/callback`,
-        },
-      })
-
-      if (signUpError) throw signUpError
-
-      if (user) {
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .update({ nickname })
-          .eq('id', user.id)
-
-        if (profileError) throw profileError
-      }
-
+      await signup(formData)
       setIsSuccess(true)
-      setTimeout(() => {
-        router.push('/login?message=회원가입이 완료되었습니다. 이메일을 확인해주세요.')
-      }, 1500)
     } catch (error) {
-      setError('회원가입에 실패했습니다. 다시 시도해주세요.')
+      console.error('회원가입 오류:', error)
     } finally {
       setIsLoading(false)
     }
@@ -75,15 +48,14 @@ export function SignUpForm() {
               새로운 계정을 만들어보세요
             </p>
           </CardHeader>
-          <form onSubmit={handleSignUp}>
+          <form action={handleSignUp}>
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <label htmlFor="email" className="text-sm text-gray-300">이메일</label>
                 <Input
                   id="email"
+                  name="email"
                   type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
                   required
                   className="bg-black/30 border-gray-800 focus:border-gray-700 focus:ring-gray-700 text-gray-100 placeholder:text-gray-500"
                   placeholder="name@example.com"
@@ -93,9 +65,8 @@ export function SignUpForm() {
                 <label htmlFor="password" className="text-sm text-gray-300">비밀번호</label>
                 <Input
                   id="password"
+                  name="password"
                   type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
                   required
                   className="bg-black/30 border-gray-800 focus:border-gray-700 focus:ring-gray-700 text-gray-100 placeholder:text-gray-500"
                   placeholder="••••••••"
@@ -105,9 +76,8 @@ export function SignUpForm() {
                 <label htmlFor="nickname" className="text-sm text-gray-300">닉네임</label>
                 <Input
                   id="nickname"
+                  name="nickname"
                   type="text"
-                  value={nickname}
-                  onChange={(e) => setNickname(e.target.value)}
                   required
                   className="bg-black/30 border-gray-800 focus:border-gray-700 focus:ring-gray-700 text-gray-100 placeholder:text-gray-500"
                   placeholder="닉네임을 입력해주세요"
