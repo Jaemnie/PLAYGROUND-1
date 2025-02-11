@@ -26,13 +26,13 @@ export async function POST(request: Request) {
       })
     }
 
-    // 2. 사용자 생성
+    // 2. 사용자 생성 (display name 사용)
     const { data: authData, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: {
-          nickname: nickname // user_metadata에 닉네임 저장
+          display_name: nickname // display_name으로 변경
         },
         emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`,
       },
@@ -52,7 +52,7 @@ export async function POST(request: Request) {
       .insert([
         {
           id: authData.user.id,
-          nickname: nickname,
+          nickname: nickname, // profiles 테이블의 nickname 컬럼과 매핑
           points: 0,
         }
       ])
