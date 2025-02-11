@@ -82,6 +82,13 @@ export function MarketTimer() {
   }, [])
 
   useEffect(() => {
+    // 장이 열려있을 때만 타이머 작동
+    if (!isMarketOpen()) {
+      setNextPriceUpdate(null)
+      setNextNewsUpdate(null)
+      return
+    }
+
     const timer = setInterval(() => {
       const now = new Date()
       
@@ -222,7 +229,9 @@ export function MarketTimer() {
                       } : {}}
                       transition={{ duration: 0.4 }}
                     >
-                      {currentFlash && !showNumbers ? '변동!' : (nextUpdate ? getTimeRemaining(nextUpdate) : '0:00')}
+                      {!isMarketOpen() 
+                        ? '장 마감' 
+                        : (currentFlash && !showNumbers ? '변동!' : (nextUpdate ? getTimeRemaining(nextUpdate) : '0:00'))}
                     </motion.div>
                   </div>
                 </motion.div>
