@@ -1,11 +1,5 @@
 import { Suspense } from 'react'
 import SignUpForm from './signup-form'
-import { signup } from '@/lib/actions/auth'
-
-// 서버 액션을 page 레벨에서 export
-export async function action(formData: FormData) {
-  return signup(formData)
-}
 
 export default function SignUpPage() {
   return (
