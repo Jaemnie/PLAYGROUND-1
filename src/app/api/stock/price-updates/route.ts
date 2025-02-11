@@ -1,8 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
-import { Redis } from 'ioredis'
-
-const redis = new Redis()
+import { redis } from '@/lib/upstash-client'
 
 async function calculatePriceChange(
   currentPrice: number,
