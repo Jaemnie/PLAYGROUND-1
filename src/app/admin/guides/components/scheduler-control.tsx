@@ -10,7 +10,7 @@ export function SchedulerControl() {
       const res = await fetch('/api/scheduler/init');
       const data = await res.json();
       setMessage(data.message || '스케줄러가 시작되었습니다.');
-    } catch (error) {
+    } catch (_error) {
       setMessage('스케줄러 시작 중 오류 발생');
     }
   };
@@ -20,7 +20,7 @@ export function SchedulerControl() {
       const res = await fetch('/api/scheduler/stop');
       const data = await res.json();
       setMessage(data.message || '스케줄러가 종료되었습니다.');
-    } catch (error) {
+    } catch (_error) {
       setMessage('스케줄러 종료 중 오류 발생');
     }
   };
