@@ -9,7 +9,7 @@ import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { signup } from '@/lib/actions/auth'
 
-export function SignUpForm() {
+export default function SignUpForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [isLoading, setIsLoading] = useState(false)
@@ -50,58 +50,48 @@ export function SignUpForm() {
               새로운 계정을 만들어보세요
             </p>
           </CardHeader>
-          <form onSubmit={handleSignUp}>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <label htmlFor="email" className="text-sm text-gray-300">이메일</label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  required
-                  className="bg-black/30 border-gray-800 focus:border-gray-700 focus:ring-gray-700 text-gray-100 placeholder:text-gray-500"
-                  placeholder="name@example.com"
-                />
-              </div>
-              <div className="space-y-2">
-                <label htmlFor="password" className="text-sm text-gray-300">비밀번호</label>
-                <Input
-                  id="password"
-                  name="password"
-                  type="password"
-                  required
-                  className="bg-black/30 border-gray-800 focus:border-gray-700 focus:ring-gray-700 text-gray-100 placeholder:text-gray-500"
-                  placeholder="••••••••"
-                />
-              </div>
-              <div className="space-y-2">
-                <label htmlFor="nickname" className="text-sm text-gray-300">닉네임</label>
-                <Input
-                  id="nickname"
-                  name="nickname"
-                  type="text"
-                  required
-                  className="bg-black/30 border-gray-800 focus:border-gray-700 focus:ring-gray-700 text-gray-100 placeholder:text-gray-500"
-                  placeholder="닉네임을 입력해주세요"
-                />
-              </div>
-              {error && <p className="text-red-400 text-sm">{error}</p>}
-            </CardContent>
-            <CardFooter className="flex flex-col space-y-4">
-              <Button 
-                type="submit" 
-                className="w-full bg-gradient-to-r from-blue-500 to-violet-500 hover:from-blue-600 hover:to-violet-600 text-white transition-all duration-300"
-                disabled={isLoading}
-              >
-                {isLoading ? '처리중...' : '회원가입'}
-              </Button>
-              <p className="text-sm text-gray-400 text-center">
-                이미 계정이 있으신가요?{' '}
-                <Link href="/login" className="text-blue-400 hover:text-blue-300 transition-colors">
-                  로그인
-                </Link>
-              </p>
-            </CardFooter>
+          <form action={signup} className="space-y-4">
+            <div className="space-y-2">
+              <label htmlFor="email" className="text-sm text-gray-300">이메일</label>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                required
+                className="bg-black/30 border-gray-800 focus:border-gray-700 focus:ring-gray-700 text-gray-100 placeholder:text-gray-500"
+                placeholder="name@example.com"
+              />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="password" className="text-sm text-gray-300">비밀번호</label>
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                required
+                className="bg-black/30 border-gray-800 focus:border-gray-700 focus:ring-gray-700 text-gray-100 placeholder:text-gray-500"
+                placeholder="••••••••"
+              />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="nickname" className="text-sm text-gray-300">닉네임</label>
+              <Input
+                id="nickname"
+                name="nickname"
+                type="text"
+                required
+                className="bg-black/30 border-gray-800 focus:border-gray-700 focus:ring-gray-700 text-gray-100 placeholder:text-gray-500"
+                placeholder="닉네임을 입력해주세요"
+              />
+            </div>
+            {error && <p className="text-red-400 text-sm">{error}</p>}
+            <Button 
+              type="submit" 
+              className="w-full bg-gradient-to-r from-blue-500 to-violet-500 hover:from-blue-600 hover:to-violet-600 text-white transition-all duration-300"
+              disabled={isLoading}
+            >
+              {isLoading ? '처리중...' : '회원가입'}
+            </Button>
           </form>
         </Card>
       </motion.div>
