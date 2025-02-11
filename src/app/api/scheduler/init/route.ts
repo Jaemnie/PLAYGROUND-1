@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 
 export async function GET() {
   try {
-    const scheduler = new MarketScheduler()
+    const scheduler = await MarketScheduler.getInstance()
     await scheduler.start()
     return NextResponse.json({ message: '스케줄러가 초기화되었습니다.' })
   } catch (error) {

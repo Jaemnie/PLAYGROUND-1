@@ -4,9 +4,9 @@ import { NextResponse, NextRequest } from 'next/server'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { ticker: string } }
+  context: { params: { ticker: string } }
 ) {
-  const { ticker } = params
+  const { ticker } = context.params
   const CACHE_TTL = 60 // 1분 캐시
 
   // 1. Redis 캐시 확인
