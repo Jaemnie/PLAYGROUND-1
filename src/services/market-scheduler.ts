@@ -33,7 +33,7 @@ interface SchedulerStatus {
   lastRun: Date | null;
   nextRun: Date | null;
   errorMessage?: string;
-  jobType: 'market_update' | 'news_generation' | 'price_update';
+  jobType: 'market_update' | 'news_generation' | 'price_update' | 'market_open' | 'market_close';
 }
 
 type Industry = '전자' | 'IT' | '제조' | '건설' | '식품';
@@ -82,6 +82,7 @@ const SIMULATION_PARAMS = {
       NEWS: 0.5,
       INDUSTRY: 0.3,
       MOMENTUM: 0.4,
+      INDUSTRY_LEADER: 0.3
     }
   },
   INDUSTRY: {
@@ -484,11 +485,10 @@ export class MarketScheduler {
       await this.initialize();
       this._isRunning = true;
       
-      // QStash 작업 등록만 하고 즉시 실행은 하지 않도록 수정
+      // 초기 상태만 설정
       await this.scheduleTasks();
       
-      // 초기 실행은 스케줄에 따라 자동으로 이루어지도록 함
-      console.log('마켓 스케줄러가 시작되었습니다. 다음 예약된 시간에 작업이 실행됩니다.');
+      console.log('마켓 스케줄러가 시작되었습니다. QStash 스케줄에 따라 작업이 실행됩니다.');
     } catch (error) {
       console.error('스케줄러 시작 실패:', error)
       throw error
@@ -496,33 +496,36 @@ export class MarketScheduler {
   }
 
   private async scheduleTasks() {
-    // 마켓 업데이트 (매 분)
-    await this.qstash.publishJSON({
-      url: `${process.env.NEXT_PUBLIC_APP_URL}/api/cron/market-update`,
-      cron: '* * * * *',
-      deduplicationId: `market-update-${Date.now()}`  // 중복 방지 ID를 동적으로 생성
+    // QStash 대시보드에서 직접 관리하므로 여기서는 초기 상태만 설정
+    await this.updateStatus({
+      status: 'running',
+      lastRun: null,
+      nextRun: this.calculateNextRun('market_update'),
+      jobType: 'market_update'
     });
 
-    // 뉴스 업데이트 (30분마다)
-    await this.qstash.publishJSON({
-      url: `${process.env.NEXT_PUBLIC_APP_URL}/api/cron/news-update`,
-      cron: '*/30 * * * *',
-      deduplicationId: `news-update-${Date.now()}`
+    await this.updateStatus({
+      status: 'running',
+      lastRun: null,
+      nextRun: this.calculateNextRun('news_generation'),
+      jobType: 'news_generation'
     });
 
-    // 장 시작 (매일 9시)
-    await this.qstash.publishJSON({
-      url: `${process.env.NEXT_PUBLIC_APP_URL}/api/cron/market-open`,
-      cron: '0 9 * * *',
-      deduplicationId: `market-open-${Date.now()}`
+    await this.updateStatus({
+      status: 'running',
+      lastRun: null,
+      nextRun: this.calculateNextRun('market_open'),
+      jobType: 'market_open'
     });
 
-    // 장 마감 (매일 24시)
-    await this.qstash.publishJSON({
-      url: `${process.env.NEXT_PUBLIC_APP_URL}/api/cron/market-close`,
-      cron: '0 0 * * *',
-      deduplicationId: `market-close-${Date.now()}`
+    await this.updateStatus({
+      status: 'running',
+      lastRun: null,
+      nextRun: this.calculateNextRun('market_close'),
+      jobType: 'market_close'
     });
+
+    console.log('스케줄러 상태 초기화 완료');
   }
 
   public async cleanup() {
@@ -586,6 +589,17 @@ export class MarketScheduler {
       return;
     }
 
+    if (!this.isMarketOpen()) {
+      console.log('장 운영 시간이 아닙니다. 마켓 업데이트를 건너뜁니다.');
+      await this.updateStatus({
+        status: 'stopped',
+        lastRun: new Date(),
+        nextRun: this.calculateNextRun('market_update'),
+        jobType: 'market_update'
+      });
+      return;
+    }
+
     try {
       await this.updateStatus({
         status: 'running',
@@ -593,11 +607,6 @@ export class MarketScheduler {
         nextRun: this.calculateNextRun('market_update'),
         jobType: 'market_update'
       });
-      
-      if (!this.isMarketOpen()) {
-        console.log('장 운영 시간이 아닙니다.');
-        return;
-      }
       
       const holdingsPromise = this.supabase
         .from('holdings')
@@ -923,11 +932,32 @@ export class MarketScheduler {
     const timeVolatility = this.calculateTimeVolatility(new Date().getHours());
     const marketCapVolatility = this.calculateMarketCapVolatility(company.market_cap);
     
+    // 산업 선도기업 영향도 계산
+    const industryLeaderImpact = await this.calculateIndustryLeaderImpact(company.industry, company.id);
+    
+    // 모멘텀 팩터 계산
+    const previousMovement = this.priceMovementCache.get(company.id) || {
+      direction: 'neutral',
+      consecutiveCount: 0,
+      lastChange: 0
+    };
+    const momentumFactor = this.calculateMomentumFactor(previousMovement);
+    
     const baseChange = (
-      randomChange * SIMULATION_PARAMS.PRICE.WEIGHTS.RANDOM
-    ) * industryVolatility * timeVolatility * marketCapVolatility;
+      randomChange * SIMULATION_PARAMS.PRICE.WEIGHTS.RANDOM +
+      industryLeaderImpact * SIMULATION_PARAMS.PRICE.WEIGHTS.INDUSTRY_LEADER
+    ) * industryVolatility * timeVolatility * marketCapVolatility * momentumFactor;
 
-    return basePrice * (1 + baseChange);
+    const newPrice = basePrice * (1 + baseChange);
+    
+    // 가격 변동 방향 업데이트
+    this.updatePriceMovement(
+      company.id,
+      baseChange,
+      previousMovement
+    );
+
+    return newPrice;
   }
 
   private calculateIndustryVolatility(industry: Industry): number {
@@ -1037,14 +1067,43 @@ export class MarketScheduler {
 
   private calculateNextRun(jobType: string): Date {
     const now = new Date();
+    const next = new Date();
+
     switch (jobType) {
       case 'market_update':
-        return new Date(now.getTime() + 10 * 60000); // 10분 후
+        next.setMinutes(next.getMinutes() + 1);
+        next.setSeconds(0);
+        next.setMilliseconds(0);
+        break;
       case 'news_generation':
-        return new Date(now.getTime() + 30 * 60000); // 30분 후로 수정
-      default:
-        return now;
+        next.setMinutes(Math.ceil(next.getMinutes() / 30) * 30);
+        next.setSeconds(0);
+        next.setMilliseconds(0);
+        if (next.getMinutes() === 0) {
+          next.setHours(next.getHours() + 1);
+        }
+        break;
+      case 'market_open':
+        next.setHours(9);
+        next.setMinutes(0);
+        next.setSeconds(0);
+        next.setMilliseconds(0);
+        if (now.getHours() >= 9) {
+          next.setDate(next.getDate() + 1);
+        }
+        break;
+      case 'market_close':
+        next.setHours(24);
+        next.setMinutes(0);
+        next.setSeconds(0);
+        next.setMilliseconds(0);
+        if (now.getHours() >= 24) {
+          next.setDate(next.getDate() + 1);
+        }
+        break;
     }
+
+    return next;
   }
 
   public getNextRunTime(jobType: 'market_update' | 'news_generation') {
@@ -1166,14 +1225,29 @@ export class MarketScheduler {
       0
     );
 
-    return averageChange;
+    // 영향도를 -0.02 ~ 0.02 범위로 제한
+    return Math.max(Math.min(averageChange * 0.5, 0.02), -0.02);
   }
 
   public async updateNews(): Promise<void> {
+    console.log('뉴스 업데이트 요청 받음:', new Date().toISOString());
+
     if (!this.isScheduledTime('news')) {
       console.log('뉴스 업데이트 예약 시간이 아닙니다.');
       return;
     }
+
+    if (!this.isMarketOpen()) {
+      console.log('장 운영 시간이 아닙니다. 뉴스 업데이트를 건너뜁니다.');
+      await this.updateStatus({
+        status: 'stopped',
+        lastRun: new Date(),
+        nextRun: this.calculateNextRun('news_generation'),
+        jobType: 'news_generation'
+      });
+      return;
+    }
+
     try {
       console.log("뉴스 업데이트 실행 중");
       
