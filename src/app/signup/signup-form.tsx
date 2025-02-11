@@ -50,7 +50,7 @@ export default function SignUpForm() {
               새로운 계정을 만들어보세요
             </p>
           </CardHeader>
-          <form onSubmit={handleSignUp} className="space-y-4">
+          <form action={signup} method="post" className="space-y-4">
             <div className="space-y-2">
               <label htmlFor="email" className="text-sm text-gray-300">이메일</label>
               <Input
