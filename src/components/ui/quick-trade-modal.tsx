@@ -18,6 +18,11 @@ interface QuickTradeModalProps {
   onTradeComplete: (type: 'buy' | 'sell') => void
 }
 
+const isMarketOpen = () => {
+  const hour = new Date().getHours()
+  return hour >= 9 && hour < 24
+}
+
 export function QuickTradeModal({
   isOpen,
   onClose,
@@ -27,7 +32,7 @@ export function QuickTradeModal({
   holding,
   onTradeComplete
 }: QuickTradeModalProps) {
-  if (company?.is_delisted) {
+  if (company?.is_delisted || !isMarketOpen()) {
     return (
       <AnimatePresence>
         {isOpen && (
@@ -52,7 +57,9 @@ export function QuickTradeModal({
                 <div className="text-center">
                   <h2 className="text-2xl font-bold text-white">거래 불가</h2>
                   <p className="text-gray-400">
-                    이 기업은 상장폐지 상태입니다. 거래가 불가능합니다.
+                    {company?.is_delisted 
+                      ? '이 기업은 상장폐지 상태입니다. 거래가 불가능합니다.'
+                      : '현재 장 마감 시간입니다. 거래가 불가능합니다.'}
                   </p>
                 </div>
                 <Button onClick={onClose}>
@@ -72,6 +79,7 @@ export function QuickTradeModal({
   const [showAlert, setShowAlert] = useState(false)
   
   const supabase = createClientBrowser()
+  if (!supabase) throw new Error('Could not create Supabase client')
 
   const totalAmount = Number(shares) * company.current_price
   const canBuy = points >= totalAmount && Number(shares) > 0

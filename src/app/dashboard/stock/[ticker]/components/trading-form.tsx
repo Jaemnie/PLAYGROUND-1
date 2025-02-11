@@ -36,6 +36,12 @@ interface TradingFormProps {
   onTradeComplete: (type: 'buy' | 'sell') => void;
 }
 
+// isMarketOpen 함수 추가
+const isMarketOpen = () => {
+  const hour = new Date().getHours()
+  return hour >= 9 && hour < 24
+}
+
 export function TradingForm({ 
   user, 
   company, 
@@ -50,6 +56,7 @@ export function TradingForm({
   const [showAlert, setShowAlert] = useState(false)
   
   const supabase = createClientBrowser()
+  if (!supabase) throw new Error('Could not create Supabase client')
 
   const totalAmount = Number(shares) * company.current_price
   const canBuy = points >= totalAmount && Number(shares) > 0
@@ -99,8 +106,8 @@ export function TradingForm({
     }
   }
 
-  // 조건에 따라 다른 UI를 렌더링하도록 return 내부에서 조건부 분기합니다.
-  if (company?.is_delisted) {
+  // 상장폐지 또는 장 마감 상태 체크
+  if (company?.is_delisted || !isMarketOpen()) {
     return (
       <>
         <CardHeader>
@@ -108,7 +115,9 @@ export function TradingForm({
         </CardHeader>
         <CardContent>
           <p className="text-gray-400">
-            이 기업은 상장폐지 상태이므로 거래할 수 없습니다.
+            {company?.is_delisted 
+              ? '이 기업은 상장폐지 상태이므로 거래할 수 없습니다.'
+              : '현재 장 마감 시간이므로 거래할 수 없습니다.'}
           </p>
         </CardContent>
       </>
