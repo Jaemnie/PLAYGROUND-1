@@ -482,16 +482,16 @@ export class MarketScheduler {
     }
 
     try {
-      // 1분마다 마켓 업데이트
+      // 1분마다 마켓 업데이트 (cron 표현식: * * * * *)
       await this.qstash.publishJSON({
         url: `${process.env.NEXT_PUBLIC_APP_URL}/api/cron/market-update`,
-        cron: '* * * * *'
+        cron: '* * * * *'  // 매분 실행
       })
 
-      // 30분마다 뉴스 생성
+      // 30분마다 뉴스 생성 (cron 표현식: */30 * * * *)
       await this.qstash.publishJSON({
         url: `${process.env.NEXT_PUBLIC_APP_URL}/api/cron/news-update`,
-        cron: '*/30 * * * *'
+        cron: '*/30 * * * *'  // 30분마다 실행
       })
 
       this._isRunning = true
