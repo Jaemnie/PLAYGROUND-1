@@ -496,32 +496,32 @@ export class MarketScheduler {
   }
 
   private async scheduleTasks() {
-    // 마켓 업데이트 (1분마다)
+    // 마켓 업데이트 (매 분)
     await this.qstash.publishJSON({
       url: `${process.env.NEXT_PUBLIC_APP_URL}/api/cron/market-update`,
       cron: '* * * * *',
-      deduplicationId: 'market-update'
+      deduplicationId: `market-update-${Date.now()}`  // 중복 방지 ID를 동적으로 생성
     });
 
     // 뉴스 업데이트 (30분마다)
     await this.qstash.publishJSON({
       url: `${process.env.NEXT_PUBLIC_APP_URL}/api/cron/news-update`,
       cron: '*/30 * * * *',
-      deduplicationId: 'news-update'
+      deduplicationId: `news-update-${Date.now()}`
     });
 
     // 장 시작 (매일 9시)
     await this.qstash.publishJSON({
       url: `${process.env.NEXT_PUBLIC_APP_URL}/api/cron/market-open`,
       cron: '0 9 * * *',
-      deduplicationId: 'market-open'
+      deduplicationId: `market-open-${Date.now()}`
     });
 
     // 장 마감 (매일 24시)
     await this.qstash.publishJSON({
       url: `${process.env.NEXT_PUBLIC_APP_URL}/api/cron/market-close`,
       cron: '0 0 * * *',
-      deduplicationId: 'market-close'
+      deduplicationId: `market-close-${Date.now()}`
     });
   }
 
@@ -566,21 +566,26 @@ export class MarketScheduler {
     const now = new Date();
     
     if (type === 'market') {
-      return now.getSeconds() === 0; // 정각 분에만 실행
+      // 매 분 실행 허용
+      return true;
     }
     
     if (type === 'news') {
-      return now.getMinutes() % 30 === 0 && now.getSeconds() === 0; // 30분 단위에만 실행
+      // 30분 단위 체크만 유지
+      return now.getMinutes() % 30 === 0;
     }
     
     return false;
   }
 
   public async updateMarket() {
+    console.log('마켓 업데이트 요청 받음:', new Date().toISOString());
+    
     if (!this.isScheduledTime('market')) {
       console.log('마켓 업데이트 예약 시간이 아닙니다.');
       return;
     }
+
     try {
       await this.updateStatus({
         status: 'running',
