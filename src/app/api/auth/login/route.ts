@@ -21,10 +21,10 @@ export async function POST(request: Request) {
     })
 
     if (error || !authData.user) {
-      return NextResponse.redirect('/login?error=로그인에 실패했습니다')
+      return NextResponse.redirect(new URL('/login?error=로그인에 실패했습니다', request.url))
     }
 
-    return NextResponse.redirect('/main')
+    return NextResponse.redirect(new URL('/main', request.url))
   } catch (err) {
     console.error('[API LOGIN ERROR]', err)
     return NextResponse.json(
