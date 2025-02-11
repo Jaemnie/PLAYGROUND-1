@@ -16,8 +16,14 @@ export async function POST(request: Request) {
   })
 
   if (error) {
-    return NextResponse.redirect('/signup?error=회원가입에 실패했습니다')
+    return NextResponse.json({ 
+      error: '회원가입에 실패했습니다',
+      status: 400 
+    })
   }
 
-  return NextResponse.redirect('/login?message=이메일을 확인해주세요')
+  return NextResponse.json({ 
+    message: '이메일을 확인해주세요',
+    status: 200 
+  })
 } 
