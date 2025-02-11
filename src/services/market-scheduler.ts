@@ -485,8 +485,12 @@ export class MarketScheduler {
     try {
       await this.initialize();
       this._isRunning = true;
+      
+      // QStash 작업 등록만 하고 즉시 실행은 하지 않도록 수정
       await this.scheduleTasks();
-      console.log('마켓 스케줄러가 시작되었습니다.');
+      
+      // 초기 실행은 스케줄에 따라 자동으로 이루어지도록 함
+      console.log('마켓 스케줄러가 시작되었습니다. 다음 예약된 시간에 작업이 실행됩니다.');
     } catch (error) {
       console.error('스케줄러 시작 실패:', error)
       throw error
@@ -494,18 +498,19 @@ export class MarketScheduler {
   }
 
   private async scheduleTasks() {
-    // 매 분 마켓 업데이트
+    // QStash에 작업 등록만 하고 즉시 실행은 하지 않음
     await this.qstash.publishJSON({
       url: `${process.env.NEXT_PUBLIC_APP_URL}/api/cron/market-update`,
       cron: '* * * * *',
-      deduplicationId: 'market-update'
+      deduplicationId: 'market-update',
+      notBefore: Date.now() + 60000 // 1분 후부터 시작
     });
 
-    // 30분마다 뉴스 업데이트
     await this.qstash.publishJSON({
       url: `${process.env.NEXT_PUBLIC_APP_URL}/api/cron/news-update`,
       cron: '*/30 * * * *',
-      deduplicationId: 'news-update'
+      deduplicationId: 'news-update',
+      notBefore: Date.now() + 1800000 // 30분 후부터 시작
     });
 
     // 장 시작 (매일 9시)
