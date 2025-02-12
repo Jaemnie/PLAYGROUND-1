@@ -172,8 +172,11 @@ export function MarketTimer() {
   }
 
   const isMarketOpen = () => {
-    const hour = new Date().getHours()
-    return hour >= 9 && hour < 24
+    // 현재 클라이언트 시간에 서버 오프셋을 적용하여 서버 기준 시간을 계산
+    const serverTime = new Date(new Date().getTime() + serverOffset);
+    // 서버 타임스탬프를 UTC 기준으로 가져온 후, 한국 시간으로 보정 (UTC + 9)
+    const koreaHour = (serverTime.getUTCHours() + 9) % 24;
+    return koreaHour >= 9 && koreaHour < 24;
   }
 
   return (
