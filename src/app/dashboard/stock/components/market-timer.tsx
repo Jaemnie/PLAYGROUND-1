@@ -72,6 +72,7 @@ export function MarketTimer() {
   const [flashNews, setFlashNews] = useState(false)
   const [currentTime, setCurrentTime] = useState(new Date())
   const [showNumbers, setShowNumbers] = useState(true)
+  const [serverOffset, setServerOffset] = useState<number>(0)
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -79,6 +80,20 @@ export function MarketTimer() {
     }, 100)
 
     return () => clearInterval(timer)
+  }, [])
+
+  useEffect(() => {
+    const fetchServerTime = async () => {
+      try {
+        const res = await fetch('/api/server-time')
+        const data = await res.json()
+        const serverDate = new Date(data.serverTime)
+        setServerOffset(serverDate.getTime() - Date.now())
+      } catch (error) {
+        console.error('서버 시각 가져오기 실패:', error)
+      }
+    }
+    fetchServerTime()
   }, [])
 
   useEffect(() => {
@@ -260,6 +275,17 @@ export function MarketTimer() {
               {isMarketOpen() ? '장 운영중' : '장 마감'}
             </span>
           </div>
+        </motion.div>
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="mt-4 text-center"
+        >
+          <span className="text-sm text-white/70">
+            현재 서버 시각:{' '}
+            {new Date(currentTime.getTime() + serverOffset).toLocaleTimeString('ko-KR', { hour12: false })}
+          </span>
         </motion.div>
       </CardContent>
     </>
