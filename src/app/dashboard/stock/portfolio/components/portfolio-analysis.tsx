@@ -6,9 +6,10 @@ import { ArrowUpIcon, ArrowDownIcon } from '@heroicons/react/24/outline'
 interface PortfolioAnalysisProps {
   portfolio: any[]
   points: number
+  transactions: any[]
 }
 
-export default function PortfolioAnalysis({ portfolio, points }: PortfolioAnalysisProps) {
+export default function PortfolioAnalysis({ portfolio, points, transactions }: PortfolioAnalysisProps) {
   // 보유 주식의 총 평가 금액 계산
   const stocksValue = portfolio.reduce((sum, holding) => {
     return sum + (holding.shares * holding.company.current_price)
@@ -19,7 +20,21 @@ export default function PortfolioAnalysis({ portfolio, points }: PortfolioAnalys
     return sum + (holding.shares * holding.average_cost)
   }, 0)
   
-  const totalGain = stocksValue - investedAmount
+  // 현재 보유 주식의 평가 손익
+  const unrealizedGain = portfolio.reduce((sum, holding) => {
+    return sum + (holding.shares * (holding.company.current_price - holding.average_cost))
+  }, 0)
+
+  // 매도한 주식의 실현 손익 (transactions 테이블에서 계산)
+  const realizedGain = transactions.reduce((sum, tx) => {
+    if (tx.transaction_type === 'sell') {
+      return sum + (tx.shares * (tx.price - tx.average_cost))
+    }
+    return sum
+  }, 0)
+
+  // 총 손익 = 실현 손익 + 평가 손익
+  const totalGain = realizedGain + unrealizedGain
   const gainPercentage = investedAmount > 0 ? (totalGain / investedAmount) * 100 : 0
   const isGainPositive = totalGain >= 0
 

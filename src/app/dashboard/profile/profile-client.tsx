@@ -23,10 +23,11 @@ interface ProfileClientProps {
   }
 }
 
-export function ProfileClient({ user, profile }: ProfileClientProps) {
+export function ProfileClient({ user, profile: initialProfile }: ProfileClientProps) {
   const [isEditing, setIsEditing] = useState(false)
-  const [nickname, setNickname] = useState(profile.nickname)
   const [isLoading, setIsLoading] = useState(false)
+  const [profile, setProfile] = useState(initialProfile)
+  const [nickname, setNickname] = useState(profile.nickname)
 
   const handleUpdateNickname = async () => {
     if (!nickname.trim()) {
@@ -38,13 +39,17 @@ export function ProfileClient({ user, profile }: ProfileClientProps) {
     const supabase = createClientBrowser()
 
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('profiles')
         .update({ nickname })
         .eq('id', user.id)
+        .select()
+        .single()
 
       if (error) throw error
 
+      // 프로필 상태 업데이트
+      setProfile(data)
       toast.success('닉네임이 변경되었습니다')
       setIsEditing(false)
     } catch (error) {
