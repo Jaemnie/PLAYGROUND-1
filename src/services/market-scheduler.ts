@@ -477,93 +477,15 @@ export class MarketScheduler {
     return koreaHour >= this.MARKET_OPEN_HOUR && koreaHour < this.MARKET_CLOSE_HOUR;
   }
 
-  async start() {
-    if (this._isRunning) {
-      console.log('마켓 스케줄러가 이미 실행 중입니다.')
-      return
-    }
-
-    try {
-      await this.initialize();
-      this._isRunning = true;
-      
-      // 초기 상태만 설정
-      await this.scheduleTasks();
-      
-      console.log('마켓 스케줄러가 시작되었습니다. QStash 스케줄에 따라 작업이 실행됩니다.');
-    } catch (error) {
-      console.error('스케줄러 시작 실패:', error)
-      throw error
-    }
-  }
-
-  private async scheduleTasks() {
-    // QStash 대시보드에서 직접 관리하므로 여기서는 초기 상태만 설정
-    await this.updateStatus({
-      status: 'running',
-      lastRun: null,
-      nextRun: this.calculateNextRun('market_update'),
-      jobType: 'market_update'
-    });
-
-    await this.updateStatus({
-      status: 'running',
-      lastRun: null,
-      nextRun: this.calculateNextRun('news_generation'),
-      jobType: 'news_generation'
-    });
-
-    await this.updateStatus({
-      status: 'running',
-      lastRun: null,
-      nextRun: this.calculateNextRun('market_open'),
-      jobType: 'market_open'
-    });
-
-    await this.updateStatus({
-      status: 'running',
-      lastRun: null,
-      nextRun: this.calculateNextRun('market_close'),
-      jobType: 'market_close'
-    });
-
-    console.log('스케줄러 상태 초기화 완료');
-  }
-
   public async cleanup() {
-    // QStash 작업 취소 로직 추가 필요
     this._isRunning = false;
     MarketScheduler.instance = null;
     console.log('마켓 스케줄러 정리 완료');
   }
 
   private async initialize() {
-    console.log('마켓 스케줄러 초기화');
-    this.supabase = await createClient();
-    try {
-      const { data: companies, error } = await this.supabase
-        .from('companies')
-        .select('*');
-
-      if (error) throw error;
-
-      if (companies && companies.length > 0) {
-        const BATCH_SIZE = 50;  // 배치 처리 도입
-        for (let i = 0; i < companies.length; i += BATCH_SIZE) {
-          await Promise.all(companies.slice(i, i + BATCH_SIZE).map((company: Company) =>
-            this.retryOperation(async () => {
-              const result = await this.supabase
-                .from('companies')
-                .update({ last_closing_price: company.current_price })
-                .eq('id', company.id)
-              return result
-            })
-          ));
-        }
-      }
-    } catch (error) {
-      console.error('초기화 중 오류 발생:', error);
-      throw new Error('마켓 스케줄러 초기화 실패');
+    if (!this.supabase) {
+      this.supabase = await createClient();
     }
   }
 

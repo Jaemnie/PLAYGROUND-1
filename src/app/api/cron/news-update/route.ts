@@ -25,12 +25,12 @@ export async function POST(req: Request) {
       return new Response('Invalid signature', { status: 401 })
     }
     
-    // 기존 인스턴스가 있으면 재사용, 없으면 새로 생성
+    // 인스턴스가 없을 때만 초기화
     if (!schedulerInstance) {
+      console.log('마켓 스케줄러 인스턴스 생성')
       schedulerInstance = await MarketScheduler.getInstance()
     }
     
-    // 장 운영 시간 체크 추가
     if (!schedulerInstance.isMarketOpen()) {
       console.log('장 운영 시간이 아닙니다. 요청을 거부합니다.')
       return NextResponse.json({ 
