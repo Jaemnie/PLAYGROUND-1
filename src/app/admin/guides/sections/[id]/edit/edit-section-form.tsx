@@ -9,7 +9,7 @@ import { Card, CardContent, CardFooter } from '@/components/ui/card'
 import { toast } from 'sonner'
 import { motion } from 'framer-motion'
 import { GuideSection } from '@/lib/types/guide'
-import { DashboardBackButton } from '@/components/DashboardBackButton'
+import DashboardBackButton from '@/components/DashboardBackButton'
 
 interface EditSectionFormProps {
   section: GuideSection

@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardFooter } from '@/components/ui/card'
 import { toast } from 'sonner'
 import { motion } from 'framer-motion'
-import { DashboardBackButton } from '@/components/DashboardBackButton'
+import DashboardBackButton from '@/components/DashboardBackButton'
 import { MarkdownEditor } from '@/components/markdown-editor/markdown-editor'
 
 interface EditItemFormProps {

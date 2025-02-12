@@ -5,7 +5,7 @@ import { ArrowLeftIcon } from '@heroicons/react/24/outline'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 
-export function DashboardDashboardBackButton() {
+export default function DashboardBackButton() {
   const router = useRouter()
 
   function handleReturnToDashboard() {

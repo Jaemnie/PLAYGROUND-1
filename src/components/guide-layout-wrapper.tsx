@@ -1,6 +1,6 @@
 'use client'
 
-import { DashboardBackButton } from '@/components/DashboardBackButton'
+import DashboardBackButton from '@/components/DashboardBackButton'
 
 export function GuideLayoutWrapper({ children }: { children: React.ReactNode }) {
   return (
