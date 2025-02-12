@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button'
 import { useRouter } from 'next/navigation'
 import { logout } from '@/lib/actions/auth'
 import { User } from '@supabase/supabase-js'
+import { LogoutButton } from '@/components/logout-button'
 
 interface DashboardClientProps {
   user: User
@@ -81,26 +82,15 @@ export function DashboardClient({ user, profile, isAdmin }: DashboardClientProps
             type="button"
             onClick={() => router.push('/main')}
             variant="ghost"
-            size="sm"
-            className="bg-black/40 backdrop-blur-sm border border-gray-800/50 hover:bg-gray-800/70 text-gray-300 hover:text-gray-200"
+            className="relative bg-zinc-900/60 backdrop-blur-sm border border-zinc-800/50 hover:bg-zinc-800/70 flex items-center gap-2"
           >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            메인으로
+            <ArrowLeft className="h-[1.2rem] w-[1.2rem] text-zinc-200" />
+            <span className="text-zinc-200">메인으로</span>
           </Button>
         </motion.div>
       </div>
       <div className="fixed top-4 right-4 z-50">
-        <form action={logout}>
-          <Button
-            type="submit"
-            variant="ghost"
-            size="sm"
-            className="bg-black/40 backdrop-blur-sm border border-red-800/50 hover:bg-red-950/50 text-red-400 hover:text-red-300"
-          >
-            <LogOut className="h-4 w-4 mr-2" />
-            로그아웃
-          </Button>
-        </form>
+        <LogoutButton />
       </div>
       
       {/* 헤더 섹션 */}
