@@ -472,9 +472,9 @@ export class MarketScheduler {
 
   public isMarketOpen(): boolean {
     const now = new Date();
-    const currentHour = now.getHours();
-    // 장 마감 시간을 24시로 설정
-    return currentHour >= this.MARKET_OPEN_HOUR && currentHour < this.MARKET_CLOSE_HOUR;
+    // 서버의 UTC 시간에 9시간을 더해 한국 시간으로 보정
+    const koreaHour = (now.getUTCHours() + 9) % 24;
+    return koreaHour >= this.MARKET_OPEN_HOUR && koreaHour < this.MARKET_CLOSE_HOUR;
   }
 
   async start() {
