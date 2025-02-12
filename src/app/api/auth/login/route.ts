@@ -21,10 +21,22 @@ export async function POST(request: Request) {
     })
 
     if (error || !authData.user) {
-      return NextResponse.redirect(new URL('/login?error=로그인에 실패했습니다', request.url))
+      let errorMsg = "로그인에 실패했습니다."
+      if (error && error.message) {
+        const msg = error.message.toLowerCase()
+        // 이메일 인증 관련 에러 처리
+        if (msg.includes("not confirmed") || msg.includes("confirm")) {
+          errorMsg = "이메일 인증이 완료되지 않았습니다. 이메일을 확인해주세요."
+        }
+        // 잘못된 아이디 혹은 비밀번호 입력 시
+        else if (msg.includes("invalid login credentials")) {
+          errorMsg = "아이디 또는 비밀번호가 일치하지 않습니다."
+        }
+      }
+      return NextResponse.json({ error: errorMsg }, { status: 400 })
     }
 
-    return NextResponse.redirect(new URL('/main', request.url))
+    return NextResponse.json({ success: true, redirect: '/main' })
   } catch (err) {
     console.error('[API LOGIN ERROR]', err)
     return NextResponse.json(
