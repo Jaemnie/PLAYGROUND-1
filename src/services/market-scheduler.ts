@@ -57,8 +57,8 @@ interface Profile {
 const SIMULATION_PARAMS = {
   NEWS: {
     COMPANY_NEWS_CHANCE: 1.0,           // 100% 확률로 변경
-    IMPACT_VARIATION_MIN: 1.0,          // 뉴스 영향력 증가 (100% ~ 150%)
-    IMPACT_VARIATION_MAX: 1.5,
+    IMPACT_VARIATION_MIN: 1.0,          // 최소 영향력 유지
+    IMPACT_VARIATION_MAX: 2.0,          // 최대 영향력 2배로 증가
     DECAY_TIME_MINUTES: 45,
   },
   PRICE: {
@@ -68,10 +68,10 @@ const SIMULATION_PARAMS = {
       MOMENTUM_MULTIPLIER: 0.15,        // 모멘텀당 추가 반전 확률 (15%)
       MAX_CHANCE: 0.85                  // 최대 반전 확률 (85%)
     },
-    DAILY_LIMIT: 0.30,                  // 일일 가격 제한폭 증가 (30%)
+    DAILY_LIMIT: 0.30,                  // 일일 가격 제한폭 (30%)
     WEIGHTS: {
       RANDOM: 0.3,
-      NEWS: 0.5,
+      NEWS: 1.0,                        // 뉴스 영향력 가중치 증가
       INDUSTRY: 0.3,
       MOMENTUM: 0.4,
       INDUSTRY_LEADER: 0.3
@@ -88,7 +88,7 @@ const SIMULATION_PARAMS = {
   },
   MARKET_CAP: {
     VOLATILITY: {
-      LARGE: 1.0,                       // 시가총액별 변동성 증가
+      LARGE: 1.0,
       MEDIUM: 1.3,
       SMALL: 1.6,
     },
@@ -690,13 +690,40 @@ export class MarketScheduler {
     }
   }
 
+  private selectWeightedNews(templates: NewsTemplate[]): NewsTemplate {
+    // 각 템플릿의 weight 계산 (낮은 volatility일수록 높은 weight)
+    const weights = templates.map((template) => {
+      const vol = template.volatility ?? 1.0;
+      return 1 / vol;
+    });
+
+    // 모든 weight의 합 계산
+    const totalWeight = weights.reduce((sum, w) => sum + w, 0);
+
+    // 0 ~ totalWeight 사이의 난수 생성
+    const randomValue = Math.random() * totalWeight;
+
+    // 누적 가중치 합계를 이용해 선택
+    let cumulative = 0;
+    for (let i = 0; i < templates.length; i++) {
+      cumulative += weights[i];
+      if (randomValue <= cumulative) {
+        return templates[i];
+      }
+    }
+    
+    // 혹시 선택되지 않으면 마지막 템플릿 반환 (예외 상황 방지)
+    return templates[templates.length - 1];
+  }
+
   private selectRandomNews(templates: NewsTemplate[]): NewsTemplate {
-    const template = templates[Math.floor(Math.random() * templates.length)];
-    // 변동성 요소 (±20% 랜덤 변동)
+    // 가중치 기반 뉴스 템플릿 선택
+    const selectedTemplate = this.selectWeightedNews(templates);
+    // 변동성 요소 (±20% 랜덤 변동) 적용
     const volatilityFactor = 1 + (Math.random() * 0.4 - 0.2);
     return {
-      ...template,
-      impact: template.impact * volatilityFactor
+      ...selectedTemplate,
+      impact: selectedTemplate.impact * volatilityFactor
     };
   }
 
@@ -722,14 +749,29 @@ export class MarketScheduler {
 
   private calculateSentimentMultiplier(sentiment: string): number {
     switch (sentiment) {
-      case 'positive': return 1.2;
-      case 'negative': return 1.2;
+      case 'positive': return 1.3;  // 긍정 뉴스 영향력 증가
+      case 'negative': return 1.5;  // 부정 뉴스 영향력 더 큰 폭 증가
       default: return 1.0;
     }
   }
 
+  private getEffectiveDuration(volatility: number): number {
+    const minDuration = 1;    // 최소 1분
+    const maxDuration = 20;   // 최대 20분
+    const volatilityMin = 1.0; // volatility 최소값
+    const volatilityMax = 3.0; // volatility 최대값
+
+    // volatility 값을 volatilityMin과 volatilityMax 사이로 클램핑
+    const clampedVolatility = Math.min(Math.max(volatility, volatilityMin), volatilityMax);
+    
+    // 0~1 사이의 값으로 정규화
+    const normalized = (clampedVolatility - volatilityMin) / (volatilityMax - volatilityMin);
+    
+    // 선형 매핑: normalized가 0이면 minDuration, 1이면 maxDuration
+    return Math.round(minDuration + normalized * (maxDuration - minDuration));
+  }
+
   private async calculateCompanyNewsImpact(companyId: string, recentNews: NewsRecord[]): Promise<number> {
-    // 해당 회사의 시가총액 정보 가져오기
     const companyResponse = await this.supabase
       .from('companies')
       .select('market_cap')
@@ -744,22 +786,21 @@ export class MarketScheduler {
     const marketCapMultiplier = this.calculateMarketCapNewsMultiplier(company.market_cap);
 
     const now = new Date();
-    // 해당 회사의 뉴스 필터 (뉴스 타입과 회사 ID 체크) 및 각 뉴스마다 1~20분 사이 랜덤 유효시간 할당
     const eligibleNews = recentNews
       .filter((news) => news.type === 'company' && news.company_id === companyId)
       .map((news) => {
-        const effectiveDuration = Math.floor(Math.random() * 20) + 1; // 1~20분 사이의 랜덤 유효시간
+        // volatility에 기반한 effectiveDuration 계산
+        const effectiveDuration = this.getEffectiveDuration(news.volatility);
         const timeElapsed = (now.getTime() - new Date(news.published_at).getTime()) / (60 * 1000);
         return { news, effectiveDuration, timeElapsed };
       })
       .filter(({ timeElapsed, effectiveDuration }) => timeElapsed <= effectiveDuration);
 
     const newsCount = eligibleNews.length;
-    // 뉴스 개수가 많을수록 개별 뉴스 영향력 감쇠 (원래 로직 유지)
-    const diminishingFactor = newsCount > 0 ? Math.pow(0.7, newsCount - 1) : 1;
+    // 단일 뉴스 시스템으로 변경되어 diminishingFactor 제거
+    const diminishingFactor = 1.0;
 
     let totalImpact = eligibleNews.reduce((sum, { news, effectiveDuration, timeElapsed }) => {
-      // 감쇠 계수: 뉴스 발행 후 시간에 따라 선형적으로 감소
       const decayFactor = Math.max(0, 1 - (timeElapsed / effectiveDuration));
       const directionMultiplier = Math.random() < 0.7 ? 1 : -0.5;
       const impactVariation =
@@ -772,12 +813,12 @@ export class MarketScheduler {
 
       const newsImpact = baseImpact * sentimentMultiplier * volatilityMultiplier * decayFactor * marketCapMultiplier * diminishingFactor;
 
-      // 뉴스 별 영향력 범위를 -0.02 ~ 0.02로 제한
-      return sum + Math.max(Math.min(newsImpact, 0.02), -0.02);
+      // 개별 뉴스 영향력 범위를 -0.1 ~ 0.1로 확대
+      return sum + Math.max(Math.min(newsImpact, 0.1), -0.1);
     }, 0);
 
-    // 전체 뉴스 영향력 범위를 -0.05 ~ 0.05로 제한
-    totalImpact = Math.max(Math.min(totalImpact, 0.05), -0.05);
+    // 전체 뉴스 영향력 범위를 -0.1 ~ 0.1로 확대
+    totalImpact = Math.max(Math.min(totalImpact, 0.1), -0.1);
     return totalImpact;
   }
 
