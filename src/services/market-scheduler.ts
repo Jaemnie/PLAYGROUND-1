@@ -832,14 +832,13 @@ export class MarketScheduler {
   private async createNews(news: NewsTemplate & { company_id?: string }) {
     try {
       const supabase = await this.ensureConnection();
-      const seoulTime = new Date(
-        new Date().toLocaleString('en-US', { timeZone: 'Asia/Seoul' })
-      ).toISOString();
+      // UTC 시간을 그대로 사용
+      const currentTime = new Date().toISOString();
 
       const { error } = await this.retryOperation(async () => {
         const result = await supabase.from('news').insert({
           ...news,
-          published_at: seoulTime
+          published_at: currentTime
         });
         return result;
       });
