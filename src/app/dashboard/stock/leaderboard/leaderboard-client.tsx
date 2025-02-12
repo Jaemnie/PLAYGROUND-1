@@ -5,7 +5,7 @@ import RankingTable from './components/ranking-table'
 import PerformanceComparison from './components/performance-comparison'
 import AchievementBadges from './components/achievement-badges'
 import { Card } from '@/components/ui/card'
-import { BackButton } from '@/components/back-button'
+import { DashboardBackButton } from '@/components/back-button'
 
 interface LeaderboardClientProps {
   allUsers: any[]
@@ -33,7 +33,7 @@ export function LeaderboardClient({ allUsers, performanceRanking, volumeRanking 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900">
       <div className="fixed top-4 left-4 z-50">
-        <BackButton />
+        <DashboardBackButton />
       </div>
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold text-gray-100 mb-8">랭킹 및 업적</h1>

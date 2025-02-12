@@ -7,7 +7,7 @@ import { CompanyInfo } from './components/company-info'
 import { PriceChart } from './components/price-chart'
 import { TradingForm } from './components/trading-form'
 import { Card } from '@/components/ui/card'
-import { BackButton } from '@/components/back-button'
+import { DashboardBackButton } from '@/components/back-button'
 import { TradeAlert } from '@/components/ui/trade-alert'
 import { useRealtimeStockData } from '@/hooks/useRealtimeStockData'
 import { createClientBrowser } from '@/lib/supabase/client'
@@ -116,7 +116,7 @@ export function StockDetailClient({
       />
       
       <div className="fixed top-4 left-4 z-50">
-        <BackButton />
+        <DashboardBackButton />
       </div>
       
       <div className="container mx-auto px-4 py-8">

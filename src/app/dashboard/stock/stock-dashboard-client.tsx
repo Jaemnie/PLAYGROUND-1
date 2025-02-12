@@ -6,7 +6,7 @@ import { PortfolioSummary } from './components/portfolio-summary'
 import { StockList } from './components/stock-list'
 import { NewsTicker } from './components/news-ticker'
 import { Card } from '@/components/ui/card'
-import { BackButton } from '@/components/back-button'
+import { DashboardDashboardBackButton } from '@/components/back-button'
 import { MarketTimer } from './components/market-timer'
 import { useRealtimeStockData } from '@/hooks/useRealtimeStockData'
 import { PortfolioDiversification } from './components/portfolio-diversification'
@@ -86,7 +86,7 @@ export function StockDashboardClient({
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 overflow-x-hidden">
       <div className="fixed top-4 left-4 z-50">
-        <BackButton />
+        <DashboardDashboardBackButton />
       </div>
       
       <div className="container mx-auto px-4 py-8">
