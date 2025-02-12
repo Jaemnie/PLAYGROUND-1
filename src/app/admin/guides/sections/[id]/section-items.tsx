@@ -8,7 +8,7 @@ import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline'
 import { GuideSection, GuideItem } from '@/lib/types/guide'
 import { toast } from 'sonner'
 import { motion } from 'framer-motion'
-import { DashboardBackButton } from '@/components/back-button'
+import { DashboardBackButton } from '@/components/DashboardBackButton'
 
 interface SectionItemsProps {
   section: GuideSection

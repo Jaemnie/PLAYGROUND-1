@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { PlusIcon } from '@heroicons/react/24/outline'
 import { motion } from 'framer-motion'
-import { DashboardBackButton } from '@/components/back-button'
+import { DashboardBackButton } from '@/components/DashboardBackButton'
 
 export function AdminGuideHeader() {
   const router = useRouter()

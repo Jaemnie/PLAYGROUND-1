@@ -1,7 +1,7 @@
 'use client'
 
 import { Card } from '@/components/ui/card'
-import { DashboardBackButton } from '@/components/back-button'
+import { DashboardBackButton } from '@/components/DashboardBackButton'
 import { useState } from 'react'
 import { QuickTradeModal } from '@/components/ui/quick-trade-modal'
 import HoldingsTable from './components/holdings-table'

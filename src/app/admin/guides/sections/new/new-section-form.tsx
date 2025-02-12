@@ -9,7 +9,7 @@ import { Card, CardContent, CardFooter } from '@/components/ui/card'
 import { toast } from 'sonner'
 import { User } from '@supabase/supabase-js'
 import { motion } from 'framer-motion'
-import { DashboardBackButton } from '@/components/back-button'
+import { DashboardBackButton } from '@/components/DashboardBackButton'
 
 interface NewSectionFormProps {
   user: User

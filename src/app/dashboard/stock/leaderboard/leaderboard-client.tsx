@@ -5,7 +5,7 @@ import RankingTable from './components/ranking-table'
 import PerformanceComparison from './components/performance-comparison'
 import AchievementBadges from './components/achievement-badges'
 import { Card } from '@/components/ui/card'
-import { DashboardBackButton } from '@/components/back-button'
+import { DashboardBackButton } from '@/components/DashboardBackButton'
 
 interface LeaderboardClientProps {
   allUsers: any[]

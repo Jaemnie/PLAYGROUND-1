@@ -3,7 +3,7 @@
 import { Suspense } from 'react'
 import { Loader2 } from 'lucide-react'
 import { Card } from '@/components/ui/card'
-import { DashboardBackButton } from '@/components/back-button'
+import { DashboardBackButton } from '@/components/DashboardBackButton'
 import { GuideContent } from './guide-content'
 
 interface GuideItem {
