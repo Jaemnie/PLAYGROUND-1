@@ -26,6 +26,7 @@ interface NewsRecord {
   sentiment: 'positive' | 'negative' | 'neutral';
   impact: number;
   volatility: number;
+  applied?: boolean;
 }
 
 type Industry = '전자' | 'IT' | '제조' | '건설' | '식품';
@@ -58,7 +59,7 @@ const SIMULATION_PARAMS = {
   NEWS: {
     COMPANY_NEWS_CHANCE: 1.0,           // 100% 확률로 변경
     IMPACT_VARIATION_MIN: 1.0,          // 최소 영향력 유지
-    IMPACT_VARIATION_MAX: 2.0,          // 최대 영향력 2배로 증가
+    IMPACT_VARIATION_MAX: 1.5,          // 최대 영향력 1.5배로 증가
     DECAY_TIME_MINUTES: 45,
   },
   PRICE: {
@@ -71,7 +72,7 @@ const SIMULATION_PARAMS = {
     DAILY_LIMIT: 0.30,                  // 일일 가격 제한폭 (30%)
     WEIGHTS: {
       RANDOM: 0.3,
-      NEWS: 1.0,                        // 뉴스 영향력 가중치 증가
+      NEWS: 0.5,                        // 뉴스 영향력 가중치 감소
       INDUSTRY: 0.3,
       MOMENTUM: 0.4,
       INDUSTRY_LEADER: 0.3
@@ -784,42 +785,47 @@ export class MarketScheduler {
     }
 
     const marketCapMultiplier = this.calculateMarketCapNewsMultiplier(company.market_cap);
-
     const now = new Date();
-    const eligibleNews = recentNews
-      .filter((news) => news.type === 'company' && news.company_id === companyId)
-      .map((news) => {
-        // volatility에 기반한 effectiveDuration 계산
-        const effectiveDuration = this.getEffectiveDuration(news.volatility);
-        const timeElapsed = (now.getTime() - new Date(news.published_at).getTime()) / (60 * 1000);
-        return { news, effectiveDuration, timeElapsed };
-      })
-      .filter(({ timeElapsed, effectiveDuration }) => timeElapsed <= effectiveDuration);
 
-    const newsCount = eligibleNews.length;
-    // 단일 뉴스 시스템으로 변경되어 diminishingFactor 제거
-    const diminishingFactor = 1.0;
+    // 아직 적용되지 않은 뉴스만 필터링
+    const unappliedNews = recentNews
+      .filter(news => 
+        news.type === 'company' && 
+        news.company_id === companyId && 
+        !news.applied
+      );
 
-    let totalImpact = eligibleNews.reduce((sum, { news, effectiveDuration, timeElapsed }) => {
-      const decayFactor = Math.max(0, 1 - (timeElapsed / effectiveDuration));
-      const directionMultiplier = Math.random() < 0.7 ? 1 : -0.5;
-      const impactVariation =
-        SIMULATION_PARAMS.NEWS.IMPACT_VARIATION_MIN +
-        Math.random() *
-          (SIMULATION_PARAMS.NEWS.IMPACT_VARIATION_MAX - SIMULATION_PARAMS.NEWS.IMPACT_VARIATION_MIN);
-      const baseImpact = news.impact * impactVariation * directionMultiplier;
-      const sentimentMultiplier = this.calculateSentimentMultiplier(news.sentiment);
-      const volatilityMultiplier = news.volatility >= 1.8 ? 1.2 : 1.0;
+    let totalImpact = 0;
 
-      const newsImpact = baseImpact * sentimentMultiplier * volatilityMultiplier * decayFactor * marketCapMultiplier * diminishingFactor;
+    // 미적용 뉴스들에 대해 한 번만 효과 계산 및 적용
+    for (const news of unappliedNews) {
+      const timeElapsed = (now.getTime() - new Date(news.published_at).getTime()) / (60 * 1000);
+      const effectiveDuration = this.getEffectiveDuration(news.volatility);
+      
+      if (timeElapsed <= effectiveDuration) {
+        const directionMultiplier = Math.random() < 0.7 ? 1 : -0.5;
+        const impactVariation =
+          SIMULATION_PARAMS.NEWS.IMPACT_VARIATION_MIN +
+          Math.random() *
+            (SIMULATION_PARAMS.NEWS.IMPACT_VARIATION_MAX - SIMULATION_PARAMS.NEWS.IMPACT_VARIATION_MIN);
+        
+        const baseImpact = news.impact * impactVariation * directionMultiplier;
+        const sentimentMultiplier = this.calculateSentimentMultiplier(news.sentiment);
+        const volatilityMultiplier = news.volatility >= 1.8 ? 1.2 : 1.0;
 
-      // 개별 뉴스 영향력 범위를 -0.1 ~ 0.1로 확대
-      return sum + Math.max(Math.min(newsImpact, 0.1), -0.1);
-    }, 0);
+        const newsImpact = baseImpact * sentimentMultiplier * volatilityMultiplier * marketCapMultiplier;
+        totalImpact += Math.max(Math.min(newsImpact, 0.05), -0.05);
 
-    // 전체 뉴스 영향력 범위를 -0.1 ~ 0.1로 확대
-    totalImpact = Math.max(Math.min(totalImpact, 0.1), -0.1);
-    return totalImpact;
+        // 뉴스를 적용됨으로 표시
+        await this.supabase
+          .from('news')
+          .update({ applied: true })
+          .eq('id', news.id);
+      }
+    }
+
+    // 전체 뉴스 영향력 범위를 -0.05 ~ 0.05로 제한
+    return Math.max(Math.min(totalImpact, 0.05), -0.05);
   }
 
   private calculateMarketCapNewsMultiplier(marketCap: number): number {
@@ -830,12 +836,33 @@ export class MarketScheduler {
     return 1.0;
   }
 
+  private calculateTimeVolatility(hour: number): number {
+    // 시간대별 변동성 가중치 개선
+    if (hour >= 9 && hour < 10) return 1.8;  // 개장 초반 매우 높은 변동성
+    if (hour >= 10 && hour < 11) return 1.4;  // 개장 1시간 이후 여전히 높은 변동성
+    if (hour >= 11 && hour <= 13) return 0.7; // 점심시간대 낮은 변동성
+    if (hour >= 14 && hour < 15) return 1.2;  // 오후 시작 보통 변동성
+    if (hour >= 15) return 1.6;               // 장 마감 전 높은 변동성
+    return 1.0;
+  }
+
+  private randomGaussian(mean: number, stdDev: number): number {
+    let u = 0, v = 0;
+    while (u === 0) u = Math.random();
+    while (v === 0) v = Math.random();
+    const num = Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+    return num * stdDev + mean;
+  }
+
   private async calculateNewPrice(company: Company): Promise<number> {
     if (company.is_delisted) return 0;
     
     const basePrice = company.current_price;
     
-    const randomChange = (Math.random() - 0.5) * SIMULATION_PARAMS.PRICE.BASE_RANDOM_CHANGE;
+    // 기본 랜덤 변동에 가우시안 노이즈 추가
+    const baseRandomChange = (Math.random() - 0.5) * SIMULATION_PARAMS.PRICE.BASE_RANDOM_CHANGE;
+    const gaussianNoise = this.randomGaussian(0, 0.002);
+    const randomChange = baseRandomChange + gaussianNoise;
     
     const industryVolatility = this.calculateIndustryVolatility(company.industry);
     const timeVolatility = this.calculateTimeVolatility(new Date().getHours());
@@ -850,6 +877,7 @@ export class MarketScheduler {
     };
     const momentumFactor = this.calculateMomentumFactor(previousMovement);
     
+    // 변동성 요소들을 결합하여 최종 가격 변화율 계산
     const baseChange = (
       randomChange * SIMULATION_PARAMS.PRICE.WEIGHTS.RANDOM +
       industryLeaderImpact * SIMULATION_PARAMS.PRICE.WEIGHTS.INDUSTRY_LEADER
@@ -880,14 +908,6 @@ export class MarketScheduler {
 
   private calculateIndustryVolatility(industry: Industry): number {
     return SIMULATION_PARAMS.INDUSTRY.VOLATILITY[industry] || 1.0;
-  }
-
-  // 시간대별 변동성 계산 (타임존 관련 처리는 기존대로 유지)
-  private calculateTimeVolatility(hour: number): number {
-    if (hour === 9) return 1.8;
-    if (hour >= 11 && hour <= 13) return 0.7;
-    if (hour >= 14) return 1.4;
-    return 1.0;
   }
 
   public async setOpeningPrices(): Promise<void> {
