@@ -17,10 +17,14 @@ export default function AuthCallbackPage() {
           throw error
         }
 
-        router.replace('/login?message=인증이 완료되었습니다.')
+        // 인증 성공 시 쿠키를 이용해 메시지를 저장
+        document.cookie = `flash=${encodeURIComponent('인증이 완료되었습니다.')}; path=/;`
+        router.replace('/login')
       } catch (error) {
         console.error('인증 오류:', error)
-        router.replace('/login?error=인증에 실패했습니다. 다시 시도해주세요.')
+        // 인증 실패 시 쿠키에 에러 메시지 저장
+        document.cookie = `flash=${encodeURIComponent('인증에 실패했습니다. 다시 시도해주세요.')}; path=/;`
+        router.replace('/login')
       }
     }
 

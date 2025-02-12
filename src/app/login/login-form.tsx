@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
@@ -14,6 +14,24 @@ export function LoginForm() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [isShaking, setIsShaking] = useState(false)
+
+  // 로그인 폼 마운트 시 쿠키에서 flash 메시지 읽기
+  useEffect(() => {
+    const getFlashMessage = () => {
+      const cookies = document.cookie.split('; ').reduce((acc: Record<string, string>, cookie) => {
+        const [key, value] = cookie.split('=')
+        acc[key] = value
+        return acc
+      }, {})
+
+      if (cookies.flash) {
+        setError(decodeURIComponent(cookies.flash))
+        // 읽은 후 flash 쿠키 삭제
+        document.cookie = 'flash=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;'
+      }
+    }
+    getFlashMessage()
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
