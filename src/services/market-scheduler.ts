@@ -3,7 +3,6 @@ import { PortfolioTracker } from '@/services/portfolio-tracker'
 import type { PostgrestResponse, PostgrestSingleResponse } from '@supabase/supabase-js'
 import { getDbTimeXMinutesAgo } from '@/lib/timeUtils'
 import { SupabaseClient } from '@supabase/supabase-js'
-import { Client } from '@upstash/qstash'
 import { NextResponse } from 'next/server'
 
 interface NewsTemplate {
@@ -27,14 +26,6 @@ interface NewsRecord {
   sentiment: 'positive' | 'negative' | 'neutral';
   impact: number;
   volatility: number;
-}
-
-interface SchedulerStatus {
-  status: 'running' | 'stopped' | 'error';
-  lastRun: Date | null;
-  nextRun: Date | null;
-  errorMessage?: string;
-  jobType: 'market_update' | 'news_generation' | 'price_update' | 'market_open' | 'market_close';
 }
 
 type Industry = '전자' | 'IT' | '제조' | '건설' | '식품';
@@ -110,13 +101,9 @@ const SIMULATION_PARAMS = {
 
 export class MarketScheduler {
   private static instance: MarketScheduler | null = null;
-  private isInitialized: boolean = false;
-  private _isRunning: boolean = false;
   private supabase!: SupabaseClient;
   private readonly MARKET_OPEN_HOUR = 9;    // 장 시작 시간
   private readonly MARKET_CLOSE_HOUR = 24;   // 장 마감 시간 (자정)
-  private lastMarketUpdate: Date | null = null;
-  private lastNewsUpdate: Date | null = null;
   private newsTemplateCache: Map<string, NewsTemplate[]> = new Map();
   private priceCache: Map<string, number> = new Map();
   private priceMovementCache: Map<string, {
@@ -124,10 +111,6 @@ export class MarketScheduler {
     consecutiveCount: number,
     lastChange: number
   }> = new Map();
-  private qstash: Client = new Client({
-    token: process.env.QSTASH_TOKEN!,
-    baseUrl: process.env.QSTASH_URL
-  });
   private companyNewsTemplates: NewsTemplate[] = [
     {
       title: '대규모 회계부정 의혹 제기',
@@ -462,10 +445,7 @@ export class MarketScheduler {
   static async getInstance(): Promise<MarketScheduler> {
     if (!MarketScheduler.instance) {
       MarketScheduler.instance = new MarketScheduler();
-    }
-    if (!MarketScheduler.instance.isInitialized) {
       await MarketScheduler.instance.initialize();
-      MarketScheduler.instance.isInitialized = true;
     }
     return MarketScheduler.instance;
   }
@@ -475,12 +455,6 @@ export class MarketScheduler {
     // 서버의 UTC 시간에 9시간을 더해 한국 시간으로 보정
     const koreaHour = (now.getUTCHours() + 9) % 24;
     return koreaHour >= this.MARKET_OPEN_HOUR && koreaHour < this.MARKET_CLOSE_HOUR;
-  }
-
-  public async cleanup() {
-    this._isRunning = false;
-    MarketScheduler.instance = null;
-    console.log('마켓 스케줄러 정리 완료');
   }
 
   private async initialize() {
@@ -513,23 +487,10 @@ export class MarketScheduler {
       return;
     }
 
-    if (!this.isScheduledTime('market')) {
-      console.log('마켓 업데이트 예약 시간이 아닙니다.');
-      return;
-    }
-
     try {
-      await this.updateStatus({
-        status: 'running',
-        lastRun: new Date(),
-        nextRun: this.calculateNextRun('market_update'),
-        jobType: 'market_update'
-      });
-      
       const holdingsPromise = this.supabase
         .from('holdings')
-        .select('company_id, shares')
-        .gte('updated_at', getDbTimeXMinutesAgo(5));
+        .select('*');
         
       const recentNewsPromise = this.supabase
         .from('news')
@@ -620,20 +581,8 @@ export class MarketScheduler {
           users.map((user: Profile) => portfolioTracker.recordPerformance(user.id))
         );
       }
-      await this.updateStatus({
-        status: 'running',
-        lastRun: new Date(),
-        nextRun: this.calculateNextRun('market_update'),
-        jobType: 'market_update'
-      });
     } catch (error) {
-      await this.updateStatus({
-        status: 'error',
-        lastRun: new Date(),
-        nextRun: null,
-        errorMessage: error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.',
-        jobType: 'market_update'
-      });
+      console.error('마켓 업데이트 중 오류:', error);
       throw error;
     }
   }
@@ -974,82 +923,6 @@ export class MarketScheduler {
     }
   }
 
-  private async updateStatus(status: SchedulerStatus) {
-    try {
-      const supabase = await this.ensureConnection();
-      const { error } = await supabase
-        .from('scheduler_status')
-        .upsert({
-          status: status.status,
-          last_run: status.lastRun?.toISOString(),
-          next_run: status.nextRun?.toISOString(),
-          error_message: status.errorMessage,
-          job_type: status.jobType,
-          updated_at: new Date().toISOString()
-        });
-      if (error) throw error;
-    } catch (error) {
-      console.error('스케줄러 상태 업데이트 중 오류:', error);
-    }
-  }
-
-  private calculateNextRun(jobType: string): Date {
-    const now = new Date();
-    const next = new Date();
-
-    switch (jobType) {
-      case 'market_update':
-        next.setMinutes(next.getMinutes() + 1);
-        next.setSeconds(0);
-        next.setMilliseconds(0);
-        break;
-      case 'news_generation':
-        next.setMinutes(Math.ceil(next.getMinutes() / 30) * 30);
-        next.setSeconds(0);
-        next.setMilliseconds(0);
-        if (next.getMinutes() === 0) {
-          next.setHours(next.getHours() + 1);
-        }
-        break;
-      case 'market_open':
-        next.setHours(9);
-        next.setMinutes(0);
-        next.setSeconds(0);
-        next.setMilliseconds(0);
-        if (now.getHours() >= 9) {
-          next.setDate(next.getDate() + 1);
-        }
-        break;
-      case 'market_close':
-        next.setHours(24);
-        next.setMinutes(0);
-        next.setSeconds(0);
-        next.setMilliseconds(0);
-        if (now.getHours() >= 24) {
-          next.setDate(next.getDate() + 1);
-        }
-        break;
-    }
-
-    return next;
-  }
-
-  public getNextRunTime(jobType: 'market_update' | 'news_generation') {
-    return this.calculateNextRun(jobType);
-  }
-
-  get isRunning(): boolean {
-    return this._isRunning;
-  }
-
-  get lastMarketUpdateTime(): Date | null {
-    return this.lastMarketUpdate;
-  }
-
-  get lastNewsUpdateTime(): Date | null {
-    return this.lastNewsUpdate;
-  }
-
   private async ensureConnection() {
     if (!this.supabase) {
       await this.initialize();
@@ -1165,39 +1038,12 @@ export class MarketScheduler {
       return;
     }
 
-    if (!this.isScheduledTime('news')) {
-      console.log('뉴스 업데이트 예약 시간이 아닙니다.');
-      return;
-    }
-
     try {
       console.log("뉴스 업데이트 실행 중");
-      
-      // 기업 뉴스 생성
       await this.generateCompanyNews();
-      
-      // 마지막 뉴스 업데이트 시간 기록
-      this.lastNewsUpdate = new Date();
-      
-      // 다음 실행 시간 계산 및 상태 업데이트
-      const nextRun = this.calculateNextRun('news_generation');
-      await this.updateStatus({
-        status: 'running',
-        lastRun: new Date(),
-        nextRun,
-        jobType: 'news_generation'
-      });
-
       console.log('뉴스 업데이트 완료');
     } catch (error) {
       console.error('뉴스 업데이트 중 오류 발생:', error);
-      await this.updateStatus({
-        status: 'error',
-        lastRun: new Date(),
-        nextRun: null,
-        errorMessage: error instanceof Error ? error.message : '알 수 없는 오류입니다.',
-        jobType: 'news_generation'
-      });
       throw error;
     }
   }
