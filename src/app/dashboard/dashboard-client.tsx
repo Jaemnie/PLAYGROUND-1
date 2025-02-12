@@ -9,7 +9,8 @@ import {
   ShoppingBag,
   LogOut,
   Settings,
-  ArrowLeft
+  ArrowLeft,
+  UserCircle
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useRouter } from 'next/navigation'
@@ -39,25 +40,11 @@ export function DashboardClient({ user, profile, isAdmin }: DashboardClientProps
       href: '/dashboard/stock'
     },
     {
-      title: '미니게임',
-      value: '입장하기',
-      icon: <Trophy className="h-6 w-6" />,
-      description: '간단한 도박 게임을 즐겨보세요',
-      href: '/dashboard/minigame'
-    },
-    {
-      title: '친구 목록',
-      value: `${profile.friends || 0}명`,
-      icon: <Users2 className="h-6 w-6" />,
-      description: '친구들과 소통해보세요',
-      href: '/dashboard/friends'
-    },
-    {
-      title: '상점',
-      value: `${profile.points?.toLocaleString() || 0} P`,
-      icon: <ShoppingBag className="h-6 w-6" />,
-      description: '포인트로 아이템을 구매하세요',
-      href: '/dashboard/shop'
+      title: '내 프로필',
+      value: profile.nickname || '프로필',
+      icon: <UserCircle className="h-6 w-6" />,
+      description: '프로필 정보를 관리하세요',
+      href: '/dashboard/profile'
     },
     ...(isAdmin ? [
       {
