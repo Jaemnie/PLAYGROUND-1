@@ -119,7 +119,7 @@ export function MainPageClient({ initialSections, initialIsAdmin }: MainPageClie
             animate={{ opacity: 1, y: 0 }}
             className="text-4xl sm:text-6xl lg:text-7xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-violet-400"
           >
-            플랫폼 이름
+            PLAYGROUND
           </motion.h1>
           <motion.p 
             initial={{ opacity: 0, y: 20 }}
@@ -127,7 +127,7 @@ export function MainPageClient({ initialSections, initialIsAdmin }: MainPageClie
             transition={{ delay: 0.2 }}
             className="text-lg sm:text-xl text-gray-400 max-w-2xl"
           >
-            플랫폼에 대한 간단한 설명이 들어갑니다.
+            우리들의 놀이터, 나만의 놀이터.
           </motion.p>
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
@@ -140,7 +140,7 @@ export function MainPageClient({ initialSections, initialIsAdmin }: MainPageClie
               className="bg-gradient-to-r from-blue-500 to-violet-500 hover:from-blue-600 hover:to-violet-600 text-white"
               onClick={() => router.push('/dashboard')}
             >
-              시작하기
+              대시보드
             </Button>
             <Button 
               size="lg" 
@@ -162,7 +162,7 @@ export function MainPageClient({ initialSections, initialIsAdmin }: MainPageClie
               가이드
             </h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
-              필요한 모든 정보를 찾아보세요
+              PLAYGROUND 의 컨텐츠를 확인해보세요.
             </p>
           </div>
 
