@@ -1,26 +1,30 @@
 'use client'
 
-import { Button, type ButtonProps } from '@/components/ui/button'
+import { Button } from '@/components/ui/button'
 import { ArrowLeftIcon } from '@heroicons/react/24/outline'
 import { useRouter, usePathname } from 'next/navigation'
 import { motion } from 'framer-motion'
 
-export function BackButton() {
+interface BackButtonProps {
+  // 부모 컴포넌트에서 직접 원하는 이동 URL을 전달할 수 있습니다.
+  backUrl?: string
+}
+
+export function BackButton({ backUrl }: BackButtonProps) {
   const router = useRouter()
-  const pathname = usePathname()
+  const currentPath = usePathname()
 
-  // 현재 경로에서 마지막 세그먼트를 제거해 부모 경로를 구함.
-  const getParentPath = (path: string) => {
-    if (!path || path === '/') return '/'
-    const segments = path.split('/').filter(Boolean)
-    if (segments.length === 0) return '/'
-    segments.pop() // 마지막 세그먼트를 제거합니다.
-    return '/' + segments.join('/')
-  }
-
-  const handleBack = () => {
-    const parentPath = getParentPath(pathname)
-    router.push(parentPath)
+  function handleBack() {
+    if (backUrl) {
+      router.push(backUrl)
+    } else if (!currentPath || currentPath === '/') {
+      router.push('/')
+    } else {
+      // 현재 경로의 마지막 세그먼트를 제거하여 부모 경로로 이동
+      const segments = currentPath.split('/').filter(Boolean)
+      segments.pop() // 마지막 세그먼트를 제거합니다.
+      router.push('/' + segments.join('/'))
+    }
   }
 
   return (

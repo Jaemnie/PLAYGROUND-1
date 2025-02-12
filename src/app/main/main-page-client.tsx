@@ -88,8 +88,10 @@ export function MainPageClient({ initialSections, initialIsAdmin }: MainPageClie
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <div className="fixed top-4 right-4 z-50 flex items-center gap-4">
+      <div className="fixed top-4 left-4 z-50">
         <LogoutButton />
+      </div>
+      <div className="fixed top-4 right-4 z-50 flex items-center gap-4">
         {initialIsAdmin && (
           <motion.div
             initial={{ opacity: 0, scale: 0.5 }}

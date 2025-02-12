@@ -113,7 +113,17 @@ export function LoginForm() {
                 placeholder="••••••••"
               />
             </div>
-            {error && <p className="text-red-400 text-sm">{error}</p>}
+            {error && (
+              <p
+                className={`text-sm ${
+                  error === '인증이 완료되었습니다'
+                    ? 'text-green-400'
+                    : 'text-red-400'
+                }`}
+              >
+                {error}
+              </p>
+            )}
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">
             <Button
