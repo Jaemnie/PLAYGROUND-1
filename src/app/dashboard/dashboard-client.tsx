@@ -8,7 +8,8 @@ import {
   Users2,
   ShoppingBag,
   LogOut,
-  Settings
+  Settings,
+  ArrowLeft
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useRouter } from 'next/navigation'
@@ -71,6 +72,22 @@ export function DashboardClient({ user, profile, isAdmin }: DashboardClientProps
   return (
     <div className="min-h-screen bg-background">
       <div className="fixed top-4 left-4 z-50">
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <Button
+            type="button"
+            onClick={() => router.push('/main')}
+            variant="ghost"
+            size="sm"
+            className="bg-black/40 backdrop-blur-sm border border-gray-800/50 hover:bg-gray-800/70 text-gray-300 hover:text-gray-200"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            메인으로
+          </Button>
+        </motion.div>
       </div>
       <div className="fixed top-4 right-4 z-50">
         <form action={logout}>

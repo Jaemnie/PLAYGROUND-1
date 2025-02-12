@@ -24,7 +24,7 @@ export default function DashboardBackButton() {
         onClick={handleReturnToDashboard}
       >
         <ArrowLeftIcon className="h-[1.2rem] w-[1.2rem] text-zinc-200" />
-        <span className="text-zinc-200">대시보드로 돌아가기</span>
+        <span className="text-zinc-200">대시보드</span>
       </Button>
     </motion.div>
   )
