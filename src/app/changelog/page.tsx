@@ -39,45 +39,43 @@ export default function ChangelogPage() {
 
             <div className="space-y-12">
               <div>
-                <h2 className="text-2xl font-bold text-gray-100">2024년 3월</h2>
+                <h2 className="text-2xl font-bold text-gray-100">2025년 2월</h2>
                 <div className="mt-4 space-y-4">
+                  <div className="border-l-2 border-blue-500 pl-4">
+                    <h3 className="text-lg font-semibold text-gray-200">v1.3.0</h3>
+                    <p className="text-sm text-gray-400">2025년 2월 11일</p>
+                    <ul className="mt-2 space-y-2 text-gray-300">
+                      <li>실시간 주식 시장 타이머 및 스케줄러 구현</li>
+                      <li>Redis를 활용한 실시간 데이터 처리 최적화</li>
+                      <li>장 운영 시간에 따른 매수/매도 제한 기능 추가</li>
+                      <li>로그인/회원가입 시스템 개선</li>
+                      <li>알림 시스템 구현</li>
+                      <li>전반적인 UI/UX 개선</li>
+                    </ul>
+                  </div>
+
                   <div className="border-l-2 border-blue-500 pl-4">
                     <h3 className="text-lg font-semibold text-gray-200">v1.2.0</h3>
-                    <p className="text-sm text-gray-400">2024년 3월 15일</p>
+                    <p className="text-sm text-gray-400">2025년 2월 5일</p>
                     <ul className="mt-2 space-y-2 text-gray-300">
-                      <li>실시간 주식 정보 업데이트 기능 추가</li>
-                      <li>포트폴리오 다각화 분석 기능 개선</li>
-                      <li>UI/UX 개선 및 성능 최적화</li>
+                      <li>실시간 주식 차트 데이터 구현</li>
+                      <li>대시보드 UI 개선</li>
+                      <li>스케줄러 시스템 도입</li>
+                      <li>알림 시스템 기초 구현</li>
                     </ul>
                   </div>
                 </div>
               </div>
 
               <div>
-                <h2 className="text-2xl font-bold text-gray-100">2024년 2월</h2>
-                <div className="mt-4 space-y-4">
-                  <div className="border-l-2 border-blue-500 pl-4">
-                    <h3 className="text-lg font-semibold text-gray-200">v1.1.0</h3>
-                    <p className="text-sm text-gray-400">2024년 2월 28일</p>
-                    <ul className="mt-2 space-y-2 text-gray-300">
-                      <li>가이드 섹션 기능 추가</li>
-                      <li>관리자 대시보드 개선</li>
-                      <li>버그 수정 및 안정성 개선</li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <h2 className="text-2xl font-bold text-gray-100">2024년 1월</h2>
+                <h2 className="text-2xl font-bold text-gray-100">2025년 1월</h2>
                 <div className="mt-4 space-y-4">
                   <div className="border-l-2 border-blue-500 pl-4">
                     <h3 className="text-lg font-semibold text-gray-200">v1.0.0</h3>
-                    <p className="text-sm text-gray-400">2024년 1월 15일</p>
+                    <p className="text-sm text-gray-400">2025년 1월 23일</p>
                     <ul className="mt-2 space-y-2 text-gray-300">
-                      <li>PLAYGROUND 서비스 정식 출시</li>
-                      <li>기본 대시보드 기능 구현</li>
-                      <li>사용자 인증 시스템 구축</li>
+                      <li>PLAYGROUND 서비스 초기 버전 출시</li>
+                      <li>Next.js 프로젝트 기반 구축</li>
                     </ul>
                   </div>
                 </div>

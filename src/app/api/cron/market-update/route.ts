@@ -7,6 +7,8 @@ const receiver = new Receiver({
   nextSigningKey: process.env.QSTASH_NEXT_SIGNING_KEY!
 })
 
+let schedulerInstance: MarketScheduler | null = null
+
 export async function POST(req: Request) {
   const signature = req.headers.get('upstash-signature')
   
@@ -28,9 +30,12 @@ export async function POST(req: Request) {
       return new Response('Invalid signature', { status: 401 })
     }
 
-    const scheduler = await MarketScheduler.getInstance()
+    // 기존 인스턴스가 있으면 재사용, 없으면 새로 생성
+    if (!schedulerInstance) {
+      schedulerInstance = await MarketScheduler.getInstance()
+    }
     
-    if (!scheduler.isMarketOpen()) {
+    if (!schedulerInstance.isMarketOpen()) {
       console.log('장 운영 시간이 아닙니다. 요청을 거부합니다.')
       return NextResponse.json({ 
         success: false, 
@@ -38,7 +43,7 @@ export async function POST(req: Request) {
       }, { status: 400 })
     }
 
-    await scheduler.updateMarket()
+    await schedulerInstance.updateMarket()
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Market update failed:', error)
