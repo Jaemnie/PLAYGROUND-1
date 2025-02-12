@@ -21,19 +21,11 @@ export default async function ProfilePage() {
       .eq('id', user.id)
       .single()
 
-    // 거래 통계 조회
-    const { data: tradingStats } = await supabase
-      .from('profiles')
-      .select('trading_volume, gain_percentage')
-      .eq('id', user.id)
-      .single()
-
     return (
       <Suspense fallback={<LoadingSpinner />}>
         <ProfileClient 
           user={user}
           profile={profile}
-          tradingStats={tradingStats}
         />
       </Suspense>
     )

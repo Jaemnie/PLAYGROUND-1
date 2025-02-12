@@ -11,8 +11,6 @@ import { createClientBrowser } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import {
   UserCircle,
-  Trophy,
-  ChartBar,
   Settings
 } from 'lucide-react'
 
@@ -23,13 +21,9 @@ interface ProfileClientProps {
     points: number
     created_at: string
   }
-  tradingStats: {
-    trading_volume: number
-    gain_percentage: number
-  }
 }
 
-export function ProfileClient({ user, profile, tradingStats }: ProfileClientProps) {
+export function ProfileClient({ user, profile }: ProfileClientProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [nickname, setNickname] = useState(profile.nickname)
   const [isLoading, setIsLoading] = useState(false)
@@ -70,7 +64,7 @@ export function ProfileClient({ user, profile, tradingStats }: ProfileClientProp
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold text-gray-100 mb-8">내 프로필</h1>
         
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-6">
           {/* 기본 프로필 정보 */}
           <Card className="bg-black/40 backdrop-blur-sm border-gray-800">
             <CardHeader>
@@ -129,42 +123,16 @@ export function ProfileClient({ user, profile, tradingStats }: ProfileClientProp
                 </div>
 
                 <div>
+                  <p className="text-sm text-gray-400 mb-2">보유 포인트</p>
+                  <p className="text-gray-200">
+                    {profile.points?.toLocaleString() || 0} P
+                  </p>
+                </div>
+
+                <div>
                   <p className="text-sm text-gray-400 mb-2">가입일</p>
                   <p className="text-gray-200">
                     {new Date(profile.created_at).toLocaleDateString()}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* 거래 통계 */}
-          <Card className="bg-black/40 backdrop-blur-sm border-gray-800">
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <ChartBar className="w-6 h-6 text-violet-400" />
-                <h2 className="text-xl font-bold text-gray-100">거래 통계</h2>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 rounded-lg bg-violet-500/10 border border-violet-500/20">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Trophy className="w-4 h-4 text-violet-400" />
-                    <p className="text-sm text-gray-400">총 거래량</p>
-                  </div>
-                  <p className="text-xl font-bold text-gray-100">
-                    {tradingStats.trading_volume?.toLocaleString() || 0}
-                  </p>
-                </div>
-
-                <div className="p-4 rounded-lg bg-violet-500/10 border border-violet-500/20">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Settings className="w-4 h-4 text-violet-400" />
-                    <p className="text-sm text-gray-400">수익률</p>
-                  </div>
-                  <p className="text-xl font-bold text-gray-100">
-                    {tradingStats.gain_percentage?.toFixed(2) || 0}%
                   </p>
                 </div>
               </div>
