@@ -11,7 +11,6 @@ import {
   Settings
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { BackButton } from '@/components/back-button'
 import { useRouter } from 'next/navigation'
 import { logout } from '@/lib/actions/auth'
 import { User } from '@supabase/supabase-js'
@@ -72,7 +71,6 @@ export function DashboardClient({ user, profile, isAdmin }: DashboardClientProps
   return (
     <div className="min-h-screen bg-background">
       <div className="fixed top-4 left-4 z-50">
-        <BackButton />
       </div>
       <div className="fixed top-4 right-4 z-50">
         <form action={logout}>

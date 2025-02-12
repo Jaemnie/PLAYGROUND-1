@@ -3,7 +3,7 @@
 import { Suspense } from 'react'
 import { Loader2 } from 'lucide-react'
 import { Card } from '@/components/ui/card'
-import { BackButton } from '@/components/back-button'
+import { DashboardBackButton } from '@/components/back-button'
 import { GuideContent } from './guide-content'
 
 interface GuideItem {
@@ -21,7 +21,7 @@ export function GuidePageClient({ item }: GuidePageClientProps) {
   return (
     <div className="min-h-screen bg-background">
       <div className="fixed top-4 left-4 z-50">
-        <BackButton />
+        <DashboardBackButton />
       </div>
       
       <div className="container mx-auto py-20 px-4">

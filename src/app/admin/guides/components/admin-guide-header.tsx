@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { PlusIcon } from '@heroicons/react/24/outline'
 import { motion } from 'framer-motion'
-import { BackButton } from '@/components/back-button'
+import { DashboardBackButton } from '@/components/back-button'
 
 export function AdminGuideHeader() {
   const router = useRouter()
@@ -12,7 +12,7 @@ export function AdminGuideHeader() {
   return (
     <>
       <div className="fixed top-4 left-4 z-50">
-        <BackButton />
+        <DashboardBackButton />
       </div>
       <div className="space-y-8">
         <motion.h1 

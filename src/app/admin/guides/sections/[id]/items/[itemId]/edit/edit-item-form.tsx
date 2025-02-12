@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardFooter } from '@/components/ui/card'
 import { toast } from 'sonner'
 import { motion } from 'framer-motion'
-import { BackButton } from '@/components/back-button'
+import { DashboardBackButton } from '@/components/back-button'
 import { MarkdownEditor } from '@/components/markdown-editor/markdown-editor'
 
 interface EditItemFormProps {
@@ -84,7 +84,7 @@ export function EditItemForm({ item, sectionId }: EditItemFormProps) {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <div className="fixed top-4 left-4 z-50">
-        <BackButton />
+        <DashboardBackButton />
       </div>
       <section className="relative h-[40vh] overflow-hidden bg-gradient-to-br from-gray-900 via-black to-gray-900">
         <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))]" />
