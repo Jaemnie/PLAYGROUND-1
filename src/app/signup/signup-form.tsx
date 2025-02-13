@@ -13,6 +13,8 @@ export default function SignUpForm() {
   const [isLoading, setIsLoading] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [password, setPassword] = useState('')
+  const [isPasswordValid, setIsPasswordValid] = useState(false)
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -42,6 +44,12 @@ export default function SignUpForm() {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    setPassword(value)
+    setIsPasswordValid(value.length >= 6)
   }
 
   return (
@@ -96,9 +104,45 @@ export default function SignUpForm() {
                 name="password"
                 type="password"
                 required
-                className="bg-black/30 border-gray-800 focus:border-gray-700 focus:ring-gray-700 text-gray-100 placeholder:text-gray-500"
+                minLength={6}
+                value={password}
+                onChange={handlePasswordChange}
+                className={`bg-black/30 border-gray-800 focus:border-gray-700 focus:ring-gray-700 text-gray-100 placeholder:text-gray-500 ${
+                  password && !isPasswordValid ? 'border-red-500/50' : ''
+                }`}
                 placeholder="••••••••"
               />
+              <div className="space-y-2 text-xs">
+                <div className="flex items-center gap-2">
+                  <div 
+                    className={`w-4 h-4 rounded-full flex items-center justify-center ${
+                      !password ? 'bg-gray-700' : isPasswordValid ? 'bg-green-500' : 'bg-red-500'
+                    }`}
+                  >
+                    {password && (
+                      <motion.svg
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        className="w-2.5 h-2.5 text-white"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        {isPasswordValid ? (
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        ) : (
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        )}
+                      </motion.svg>
+                    )}
+                  </div>
+                  <span className={`${
+                    !password ? 'text-gray-500' : isPasswordValid ? 'text-green-500' : 'text-red-500'
+                  }`}>
+                    최소 6자 이상 입력해주세요
+                  </span>
+                </div>
+              </div>
             </div>
             <div className="pt-2">
               <Button
@@ -147,15 +191,24 @@ export default function SignUpForm() {
             <h3 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-violet-400 bg-clip-text text-transparent mb-4">
               회원가입 완료!
             </h3>
-            <p className="text-gray-400 mb-6">
-              이메일로 인증 링크가 발송되었습니다.<br />
-              이메일을 확인하여 인증을 완료해주세요.
-            </p>
+            <div className="space-y-4 text-gray-400">
+              <p>
+                이메일로 인증 링크가 발송되었습니다.<br />
+                <span className="text-blue-400">3분</span> 이내에 이메일을 확인하여<br />
+                인증을 완료해주세요.
+              </p>
+              <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
+                <p className="text-sm text-blue-400">
+                  인증 링크는 <span className="font-semibold">3분</span> 동안만 유효합니다.<br />
+                  시간 내에 인증하지 못한 경우 회원가입을<br />다시 진행해주세요.
+                </p>
+              </div>
+            </div>
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.5 }}
-              className="text-sm text-gray-500"
+              className="text-sm text-gray-500 mt-6"
             >
               잠시 후 로그인 페이지로 이동합니다...
             </motion.div>
