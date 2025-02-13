@@ -1,12 +1,14 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { CardHeader, CardContent } from '@/components/ui/card'
 import { ArrowUpIcon, ArrowDownIcon } from '@heroicons/react/24/outline'
 import { Button } from '@/components/ui/button'
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useRealtimeStockData } from '@/hooks/useRealtimeStockData'
+import { toast } from 'sonner'
 
 interface MarketOverviewProps {
   companies: {
@@ -15,6 +17,7 @@ interface MarketOverviewProps {
     ticker: string
     current_price: number
     last_closing_price: number
+    is_delisted: boolean
   }[]
 }
 
@@ -116,6 +119,8 @@ export function MarketOverview({ companies: initialCompanies }: MarketOverviewPr
     }))
   }
 
+  const router = useRouter()
+
   return (
     <>
       <CardHeader>
@@ -150,7 +155,14 @@ export function MarketOverview({ companies: initialCompanies }: MarketOverviewPr
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}
-                    className="p-1 rounded border border-white/10 hover:bg-white/5 transition-colors"
+                    className="p-1 rounded border border-white/10 hover:bg-white/5 transition-colors cursor-pointer"
+                    onClick={() => {
+                      if (company.is_delisted) {
+                        toast.error('상장폐지 상태인 기업은 조회할 수 없습니다.')
+                        return
+                      }
+                      router.push(`/dashboard/stock/${company.ticker}`)
+                    }}
                   >
                     <div className="flex flex-col gap-0.5">
                       <div className="min-w-0">
