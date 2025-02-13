@@ -1,5 +1,6 @@
 'use client'
 
+import React from 'react'
 import { useEffect, useState } from 'react'
 import { CardHeader, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -28,10 +29,10 @@ export function PriceChart({
 }: PriceChartProps) {
   const [data, setData] = useState<Array<{ 
     time: string
-    price: number
-    ma5: number
-    ma20: number
-    priceDirection: string
+    open: number
+    high: number
+    low: number
+    close: number
     changePercent: number 
   }>>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -41,7 +42,6 @@ export function PriceChart({
   useEffect(() => {
     if (company?.ticker && timeframe) {
       setIsLoading(true)
-      // 현재 데이터를 이전 데이터로 저장
       if (data.length > 0) {
         setPrevData(data)
       }
@@ -53,10 +53,10 @@ export function PriceChart({
             setHasNoData(true)
             setData([{
               time: '현재',
-              price: company.current_price,
-              ma5: 0,
-              ma20: 0,
-              priceDirection: 'none',
+              open: company.current_price,
+              high: company.current_price,
+              low: company.current_price,
+              close: company.current_price,
               changePercent: 0
             }])
           } else {
@@ -104,33 +104,14 @@ export function PriceChart({
   }
 
   const processChartData = (updates: any[]) => {
-    let ma5Data: number[] = [];
-    let ma20Data: number[] = [];
-    let lastValidPrice = company.current_price;
-    
-    return updates.map((update, index) => {
-      const currentPrice = update.new_price || lastValidPrice;
-      
-      // 5일 이동평균 계산
-      ma5Data.push(currentPrice);
-      if (ma5Data.length > 5) ma5Data.shift();
-      const ma5 = ma5Data.reduce((a, b) => a + b, 0) / ma5Data.length;
-      
-      // 20일 이동평균 계산
-      ma20Data.push(currentPrice);
-      if (ma20Data.length > 20) ma20Data.shift();
-      const ma20 = ma20Data.reduce((a, b) => a + b, 0) / ma20Data.length;
-      
-      return {
-        time: formatTime(update.created_at, timeframe),
-        price: currentPrice,
-        ma5,
-        ma20,
-        changePercent: update.change_percentage || 0,
-        priceDirection: index === 0 ? 'none' : 
-          currentPrice >= updates[index - 1]?.new_price ? 'up' : 'down'
-      };
-    });
+    return updates.map((update, index) => ({
+      time: formatTime(update.created_at, timeframe),
+      open: update.open_price || update.new_price,
+      high: update.high_price || update.new_price,
+      low: update.low_price || update.new_price,
+      close: update.new_price,
+      changePercent: update.change_percentage || 0
+    }));
   };
 
   return (
@@ -200,7 +181,7 @@ export function PriceChart({
                   <YAxis 
                     stroke="#4B5563"
                     tick={{ fill: '#9CA3AF' }}
-                    domain={['dataMin - 1000', 'dataMax + 1000']}
+                    domain={['auto', 'auto']}
                     tickFormatter={(value) => `${Math.round(value).toLocaleString()}원`}
                     axisLine={{ stroke: '#4B5563' }}
                   />
@@ -211,14 +192,14 @@ export function PriceChart({
                       borderRadius: '8px',
                       padding: '12px'
                     }}
-                    cursor={{ fill: 'rgba(255, 255, 255, 0.1)' }}
                     formatter={(value: any, name: string, props: any) => {
                       const payload = props.payload
                       return [
                         <div key="tooltip" className="space-y-1">
-                          <div className="font-medium">
-                            {Math.round(Number(value)).toLocaleString()}원
-                          </div>
+                          <div className="font-medium">시가: {Math.round(payload.open).toLocaleString()}원</div>
+                          <div className="font-medium">고가: {Math.round(payload.high).toLocaleString()}원</div>
+                          <div className="font-medium">저가: {Math.round(payload.low).toLocaleString()}원</div>
+                          <div className="font-medium">종가: {Math.round(payload.close).toLocaleString()}원</div>
                           <div className="text-sm text-gray-400">
                             변동률: {payload.changePercent.toFixed(2)}%
                           </div>
@@ -233,23 +214,32 @@ export function PriceChart({
                     opacity={0.5}
                     vertical={false}
                   />
-                  <Bar
-                    dataKey="price"
-                    barSize={8}
-                    name="가격"
-                  >
-                    {(isLoading ? prevData : data).map((entry, index) => {
-                      const isUp = entry.priceDirection === 'up'
-                      return (
-                        <Cell
-                          key={`cell-${index}`}
-                          fill={isUp ? '#EF4444' : '#3B82F6'}
+                  {data.map((entry, index) => {
+                    const isUp = entry.close >= entry.open
+                    return (
+                      <React.Fragment key={index}>
+                        <Line
+                          type="linear"
+                          dataKey="high"
                           stroke={isUp ? '#EF4444' : '#3B82F6'}
-                          strokeWidth={1}
+                          dot={false}
                         />
-                      )
-                    })}
-                  </Bar>
+                        <Line
+                          type="linear"
+                          dataKey="low"
+                          stroke={isUp ? '#EF4444' : '#3B82F6'}
+                          dot={false}
+                        />
+                        <Bar
+                          dataKey="close"
+                          fill={isUp ? '#EF4444' : '#3B82F6'}
+                          width={8}
+                          height={Math.abs(entry.close - entry.open)}
+                          y={Math.min(entry.open, entry.close)}
+                        />
+                      </React.Fragment>
+                    )
+                  })}
                 </ComposedChart>
               </ResponsiveContainer>
             </motion.div>
