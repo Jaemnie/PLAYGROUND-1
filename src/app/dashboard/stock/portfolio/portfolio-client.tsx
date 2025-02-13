@@ -1,7 +1,7 @@
 'use client'
 
 import { Card } from '@/components/ui/card'
-import DashboardBackButton from '@/components/DashboardBackButton'
+import StockBackButton from '@/components/StockBackButton'
 import { useState } from 'react'
 import { QuickTradeModal } from '@/components/ui/quick-trade-modal'
 import HoldingsTable from './components/holdings-table'
@@ -122,7 +122,7 @@ export function PortfolioClient({ user, portfolio: initialPortfolio, transaction
       )}
       
       <div className="fixed top-4 left-4 z-50">
-        <DashboardBackButton />
+        <StockBackButton />
       </div>
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold text-gray-100 mb-8">포트폴리오</h1>

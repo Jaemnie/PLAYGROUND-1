@@ -7,10 +7,11 @@ import { CompanyInfo } from './components/company-info'
 import { PriceChart } from './components/price-chart'
 import { TradingForm } from './components/trading-form'
 import { Card } from '@/components/ui/card'
-import DashboardBackButton from '@/components/DashboardBackButton'
+import StockBackButton from '@/components/StockBackButton'
 import { TradeAlert } from '@/components/ui/trade-alert'
 import { useRealtimeStockData } from '@/hooks/useRealtimeStockData'
 import { createClientBrowser } from '@/lib/supabase/client'
+import { CompanyNews } from './components/company-news'
 
 interface User {
   id: string;
@@ -38,13 +39,21 @@ interface StockDetailClientProps {
   company: Company;
   holding: Holding | null;
   points: number;
+  companyNews: {
+    id: string;
+    title: string;
+    content: string;
+    published_at: string;
+    impact: 'positive' | 'negative' | 'neutral';
+  }[];
 }
 
 export function StockDetailClient({
   user,
   company: initialCompany,
   holding: initialHolding,
-  points: initialPoints
+  points: initialPoints,
+  companyNews
 }: StockDetailClientProps) {
   const [selectedTimeframe, setSelectedTimeframe] = useState('1M')
   const [showAlert, setShowAlert] = useState(false)
@@ -116,7 +125,7 @@ export function StockDetailClient({
       />
       
       <div className="fixed top-4 left-4 z-50">
-        <DashboardBackButton />
+        <StockBackButton />
       </div>
       
       <div className="container mx-auto px-4 py-8">
@@ -144,6 +153,14 @@ export function StockDetailClient({
             company={company}
             timeframe={selectedTimeframe}
             onTimeframeChange={setSelectedTimeframe}
+          />
+        </Card>
+
+        {/* 기업 뉴스 */}
+        <Card className="mt-6 bg-black/40 backdrop-blur-sm border-gray-800">
+          <CompanyNews 
+            companyId={company.id}
+            initialNews={companyNews}
           />
         </Card>
       </div>

@@ -38,7 +38,7 @@ export default async function StockDetailPage({
     }
 
     // 나머지 데이터 병렬로 가져오기
-    const [holdingResult, profileResult] = await Promise.all([
+    const [holdingResult, profileResult, companyNewsResult] = await Promise.all([
       // 사용자의 보유 주식 정보
       supabase
         .from('holdings')
@@ -52,7 +52,15 @@ export default async function StockDetailPage({
         .from('profiles')
         .select('points')
         .eq('id', user.id)
-        .single()
+        .single(),
+      
+      // 기업 뉴스 정보
+      supabase
+        .from('news')
+        .select('*')
+        .eq('company_id', companyResult.data?.id)
+        .order('published_at', { ascending: false })
+        .limit(5)
     ])
 
     return (
@@ -62,6 +70,7 @@ export default async function StockDetailPage({
           company={companyResult.data}
           holding={holdingResult.data || null}
           points={profileResult.data?.points || 0}
+          companyNews={companyNewsResult.data || []}
         />
       </Suspense>
     )
