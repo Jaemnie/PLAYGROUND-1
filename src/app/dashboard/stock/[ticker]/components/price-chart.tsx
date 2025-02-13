@@ -1,9 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { CardHeader, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
+import { createChart, ColorType, IChartApi } from 'lightweight-charts'
 import { motion, AnimatePresence } from 'framer-motion'
 
 interface PriceChartProps {
@@ -14,34 +14,99 @@ interface PriceChartProps {
 
 const TIMEFRAMES = {
   '1M': '1분봉',
+  '5M': '5분봉',
   '30M': '30분봉',
   '1H': '1시간봉',
   '1D': '1일봉',
   '7D': '7일봉'
 } as const
 
+type ChartType = IChartApi & {
+  addCandlestickSeries: (options: any) => any;
+  addHistogramSeries: (options: any) => any;
+}
+
+type ChartData = {
+  time: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
+
 export function PriceChart({ 
   company, 
   timeframe, 
   onTimeframeChange 
 }: PriceChartProps) {
+  const chartContainerRef = useRef<HTMLDivElement>(null)
+  const chartRef = useRef<ChartType | null>(null)
   const [data, setData] = useState<Array<{ 
     time: string
-    price: number
-    changePercent: number 
+    open: number
+    high: number
+    low: number
+    close: number
+    volume: number
   }>>([])
   const [isLoading, setIsLoading] = useState(true)
   const [hasNoData, setHasNoData] = useState(false)
-  const [prevData, setPrevData] = useState<any[]>([]) // 이전 데이터 저장용
+
+  useEffect(() => {
+    if (chartContainerRef.current) {
+      chartRef.current = createChart(chartContainerRef.current, {
+        layout: {
+          background: { type: ColorType.Solid, color: 'transparent' },
+          textColor: '#9CA3AF',
+        },
+        grid: {
+          vertLines: { color: '#374151' },
+          horzLines: { color: '#374151' },
+        },
+        width: chartContainerRef.current.clientWidth,
+        height: 400,
+      }) as ChartType;
+
+      const candlestickSeries = chartRef.current.addCandlestickSeries({
+        upColor: '#22C55E',
+        downColor: '#EF4444',
+        borderVisible: false,
+        wickUpColor: '#22C55E',
+        wickDownColor: '#EF4444',
+      })
+
+      const volumeSeries = chartRef.current.addHistogramSeries({
+        color: '#4B5563',
+        priceFormat: { type: 'volume' },
+        priceScaleId: '',
+      })
+
+      if (data.length > 0) {
+        candlestickSeries.setData(data.map(item => ({
+          time: item.time,
+          open: item.open,
+          high: item.high,
+          low: item.low,
+          close: item.close,
+        })))
+
+        volumeSeries.setData(data.map(item => ({
+          time: item.time,
+          value: item.volume,
+          color: item.close >= item.open ? '#22C55E80' : '#EF444480',
+        })))
+      }
+
+      return () => {
+        chartRef.current?.remove()
+      }
+    }
+  }, [data])
 
   useEffect(() => {
     if (company?.ticker && timeframe) {
       setIsLoading(true)
-      // 현재 데이터를 이전 데이터로 저장
-      if (data.length > 0) {
-        setPrevData(data)
-      }
-      
       fetch(`/api/stock/price-history?ticker=${company.ticker}&timeframe=${timeframe}`)
         .then((res) => res.json())
         .then((result) => {
@@ -49,8 +114,11 @@ export function PriceChart({
             setHasNoData(true)
             setData([{
               time: '현재',
-              price: company.current_price,
-              changePercent: 0
+              open: company.current_price,
+              high: company.current_price,
+              low: company.current_price,
+              close: company.current_price,
+              volume: 0
             }])
           } else {
             const formattedData = processChartData(result.priceUpdates)
@@ -96,15 +164,30 @@ export function PriceChart({
     }
   }
 
-  const processChartData = (updates: any[]) => {
-    let lastValidPrice = company.current_price;
-    return updates.map(update => ({
-      time: formatTime(update.created_at, timeframe),
-      price: update.new_price || lastValidPrice,
-      changePercent: update.change_percentage || 0,
-      hasData: update.new_price !== null
-    }));
-  };
+  const processChartData = (updates: any[]): ChartData[] => {
+    // 시간대별로 데이터 그룹화
+    const groupedData = updates.reduce((acc, update) => {
+      const timeKey = formatTime(update.created_at, timeframe)
+      if (!acc[timeKey]) {
+        acc[timeKey] = {
+          time: timeKey,
+          open: update.old_price,
+          high: Math.max(update.old_price, update.new_price),
+          low: Math.min(update.old_price, update.new_price),
+          close: update.new_price,
+          volume: 1
+        }
+      } else {
+        acc[timeKey].high = Math.max(acc[timeKey].high, update.new_price)
+        acc[timeKey].low = Math.min(acc[timeKey].low, update.new_price)
+        acc[timeKey].close = update.new_price
+        acc[timeKey].volume += 1
+      }
+      return acc
+    }, {} as Record<string, ChartData>)
+
+    return Object.values(groupedData)
+  }
 
   return (
     <>
@@ -155,67 +238,12 @@ export function PriceChart({
             </div>
           ) : (
             <motion.div
+              ref={chartContainerRef}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.3 }}
               className="h-full"
-            >
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={isLoading ? prevData : data}>
-                  <XAxis 
-                    dataKey="time" 
-                    stroke="#4B5563"
-                    tick={{ fill: '#9CA3AF' }}
-                  />
-                  <YAxis 
-                    stroke="#4B5563"
-                    tick={{ fill: '#9CA3AF' }}
-                    domain={['auto', 'auto']}
-                    tickFormatter={(value) => `${Math.round(value).toLocaleString()}원`}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: '#1F2937',
-                      border: '1px solid #374151',
-                    }}
-                    labelStyle={{ color: '#9CA3AF' }}
-                    formatter={(value: any, name: string) => [
-                      name === 'price' 
-                        ? `${Math.round(Number(value)).toLocaleString()}원`
-                        : `${value.toFixed(2)}%`,
-                      name === 'price' ? '가격' : '변동률'
-                    ]}
-                  />
-                  <CartesianGrid stroke="#374151" strokeDasharray="3 3" />
-                  <Line
-                    type="monotone"
-                    dataKey="price"
-                    stroke="#60A5FA"
-                    dot={(props: any): React.ReactElement<SVGElement> => {
-                      const { payload, cx, cy } = props;
-                      return payload.hasData ? (
-                        <circle 
-                          key={`dot-${payload.time}`}
-                          cx={cx} 
-                          cy={cy} 
-                          r={3} 
-                          fill="#60A5FA" 
-                          stroke="#60A5FA" 
-                        />
-                      ) : (
-                        <circle 
-                          key={`dot-${payload.time}`}
-                          cx={cx} 
-                          cy={cy} 
-                          r={0}
-                        />
-                      );
-                    }}
-                    connectNulls={true}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </motion.div>
+            />
           )}
         </div>
       </CardContent>
