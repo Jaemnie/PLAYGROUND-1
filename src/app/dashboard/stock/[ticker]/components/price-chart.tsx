@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { CardHeader, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ComposedChart, Bar, Cell } from 'recharts'
 import { motion, AnimatePresence } from 'framer-motion'
 
 interface PriceChartProps {
@@ -29,6 +29,9 @@ export function PriceChart({
   const [data, setData] = useState<Array<{ 
     time: string
     price: number
+    ma5: number
+    ma20: number
+    priceDirection: string
     changePercent: number 
   }>>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -51,6 +54,9 @@ export function PriceChart({
             setData([{
               time: '현재',
               price: company.current_price,
+              ma5: 0,
+              ma20: 0,
+              priceDirection: 'none',
               changePercent: 0
             }])
           } else {
@@ -98,28 +104,31 @@ export function PriceChart({
   }
 
   const processChartData = (updates: any[]) => {
+    let ma5Data: number[] = [];
+    let ma20Data: number[] = [];
     let lastValidPrice = company.current_price;
-    let prevPrice = company.current_price;
     
     return updates.map((update, index) => {
       const currentPrice = update.new_price || lastValidPrice;
-      const priceChange = currentPrice - prevPrice;
-      const isPositiveChange = priceChange > 0;
-      const isPriceReversal = 
-        (prevPrice > lastValidPrice && currentPrice < prevPrice) || // 음전
-        (prevPrice < lastValidPrice && currentPrice > prevPrice);   // 양전
       
-      prevPrice = currentPrice;
-      lastValidPrice = currentPrice;
-
+      // 5일 이동평균 계산
+      ma5Data.push(currentPrice);
+      if (ma5Data.length > 5) ma5Data.shift();
+      const ma5 = ma5Data.reduce((a, b) => a + b, 0) / ma5Data.length;
+      
+      // 20일 이동평균 계산
+      ma20Data.push(currentPrice);
+      if (ma20Data.length > 20) ma20Data.shift();
+      const ma20 = ma20Data.reduce((a, b) => a + b, 0) / ma20Data.length;
+      
       return {
         time: formatTime(update.created_at, timeframe),
         price: currentPrice,
+        ma5,
+        ma20,
         changePercent: update.change_percentage || 0,
-        hasData: update.new_price !== null,
-        isReversal: isPriceReversal,
-        isPositiveChange,
-        priceDirection: index === 0 ? 'none' : currentPrice >= updates[index - 1]?.new_price ? 'up' : 'down'
+        priceDirection: index === 0 ? 'none' : 
+          currentPrice >= updates[index - 1]?.new_price ? 'up' : 'down'
       };
     });
   };
@@ -179,7 +188,7 @@ export function PriceChart({
               className="h-full"
             >
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={isLoading ? prevData : data}>
+                <ComposedChart data={isLoading ? prevData : data}>
                   <XAxis 
                     dataKey="time" 
                     stroke="#4B5563"
@@ -306,7 +315,32 @@ export function PriceChart({
                     }}
                     connectNulls={true}
                   />
-                </LineChart>
+                  <Line
+                    type="monotone"
+                    dataKey="ma5"
+                    stroke="#FFB800"
+                    dot={false}
+                    strokeWidth={1}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="ma20"
+                    stroke="#45B8EA"
+                    dot={false}
+                    strokeWidth={1}
+                  />
+                  <Bar
+                    dataKey="price"
+                    barSize={5}
+                  >
+                    {(isLoading ? prevData : data).map((entry, index) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={entry.priceDirection === 'up' ? '#EF4444' : '#3B82F6'}
+                      />
+                    ))}
+                  </Bar>
+                </ComposedChart>
               </ResponsiveContainer>
             </motion.div>
           )}
