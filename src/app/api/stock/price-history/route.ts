@@ -37,7 +37,7 @@ export async function GET(request: Request) {
         startTime.setMinutes(now.getMinutes() - 60) // 최근 60분의 1분봉
         break
       case '5M':
-        startTime.setHours(now.getHours() - 4) // 최근 4시간의 5분봉
+        startTime.setHours(now.getHours() - 8) // 최근 8시간의 5분봉
         break
       case '30M':
         startTime.setHours(now.getHours() - 12) // 최근 12시간의 30분봉
