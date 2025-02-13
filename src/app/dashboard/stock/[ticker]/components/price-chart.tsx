@@ -38,7 +38,17 @@ export function PriceChart({ company, timeframe = '5M', onTimeframeChange }: Pri
       },
       toolbar: {
         show: false
-      }
+      },
+      defaultLocale: 'ko',
+      locales: [{
+        name: 'ko',
+        options: {
+          months: ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'],
+          shortMonths: ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'],
+          days: ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'],
+          shortDays: ['일', '월', '화', '수', '목', '금', '토']
+        }
+      }]
     },
     theme: {
       mode: 'dark'
@@ -71,7 +81,8 @@ export function PriceChart({ company, timeframe = '5M', onTimeframeChange }: Pri
           month: 'M월',
           day: 'd일',
           hour: 'HH:mm'
-        }
+        },
+        datetimeUTC: false
       }
     },
     yaxis: {
