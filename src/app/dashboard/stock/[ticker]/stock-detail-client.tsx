@@ -55,7 +55,7 @@ export function StockDetailClient({
   points: initialPoints,
   companyNews
 }: StockDetailClientProps) {
-  const [selectedTimeframe, setSelectedTimeframe] = useState('1M')
+  const [selectedTimeframe, setSelectedTimeframe] = useState('5M')
   const [showAlert, setShowAlert] = useState(false)
   const [tradeType, setTradeType] = useState<'buy' | 'sell'>('buy')
   const [points, setPoints] = useState(initialPoints)
