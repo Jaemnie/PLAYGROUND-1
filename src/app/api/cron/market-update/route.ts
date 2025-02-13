@@ -28,6 +28,10 @@ export async function POST(req: Request) {
       return new Response('Invalid signature', { status: 401 })
     }
 
+    // 랜덤 딜레이 추가 (200ms ~ 3000ms)
+    const delay = Math.random() * 2800 + 200
+    await new Promise(resolve => setTimeout(resolve, delay))
+
     const scheduler = await MarketScheduler.getInstance()
     
     if (!scheduler.isMarketOpen()) {
