@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { CardHeader, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { createChart, ColorType, IChartApi } from 'lightweight-charts'
+import { createChart, ColorType, IChartApi, LineWidth, CandlestickSeries } from 'lightweight-charts'
 import { motion, AnimatePresence } from 'framer-motion'
 
 interface PriceChartProps {
@@ -29,13 +29,17 @@ interface CandleData {
   close: number
 }
 
+interface ExtendedIChartApi extends IChartApi {
+  addCandlestickSeries: any;
+}
+
 export function PriceChart({ 
   company, 
   timeframe, 
   onTimeframeChange 
 }: PriceChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null)
-  const chartRef = useRef<IChartApi | null>(null)
+  const chartRef = useRef<ExtendedIChartApi | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [hasNoData, setHasNoData] = useState(false)
 
@@ -59,12 +63,12 @@ export function PriceChart({
       crosshair: {
         vertLine: {
           color: '#4B5563',
-          width: 1,
+          width: 1 as LineWidth,
           style: 3,
         },
         horzLine: {
           color: '#4B5563',
-          width: 1,
+          width: 1 as LineWidth,
           style: 3,
         },
       },
@@ -74,7 +78,7 @@ export function PriceChart({
       ...chartOptions,
       width: chartContainerRef.current.clientWidth,
       height: 400,
-    })
+    }) as ExtendedIChartApi
 
     const candlestickSeries = chartRef.current.addCandlestickSeries({
       upColor: '#10B981',
@@ -106,7 +110,9 @@ export function PriceChart({
           setHasNoData(true)
         } else {
           const candleData = processCandleData(data.priceUpdates)
-          candlestickSeries.setData(candleData)
+          candleData.forEach(candle => {
+            candlestickSeries.update(candle)
+          })
           setHasNoData(false)
         }
       } catch (error) {
