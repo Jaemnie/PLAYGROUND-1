@@ -23,7 +23,7 @@ const TIMEFRAMES = {
   '7D': '7일봉'
 } as const
 
-export function PriceChart({ company, timeframe, onTimeframeChange }: PriceChartProps) {
+export function PriceChart({ company, timeframe = '5M', onTimeframeChange }: PriceChartProps) {
   const [series, setSeries] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [hasNoData, setHasNoData] = useState(false)
@@ -88,11 +88,30 @@ export function PriceChart({ company, timeframe, onTimeframeChange }: PriceChart
     grid: {
       borderColor: '#374151'
     },
+    fill: {
+      opacity: 1
+    },
+    states: {
+      active: {
+        filter: {
+          type: 'none'
+        }
+      },
+      hover: {
+        filter: {
+          type: 'lighten',
+          value: 0.1
+        } as { type: string; value: number }
+      }
+    },
     plotOptions: {
       candlestick: {
         colors: {
           upward: '#22C55E',
           downward: '#EF4444'
+        },
+        wick: {
+          useFillColor: true,
         }
       }
     }

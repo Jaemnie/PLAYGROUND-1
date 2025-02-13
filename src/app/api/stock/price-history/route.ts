@@ -62,45 +62,73 @@ export async function GET(request: Request) {
 
     if (error) throw error
 
-    // 시간대별로 OHLC 데이터 생성
-    const ohlcData = new Map()
-    
-    priceUpdates?.forEach(update => {
-      const timeKey = new Date(update.created_at)
-      
-      if (timeframe === '1M') {
-        timeKey.setSeconds(0, 0)
-      } else {
-        timeKey.setSeconds(0, 0)
-        
-        if (timeframe === '5M') {
-          timeKey.setMinutes(Math.floor(timeKey.getMinutes() / 5) * 5)
-        } else if (timeframe === '30M') {
-          timeKey.setMinutes(Math.floor(timeKey.getMinutes() / 30) * 30)
-        } else if (timeframe === '1H') {
-          timeKey.setMinutes(0)
-        } else if (timeframe === '1D') {
-          timeKey.setHours(0, 0, 0)
-        }
+    // 시간 간격(분) 계산 함수
+    function getTimeIntervalMinutes(timeframe: string): number {
+      switch (timeframe) {
+        case '1M': return 1
+        case '5M': return 5
+        case '30M': return 30
+        case '1H': return 60
+        case '1D': return 24 * 60
+        case '7D': return 7 * 24 * 60
+        default: return 1
       }
-      
-      const key = timeKey.getTime()
-      
-      if (!ohlcData.has(key)) {
+    }
+
+    // 전체 시간대 배열 생성 함수
+    function generateTimeSlots(startTime: Date, endTime: Date, intervalMinutes: number): Date[] {
+      const slots: Date[] = []
+      let currentTime = new Date(startTime)
+
+      while (currentTime <= endTime) {
+        slots.push(new Date(currentTime))
+        currentTime = new Date(currentTime.getTime() + intervalMinutes * 60 * 1000)
+      }
+
+      return slots
+    }
+
+    // OHLC 데이터 생성 부분 수정
+    const intervalMinutes = getTimeIntervalMinutes(timeframe)
+    const timeSlots = generateTimeSlots(startTime, now, intervalMinutes)
+
+    const ohlcData = new Map()
+    let lastValidPrice: number | null = null
+
+    timeSlots.forEach(timeSlot => {
+      const key = timeSlot.getTime()
+      const relevantUpdates = priceUpdates?.filter(update => {
+        const updateTime = new Date(update.created_at)
+        const slotEnd = new Date(timeSlot.getTime() + intervalMinutes * 60 * 1000)
+        return updateTime >= timeSlot && updateTime < slotEnd
+      })
+
+      if (relevantUpdates?.length > 0) {
+        // 해당 시간대에 데이터가 있는 경우
+        const prices = relevantUpdates.map(u => u.new_price)
+        lastValidPrice = prices[prices.length - 1]
+        
         ohlcData.set(key, {
-          x: timeKey.getTime(),
+          x: key,
           y: [
-            update.new_price, // open
-            update.new_price, // high
-            update.new_price, // low
-            update.new_price  // close
+            prices[0],                    // open
+            Math.max(...prices),          // high
+            Math.min(...prices),          // low
+            lastValidPrice                // close
           ]
         })
-      } else {
-        const current = ohlcData.get(key)
-        current.y[1] = Math.max(current.y[1], update.new_price) // high
-        current.y[2] = Math.min(current.y[2], update.new_price) // low
-        current.y[3] = update.new_price // close
+      } else if (lastValidPrice !== null) {
+        // 데이터가 없지만 이전 가격이 있는 경우
+        ohlcData.set(key, {
+          x: key,
+          y: [
+            lastValidPrice,  // open
+            lastValidPrice,  // high
+            lastValidPrice,  // low
+            lastValidPrice   // close
+          ],
+          isEmpty: true      // 빈 캔들 표시용
+        })
       }
     })
 
