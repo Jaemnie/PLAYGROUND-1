@@ -783,7 +783,6 @@ export class MarketScheduler {
     const now = new Date();
     let totalPerMinuteImpact = 0;
 
-    // 아직 적용되지 않은 뉴스만 필터링 (applied가 false인 것들)
     const activeNews = recentNews.filter(news => 
       news.type === 'company' && 
       news.company_id === companyId && 
@@ -795,24 +794,40 @@ export class MarketScheduler {
       const effectiveDuration = this.getEffectiveDuration(news.volatility);
       
       if (timeElapsed <= effectiveDuration) {
-        // 뉴스가 아직 유효한 경우, 매 분마다 적용할 영향도 계산
-        const directionMultiplier = Math.random() < 0.7 ? 1 : -0.5;
-        const impactVariation =
+        // 뉴스 해석의 불확실성 추가
+        const marketSentiment = Math.random(); // 시장 심리 팩터
+        
+        // 긍정적 뉴스도 부정적으로 해석될 수 있는 로직
+        const interpretationChance = news.sentiment === 'positive' ? 0.4 : 0.2; // 긍정뉴스가 부정적으로 해석될 확률 40%
+        const reverseInterpretation = Math.random() < interpretationChance;
+        
+        // 방향성 결정 (기존 영향력의 방향을 뒤집을 수 있음)
+        const directionMultiplier = reverseInterpretation ? -1 : 1;
+        
+        // 변동성에 따른 임팩트 변화
+        const impactVariation = 
           SIMULATION_PARAMS.NEWS.IMPACT_VARIATION_MIN +
           Math.random() * (SIMULATION_PARAMS.NEWS.IMPACT_VARIATION_MAX - SIMULATION_PARAMS.NEWS.IMPACT_VARIATION_MIN);
         
+        // 기본 영향력 계산
         const baseImpact = news.impact * impactVariation * directionMultiplier;
+        
+        // 시장 심리에 따른 증폭/감소
+        const marketSentimentMultiplier = marketSentiment < 0.3 ? 0.5 : // 부정적 시장
+                                        marketSentiment > 0.7 ? 1.5 : // 긍정적 시장
+                                        1.0; // 중립적 시장
+        
         const sentimentMultiplier = this.calculateSentimentMultiplier(news.sentiment);
         const volatilityMultiplier = news.volatility >= 1.8 ? 1.2 : 1.0;
 
-        // 단리 적용을 위한 매 분당 영향도 계산
-        const perMinuteImpact = baseImpact * sentimentMultiplier * volatilityMultiplier * marketCapMultiplier;
+        // 최종 영향력 계산
+        const perMinuteImpact = baseImpact * sentimentMultiplier * volatilityMultiplier * 
+                               marketCapMultiplier * marketSentimentMultiplier;
         
-        // 매 분당 영향도를 -0.06 ~ 0.06 범위로 제한
-        const clampedImpact = Math.max(Math.min(perMinuteImpact, 0.06), -0.06);
+        // 영향력 범위 제한 (-0.08 ~ 0.08)로 확대
+        const clampedImpact = Math.max(Math.min(perMinuteImpact, 0.08), -0.08);
         totalPerMinuteImpact += clampedImpact;
       } else {
-        // 유효기간이 지난 뉴스는 applied로 표시
         await this.supabase
           .from('news')
           .update({ applied: true })
@@ -820,8 +835,9 @@ export class MarketScheduler {
       }
     }
 
-    // 최종 영향도에 NEWS 가중치 적용
-    return totalPerMinuteImpact * SIMULATION_PARAMS.PRICE.WEIGHTS.NEWS;
+    // 최종 영향도에 랜덤 노이즈 추가
+    const randomNoise = (Math.random() - 0.5) * 0.02; // ±1% 랜덤 노이즈
+    return (totalPerMinuteImpact * SIMULATION_PARAMS.PRICE.WEIGHTS.NEWS) + randomNoise;
   }
 
   private calculateMarketCapNewsMultiplier(marketCap: number): number {

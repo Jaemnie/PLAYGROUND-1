@@ -101,7 +101,7 @@ export function PriceChart({
     let lastValidPrice = company.current_price;
     let prevPrice = company.current_price;
     
-    return updates.map(update => {
+    return updates.map((update, index) => {
       const currentPrice = update.new_price || lastValidPrice;
       const priceChange = currentPrice - prevPrice;
       const isPositiveChange = priceChange > 0;
@@ -118,7 +118,8 @@ export function PriceChart({
         changePercent: update.change_percentage || 0,
         hasData: update.new_price !== null,
         isReversal: isPriceReversal,
-        isPositiveChange
+        isPositiveChange,
+        priceDirection: index === 0 ? 'none' : currentPrice >= updates[index - 1]?.new_price ? 'up' : 'down'
       };
     });
   };
@@ -212,28 +213,30 @@ export function PriceChart({
                   <Line
                     type="monotone"
                     dataKey="price"
-                    stroke="#60A5FA"
+                    stroke={(data: any) => {
+                      return data.priceDirection === 'up' ? '#EF4444' : '#3B82F6';
+                    }}
                     dot={(props: any): React.ReactElement<SVGElement> => {
                       const { payload, cx, cy } = props;
                       if (!payload.hasData) return <circle cx={cx} cy={cy} r={0} />;
                       
-                      // 음전/양전 표시
                       if (payload.isReversal) {
+                        const color = payload.isPositiveChange ? '#EF4444' : '#3B82F6';
                         return (
                           <g>
                             <circle 
                               cx={cx} 
                               cy={cy} 
                               r={4} 
-                              fill={payload.isPositiveChange ? '#10B981' : '#EF4444'} 
-                              stroke={payload.isPositiveChange ? '#10B981' : '#EF4444'} 
+                              fill={color}
+                              stroke={color}
                             />
                             <circle 
                               cx={cx} 
                               cy={cy} 
                               r={6} 
                               fill="none"
-                              stroke={payload.isPositiveChange ? '#10B981' : '#EF4444'} 
+                              stroke={color}
                               strokeWidth="1"
                               opacity="0.5"
                             />
@@ -241,14 +244,14 @@ export function PriceChart({
                         );
                       }
                       
-                      // 일반 점
+                      const color = payload.priceDirection === 'up' ? '#EF4444' : '#3B82F6';
                       return (
                         <circle 
                           cx={cx} 
                           cy={cy} 
                           r={3} 
-                          fill="#60A5FA" 
-                          stroke="#60A5FA" 
+                          fill={color}
+                          stroke={color}
                         />
                       );
                     }}
