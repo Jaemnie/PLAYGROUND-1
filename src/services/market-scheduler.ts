@@ -63,7 +63,7 @@ const SIMULATION_PARAMS = {
     DECAY_TIME_MINUTES: 45,
   },
   PRICE: {
-    BASE_RANDOM_CHANGE: 0.1,           // 기본 변동폭 3.5%로 증가 (기존 1%)
+    BASE_RANDOM_CHANGE: 0.05,           // 기본 변동폭 3.5%로 증가 (기존 1%)
     REVERSAL: {
       BASE_CHANCE: 0.05,                 // 기본 반전 확률 5%로 감소
       MOMENTUM_MULTIPLIER: 0.07,          // 모멘텀당 추가 반전 확률 7%로 감소
