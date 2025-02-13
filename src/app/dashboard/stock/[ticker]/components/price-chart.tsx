@@ -12,6 +12,16 @@ interface PriceChartProps {
   onTimeframeChange: (timeframe: string) => void
 }
 
+interface PriceUpdate {
+  id: string;
+  company_id: string;
+  old_price: number;
+  new_price: number;
+  change_percentage: number;
+  update_reason: string;
+  created_at: string;
+}
+
 const TIMEFRAMES = {
   '1M': '1분봉',
   '30M': '30분봉',
@@ -33,12 +43,19 @@ export function PriceChart({
     high: number
     low: number
     close: number
-    volume: number
   }>>([])
   const [isLoading, setIsLoading] = useState(true)
   const [hasNoData, setHasNoData] = useState(false)
 
   useEffect(() => {
+    const handleResize = () => {
+      if (chartRef.current && chartContainerRef.current) {
+        chartRef.current.applyOptions({
+          width: chartContainerRef.current.clientWidth,
+        });
+      }
+    };
+
     if (chartContainerRef.current) {
       chartRef.current = createChart(chartContainerRef.current, {
         layout: {
@@ -51,6 +68,27 @@ export function PriceChart({
         },
         width: chartContainerRef.current.clientWidth,
         height: 400,
+        timeScale: {
+          timeVisible: true,
+          secondsVisible: false,
+          borderColor: '#374151',
+        },
+        rightPriceScale: {
+          borderColor: '#374151',
+        },
+        crosshair: {
+          mode: 1,
+          vertLine: {
+            color: '#9CA3AF',
+            width: 1,
+            style: 3,
+          },
+          horzLine: {
+            color: '#9CA3AF',
+            width: 1,
+            style: 3,
+          },
+        },
       })
 
       const candlestickSeries = chartRef.current.addCandlestickSeries({
@@ -61,29 +99,15 @@ export function PriceChart({
         wickDownColor: '#EF4444',
       })
 
-      const volumeSeries = chartRef.current.addHistogramSeries({
-        color: '#4B5563',
-        priceFormat: { type: 'volume' },
-        priceScaleId: '',
-      })
-
       if (data.length > 0) {
-        candlestickSeries.setData(data.map(item => ({
-          time: item.time,
-          open: item.open,
-          high: item.high,
-          low: item.low,
-          close: item.close,
-        })))
-
-        volumeSeries.setData(data.map(item => ({
-          time: item.time,
-          value: item.volume,
-          color: item.close >= item.open ? '#22C55E80' : '#EF444480',
-        })))
+        candlestickSeries.setData(data)
+        chartRef.current.timeScale().fitContent()
       }
 
+      window.addEventListener('resize', handleResize)
+
       return () => {
+        window.removeEventListener('resize', handleResize)
         chartRef.current?.remove()
       }
     }
@@ -104,7 +128,6 @@ export function PriceChart({
               high: company.current_price,
               low: company.current_price,
               close: company.current_price,
-              volume: 0
             }])
           } else {
             const formattedData = processChartData(result.priceUpdates)
@@ -151,16 +174,24 @@ export function PriceChart({
     }
   }
 
-  const processChartData = (updates: any[]) => {
+  const processChartData = (updates: PriceUpdate[]) => {
     let lastValidPrice = company.current_price;
-    return updates.map(update => ({
-      time: formatTime(update.created_at, timeframe),
-      open: update.new_price || lastValidPrice,
-      high: update.new_price || lastValidPrice,
-      low: update.new_price || lastValidPrice,
-      close: update.new_price || lastValidPrice,
-      volume: update.volume || 0,
-    }));
+    // 시간순으로 정렬
+    const sortedUpdates = [...updates].sort((a, b) => 
+      new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
+    
+    return sortedUpdates.map(update => {
+      const price = update.new_price || lastValidPrice;
+      lastValidPrice = price;
+      return {
+        time: formatTime(update.created_at, timeframe),
+        open: price,
+        high: price,
+        low: price,
+        close: price,
+      };
+    });
   };
 
   return (
