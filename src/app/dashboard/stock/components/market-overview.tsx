@@ -17,7 +17,7 @@ interface MarketOverviewProps {
     ticker: string
     current_price: number
     last_closing_price: number
-    is_delisted: boolean
+    is_delisted?: boolean
   }[]
 }
 
