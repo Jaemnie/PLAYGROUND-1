@@ -14,6 +14,7 @@ interface PriceChartProps {
 
 const TIMEFRAMES = {
   '1M': '1분봉',
+  '5M': '5분봉',
   '30M': '30분봉',
   '1H': '1시간봉',
   '1D': '1일봉',
@@ -98,12 +99,28 @@ export function PriceChart({
 
   const processChartData = (updates: any[]) => {
     let lastValidPrice = company.current_price;
-    return updates.map(update => ({
-      time: formatTime(update.created_at, timeframe),
-      price: update.new_price || lastValidPrice,
-      changePercent: update.change_percentage || 0,
-      hasData: update.new_price !== null
-    }));
+    let prevPrice = company.current_price;
+    
+    return updates.map(update => {
+      const currentPrice = update.new_price || lastValidPrice;
+      const priceChange = currentPrice - prevPrice;
+      const isPositiveChange = priceChange > 0;
+      const isPriceReversal = 
+        (prevPrice > lastValidPrice && currentPrice < prevPrice) || // 음전
+        (prevPrice < lastValidPrice && currentPrice > prevPrice);   // 양전
+      
+      prevPrice = currentPrice;
+      lastValidPrice = currentPrice;
+
+      return {
+        time: formatTime(update.created_at, timeframe),
+        price: currentPrice,
+        changePercent: update.change_percentage || 0,
+        hasData: update.new_price !== null,
+        isReversal: isPriceReversal,
+        isPositiveChange
+      };
+    });
   };
 
   return (
@@ -179,12 +196,17 @@ export function PriceChart({
                       border: '1px solid #374151',
                     }}
                     labelStyle={{ color: '#9CA3AF' }}
-                    formatter={(value: any, name: string) => [
-                      name === 'price' 
-                        ? `${Math.round(Number(value)).toLocaleString()}원`
-                        : `${value.toFixed(2)}%`,
-                      name === 'price' ? '가격' : '변동률'
-                    ]}
+                    formatter={(value: any, name: string, props: any) => {
+                      if (name === 'price') {
+                        const payload = props.payload;
+                        let label = `${Math.round(Number(value)).toLocaleString()}원`;
+                        if (payload.isReversal) {
+                          label += payload.isPositiveChange ? ' (양전)' : ' (음전)';
+                        }
+                        return [label, '가격'];
+                      }
+                      return [`${value.toFixed(2)}%`, '변동률'];
+                    }}
                   />
                   <CartesianGrid stroke="#374151" strokeDasharray="3 3" />
                   <Line
@@ -193,21 +215,40 @@ export function PriceChart({
                     stroke="#60A5FA"
                     dot={(props: any): React.ReactElement<SVGElement> => {
                       const { payload, cx, cy } = props;
-                      return payload.hasData ? (
+                      if (!payload.hasData) return <circle cx={cx} cy={cy} r={0} />;
+                      
+                      // 음전/양전 표시
+                      if (payload.isReversal) {
+                        return (
+                          <g>
+                            <circle 
+                              cx={cx} 
+                              cy={cy} 
+                              r={4} 
+                              fill={payload.isPositiveChange ? '#10B981' : '#EF4444'} 
+                              stroke={payload.isPositiveChange ? '#10B981' : '#EF4444'} 
+                            />
+                            <circle 
+                              cx={cx} 
+                              cy={cy} 
+                              r={6} 
+                              fill="none"
+                              stroke={payload.isPositiveChange ? '#10B981' : '#EF4444'} 
+                              strokeWidth="1"
+                              opacity="0.5"
+                            />
+                          </g>
+                        );
+                      }
+                      
+                      // 일반 점
+                      return (
                         <circle 
-                          key={`dot-${payload.time}`}
                           cx={cx} 
                           cy={cy} 
                           r={3} 
                           fill="#60A5FA" 
                           stroke="#60A5FA" 
-                        />
-                      ) : (
-                        <circle 
-                          key={`dot-${payload.time}`}
-                          cx={cx} 
-                          cy={cy} 
-                          r={0}
                         />
                       );
                     }}

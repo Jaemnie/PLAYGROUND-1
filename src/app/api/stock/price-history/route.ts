@@ -36,6 +36,9 @@ export async function GET(request: Request) {
       case '1M':
         startTime.setMinutes(now.getMinutes() - 60) // 최근 60분의 1분봉
         break
+      case '5M':
+        startTime.setHours(now.getHours() - 4) // 최근 4시간의 5분봉
+        break
       case '30M':
         startTime.setHours(now.getHours() - 12) // 최근 12시간의 30분봉
         break
@@ -73,6 +76,7 @@ export async function GET(request: Request) {
     const getIntervalMinutes = (timeframe: string) => {
       switch (timeframe) {
         case '1M': return 1;
+        case '5M': return 5;
         case '30M': return 30;
         case '1H': return 60;
         case '1D': return 24 * 60;
