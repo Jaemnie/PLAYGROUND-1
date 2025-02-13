@@ -9,6 +9,7 @@ export class MarketQueue {
   private static instance: MarketQueue | null = null;
   private queue: QueueTask[] = [];
   private isProcessing: boolean = false;
+  private processingPromise: Promise<void> | null = null;
 
   private constructor() {}
 
@@ -33,8 +34,15 @@ export class MarketQueue {
     });
     this.sortQueue();
     
+    // 이미 처리 중인 프로미스가 있다면 그것을 기다림
+    if (this.processingPromise) {
+      await this.processingPromise;
+    }
+    
+    // 새로운 처리 시작
     if (!this.isProcessing) {
-      await this.processQueue();
+      this.processingPromise = this.processQueue();
+      await this.processingPromise;
     }
   }
 
@@ -45,6 +53,8 @@ export class MarketQueue {
 
     try {
       while (this.queue.length > 0) {
+        // 매 태스크 실행 전에 큐를 다시 정렬
+        this.sortQueue();
         const task = this.queue[0];
         await task.execute();
         this.queue.shift(); // 완료된 태스크 제거
@@ -53,6 +63,7 @@ export class MarketQueue {
       console.error('Queue processing error:', error);
     } finally {
       this.isProcessing = false;
+      this.processingPromise = null;
     }
   }
 } 
