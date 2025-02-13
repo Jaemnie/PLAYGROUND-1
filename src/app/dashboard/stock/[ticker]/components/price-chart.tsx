@@ -172,6 +172,8 @@ export function PriceChart({
                 <ComposedChart
                   data={isLoading ? prevData : data}
                   margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                  barGap={0}
+                  barCategoryGap={8}
                 >
                   <XAxis 
                     dataKey="time" 
@@ -218,24 +220,33 @@ export function PriceChart({
                     const isUp = entry.close >= entry.open
                     return (
                       <React.Fragment key={index}>
+                        <Bar
+                          dataKey={isUp ? "close" : "open"}
+                          fill={isUp ? '#EF4444' : '#3B82F6'}
+                          stroke={isUp ? '#EF4444' : '#3B82F6'}
+                          strokeWidth={1}
+                          width={8}
+                        />
+                        <Bar
+                          dataKey={isUp ? "open" : "close"}
+                          fill={isUp ? '#EF4444' : '#3B82F6'}
+                          stroke={isUp ? '#EF4444' : '#3B82F6'}
+                          strokeWidth={1}
+                          width={8}
+                        />
                         <Line
-                          type="linear"
+                          type="monotone"
                           dataKey="high"
                           stroke={isUp ? '#EF4444' : '#3B82F6'}
                           dot={false}
+                          strokeWidth={1}
                         />
                         <Line
-                          type="linear"
+                          type="monotone"
                           dataKey="low"
                           stroke={isUp ? '#EF4444' : '#3B82F6'}
                           dot={false}
-                        />
-                        <Bar
-                          dataKey="close"
-                          fill={isUp ? '#EF4444' : '#3B82F6'}
-                          width={8}
-                          height={Math.abs(entry.close - entry.open)}
-                          y={Math.min(entry.open, entry.close)}
+                          strokeWidth={1}
                         />
                       </React.Fragment>
                     )
