@@ -213,8 +213,12 @@ export function PriceChart({
                   <Line
                     type="monotone"
                     dataKey="price"
-                    stroke={(data: any) => {
-                      return data.priceDirection === 'up' ? '#EF4444' : '#3B82F6';
+                    strokeWidth={2}
+                    stroke="#EF4444"
+                    activeDot={{ 
+                      r: 6,
+                      stroke: "#EF4444",
+                      strokeWidth: 2
                     }}
                     dot={(props: any): React.ReactElement<SVGElement> => {
                       const { payload, cx, cy } = props;
