@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { CardHeader, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import * as LightweightCharts from 'lightweight-charts'
+import { createChart } from 'lightweight-charts'
 import { motion, AnimatePresence } from 'framer-motion'
 import { IChartApi } from 'lightweight-charts'
 
@@ -23,7 +23,15 @@ const TIMEFRAMES = {
 } as const
 
 interface ExtendedChartApi extends IChartApi {
-  addCandlestickSeries: (options: any) => any;
+  addCandlestickSeries: (options?: {
+    upColor?: string;
+    downColor?: string;
+    borderVisible?: boolean;
+    wickUpColor?: string;
+    wickDownColor?: string;
+  }) => {
+    setData: (data: any[]) => void;
+  };
   addHistogramSeries: (options: any) => any;
 }
 
@@ -54,7 +62,7 @@ export function PriceChart({
 
   useEffect(() => {
     if (chartContainerRef.current && data.length > 0) {
-      const chart = LightweightCharts.createChart(chartContainerRef.current, {
+      const chart = createChart(chartContainerRef.current, {
         layout: {
           background: { color: 'transparent' },
           textColor: '#9CA3AF',
@@ -65,20 +73,28 @@ export function PriceChart({
         },
         width: chartContainerRef.current.clientWidth,
         height: 400,
-      }) as any;
+      }) as ExtendedChartApi;
 
-      const candlestickSeries = chart.addCandlestickSeries()
+      // 캔들스틱 시리즈 생성
+      const candlestickSeries = chart.addCandlestickSeries({
+        upColor: '#26a69a',
+        downColor: '#ef5350',
+        borderVisible: false,
+        wickUpColor: '#26a69a',
+        wickDownColor: '#ef5350'
+      });
+
       candlestickSeries.setData(data.map(item => ({
         time: item.time,
         open: item.open,
         high: item.high,
         low: item.low,
         close: item.close
-      })))
+      })));
 
       return () => {
-        chart.remove()
-      }
+        chart.remove();
+      };
     }
   }, [data])
 
@@ -116,10 +132,7 @@ export function PriceChart({
     const date = new Date(timestamp)
     switch (timeframe) {
       case '1M':
-        return date.toLocaleTimeString('ko-KR', {
-          hour: '2-digit',
-          minute: '2-digit'
-        })
+      case '5M':
       case '30M':
       case '1H':
         return date.toLocaleTimeString('ko-KR', {
