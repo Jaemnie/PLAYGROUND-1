@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { CardHeader, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { createChart, ColorType, IChartApi } from 'lightweight-charts'
+import { createChart, ColorType } from 'lightweight-charts'
 import { motion, AnimatePresence } from 'framer-motion'
 
 interface PriceChartProps {
@@ -21,9 +21,10 @@ const TIMEFRAMES = {
   '7D': '7일봉'
 } as const
 
-type ChartType = IChartApi & {
+type ChartType = {
   addCandlestickSeries: (options: any) => any;
   addHistogramSeries: (options: any) => any;
+  remove: () => void;
 }
 
 type ChartData = {
@@ -41,7 +42,7 @@ export function PriceChart({
   onTimeframeChange 
 }: PriceChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null)
-  const chartRef = useRef<ChartType | null>(null)
+  const [chart, setChart] = useState<ChartType | null>(null)
   const [data, setData] = useState<Array<{ 
     time: string
     open: number
@@ -55,7 +56,7 @@ export function PriceChart({
 
   useEffect(() => {
     if (chartContainerRef.current) {
-      chartRef.current = createChart(chartContainerRef.current, {
+      const chartInstance = createChart(chartContainerRef.current, {
         layout: {
           background: { type: ColorType.Solid, color: 'transparent' },
           textColor: '#9CA3AF',
@@ -66,9 +67,9 @@ export function PriceChart({
         },
         width: chartContainerRef.current.clientWidth,
         height: 400,
-      }) as ChartType;
+      }) as unknown as ChartType
 
-      const candlestickSeries = chartRef.current.addCandlestickSeries({
+      const candleSeries = chartInstance.addCandlestickSeries({
         upColor: '#22C55E',
         downColor: '#EF4444',
         borderVisible: false,
@@ -76,21 +77,14 @@ export function PriceChart({
         wickDownColor: '#EF4444',
       })
 
-      const volumeSeries = chartRef.current.addHistogramSeries({
+      const volumeSeries = chartInstance.addHistogramSeries({
         color: '#4B5563',
         priceFormat: { type: 'volume' },
         priceScaleId: '',
       })
 
       if (data.length > 0) {
-        candlestickSeries.setData(data.map(item => ({
-          time: item.time,
-          open: item.open,
-          high: item.high,
-          low: item.low,
-          close: item.close,
-        })))
-
+        candleSeries.setData(data)
         volumeSeries.setData(data.map(item => ({
           time: item.time,
           value: item.volume,
@@ -98,8 +92,10 @@ export function PriceChart({
         })))
       }
 
+      setChart(chartInstance)
+
       return () => {
-        chartRef.current?.remove()
+        chartInstance.remove()
       }
     }
   }, [data])
