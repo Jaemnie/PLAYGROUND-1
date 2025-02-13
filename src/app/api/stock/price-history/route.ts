@@ -18,7 +18,7 @@ export async function GET(request: Request) {
     
     const { data: company } = await supabase
       .from('companies')
-      .select('id')
+      .select('id, current_price, last_closing_price')
       .eq('ticker', ticker)
       .single()
 
@@ -34,22 +34,19 @@ export async function GET(request: Request) {
 
     switch (timeframe) {
       case '1M':
-        startTime.setMinutes(now.getMinutes() - 60) // 최근 60분의 1분봉
-        break
-      case '5M':
-        startTime.setHours(now.getHours() - 8) // 최근 8시간의 5분봉
+        startTime.setMinutes(now.getMinutes() - 60)
         break
       case '30M':
-        startTime.setHours(now.getHours() - 12) // 최근 12시간의 30분봉
+        startTime.setHours(now.getHours() - 12)
         break
       case '1H':
-        startTime.setHours(now.getHours() - 24) // 최근 24시간의 1시간봉
+        startTime.setHours(now.getHours() - 24)
         break
       case '1D':
-        startTime.setDate(now.getDate() - 7) // 최근 7일의 일봉
+        startTime.setDate(now.getDate() - 7)
         break
       case '7D':
-        startTime.setDate(now.getDate() - 30) // 최근 30일의 주봉
+        startTime.setDate(now.getDate() - 30)
         break
     }
 
@@ -62,48 +59,48 @@ export async function GET(request: Request) {
 
     if (error) throw error
 
-    const generateTimeSlots = (startTime: Date, endTime: Date, interval: number) => {
-      const slots = [];
-      let current = new Date(startTime);
+    // 시간대별로 OHLC 데이터 생성
+    const ohlcData = new Map()
+    
+    priceUpdates?.forEach(update => {
+      const timeKey = new Date(update.created_at)
+      timeKey.setSeconds(0, 0) // 초와 밀리초 제거
       
-      while (current <= endTime) {
-        slots.push(new Date(current));
-        current = new Date(current.getTime() + interval * 60000); // interval분 단위로 증가
+      if (timeframe === '30M') {
+        timeKey.setMinutes(Math.floor(timeKey.getMinutes() / 30) * 30)
+      } else if (timeframe === '1H') {
+        timeKey.setMinutes(0)
+      } else if (timeframe === '1D') {
+        timeKey.setHours(0, 0, 0)
       }
-      return slots;
-    };
-
-    const getIntervalMinutes = (timeframe: string) => {
-      switch (timeframe) {
-        case '1M': return 1;
-        case '5M': return 5;
-        case '30M': return 30;
-        case '1H': return 60;
-        case '1D': return 24 * 60;
-        case '7D': return 7 * 24 * 60;
-        default: return 1;
-      }
-    };
-
-    // 모든 시간대에 대해 동일한 처리
-    const interval = getIntervalMinutes(timeframe);
-    const timeSlots = generateTimeSlots(startTime, now, interval);
-
-    const formattedUpdates = timeSlots.map(slot => {
-      const slotEnd = new Date(slot.getTime() + interval * 60000);
-      const update = priceUpdates?.find(u => {
-        const updateTime = new Date(u.created_at);
-        return updateTime >= slot && updateTime < slotEnd;
-      });
       
-      return {
-        created_at: slot.toISOString(),
-        new_price: update?.new_price || null,
-        change_percentage: update?.change_percentage || null
-      };
-    });
+      const key = timeKey.getTime()
+      
+      if (!ohlcData.has(key)) {
+        ohlcData.set(key, {
+          x: timeKey.getTime(),
+          y: [
+            update.new_price, // open
+            update.new_price, // high
+            update.new_price, // low
+            update.new_price  // close
+          ]
+        })
+      } else {
+        const current = ohlcData.get(key)
+        current.y[1] = Math.max(current.y[1], update.new_price) // high
+        current.y[2] = Math.min(current.y[2], update.new_price) // low
+        current.y[3] = update.new_price // close
+      }
+    })
 
-    return NextResponse.json({ priceUpdates: formattedUpdates });
+    const candleData = Array.from(ohlcData.values())
+
+    return NextResponse.json({ 
+      candleData,
+      currentPrice: company.current_price,
+      lastClosingPrice: company.last_closing_price
+    })
   } catch (error) {
     console.error('가격 기록 조회 오류:', error)
     return NextResponse.json(
