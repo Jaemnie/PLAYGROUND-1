@@ -9,7 +9,7 @@ export default function StockBackButton() {
   const router = useRouter()
 
   function handleReturnToStock() {
-    router.push('/stock')
+    router.push('/dashboard/stock')
   }
 
   return (
