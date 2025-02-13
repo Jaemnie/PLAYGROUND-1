@@ -188,7 +188,10 @@ export function PriceChart({
               className="h-full"
             >
               <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={isLoading ? prevData : data}>
+                <ComposedChart
+                  data={isLoading ? prevData : data}
+                  margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                >
                   <XAxis 
                     dataKey="time" 
                     stroke="#4B5563"
@@ -197,148 +200,55 @@ export function PriceChart({
                   <YAxis 
                     stroke="#4B5563"
                     tick={{ fill: '#9CA3AF' }}
-                    domain={['auto', 'auto']}
+                    domain={['dataMin - 1000', 'dataMax + 1000']}
                     tickFormatter={(value) => `${Math.round(value).toLocaleString()}원`}
+                    axisLine={{ stroke: '#4B5563' }}
                   />
                   <Tooltip
                     contentStyle={{
                       backgroundColor: '#1F2937',
                       border: '1px solid #374151',
+                      borderRadius: '8px',
+                      padding: '12px'
                     }}
-                    labelStyle={{ color: '#9CA3AF' }}
+                    cursor={{ fill: 'rgba(255, 255, 255, 0.1)' }}
                     formatter={(value: any, name: string, props: any) => {
-                      if (name === 'price') {
-                        const payload = props.payload;
-                        let label = `${Math.round(Number(value)).toLocaleString()}원`;
-                        if (payload.isReversal) {
-                          label += payload.isPositiveChange ? ' (양전)' : ' (음전)';
-                        }
-                        return [label, '가격'];
-                      }
-                      return [`${value.toFixed(2)}%`, '변동률'];
+                      const payload = props.payload
+                      return [
+                        <div key="tooltip" className="space-y-1">
+                          <div className="font-medium">
+                            {Math.round(Number(value)).toLocaleString()}원
+                          </div>
+                          <div className="text-sm text-gray-400">
+                            변동률: {payload.changePercent.toFixed(2)}%
+                          </div>
+                        </div>,
+                        ''
+                      ]
                     }}
                   />
-                  <CartesianGrid stroke="#374151" strokeDasharray="3 3" />
-                  <Line
-                    type="monotone"
-                    dataKey="price"
-                    strokeWidth={2}
-                    stroke="#EF4444"
-                    data={(isLoading ? prevData : data).filter(d => d.priceDirection === 'up')}
-                    activeDot={{ r: 6, stroke: "#EF4444", strokeWidth: 2 }}
-                    dot={(props: any): React.ReactElement<SVGElement> => {
-                      const { payload, cx, cy } = props;
-                      if (!payload.hasData) return <circle cx={cx} cy={cy} r={0} />;
-                      
-                      if (payload.isReversal) {
-                        const color = payload.isPositiveChange ? '#EF4444' : '#3B82F6';
-                        return (
-                          <g>
-                            <circle 
-                              cx={cx} 
-                              cy={cy} 
-                              r={4} 
-                              fill={color}
-                              stroke={color}
-                            />
-                            <circle 
-                              cx={cx} 
-                              cy={cy} 
-                              r={6} 
-                              fill="none"
-                              stroke={color}
-                              strokeWidth="1"
-                              opacity="0.5"
-                            />
-                          </g>
-                        );
-                      }
-                      
-                      const color = payload.priceDirection === 'up' ? '#EF4444' : '#3B82F6';
-                      return (
-                        <circle 
-                          cx={cx} 
-                          cy={cy} 
-                          r={3} 
-                          fill={color}
-                          stroke={color}
-                        />
-                      );
-                    }}
-                    connectNulls={true}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="price"
-                    strokeWidth={2}
-                    stroke="#3B82F6"
-                    data={(isLoading ? prevData : data).filter(d => d.priceDirection === 'down')}
-                    activeDot={{ r: 6, stroke: "#3B82F6", strokeWidth: 2 }}
-                    dot={(props: any): React.ReactElement<SVGElement> => {
-                      const { payload, cx, cy } = props;
-                      if (!payload.hasData) return <circle cx={cx} cy={cy} r={0} />;
-                      
-                      if (payload.isReversal) {
-                        const color = payload.isPositiveChange ? '#EF4444' : '#3B82F6';
-                        return (
-                          <g>
-                            <circle 
-                              cx={cx} 
-                              cy={cy} 
-                              r={4} 
-                              fill={color}
-                              stroke={color}
-                            />
-                            <circle 
-                              cx={cx} 
-                              cy={cy} 
-                              r={6} 
-                              fill="none"
-                              stroke={color}
-                              strokeWidth="1"
-                              opacity="0.5"
-                            />
-                          </g>
-                        );
-                      }
-                      
-                      const color = payload.priceDirection === 'up' ? '#EF4444' : '#3B82F6';
-                      return (
-                        <circle 
-                          cx={cx} 
-                          cy={cy} 
-                          r={3} 
-                          fill={color}
-                          stroke={color}
-                        />
-                      );
-                    }}
-                    connectNulls={true}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="ma5"
-                    stroke="#FFB800"
-                    dot={false}
-                    strokeWidth={1}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="ma20"
-                    stroke="#45B8EA"
-                    dot={false}
-                    strokeWidth={1}
+                  <CartesianGrid 
+                    stroke="#374151" 
+                    strokeDasharray="3 3" 
+                    opacity={0.5}
+                    vertical={false}
                   />
                   <Bar
                     dataKey="price"
-                    barSize={5}
+                    barSize={8}
+                    name="가격"
                   >
-                    {(isLoading ? prevData : data).map((entry, index) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={entry.priceDirection === 'up' ? '#EF4444' : '#3B82F6'}
-                      />
-                    ))}
+                    {(isLoading ? prevData : data).map((entry, index) => {
+                      const isUp = entry.priceDirection === 'up'
+                      return (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={isUp ? '#EF4444' : '#3B82F6'}
+                          stroke={isUp ? '#EF4444' : '#3B82F6'}
+                          strokeWidth={1}
+                        />
+                      )
+                    })}
                   </Bar>
                 </ComposedChart>
               </ResponsiveContainer>
