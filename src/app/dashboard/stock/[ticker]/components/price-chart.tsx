@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { CardHeader, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { createChart, ColorType, IChartApi, LineWidth, CandlestickSeries } from 'lightweight-charts'
+import { createChart, ColorType, IChartApi } from 'lightweight-charts'
 import { motion, AnimatePresence } from 'framer-motion'
 
 interface PriceChartProps {
@@ -14,24 +14,11 @@ interface PriceChartProps {
 
 const TIMEFRAMES = {
   '1M': '1분봉',
-  '5M': '5분봉',
   '30M': '30분봉',
   '1H': '1시간봉',
   '1D': '1일봉',
   '7D': '7일봉'
 } as const
-
-interface CandleData {
-  time: number
-  open: number
-  high: number
-  low: number
-  close: number
-}
-
-interface ExtendedIChartApi extends IChartApi {
-  addCandlestickSeries: any;
-}
 
 export function PriceChart({ 
   company, 
@@ -39,162 +26,141 @@ export function PriceChart({
   onTimeframeChange 
 }: PriceChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null)
-  const chartRef = useRef<ExtendedIChartApi | null>(null)
+  const chartRef = useRef<IChartApi | null>(null)
+  const [data, setData] = useState<Array<{ 
+    time: string
+    open: number
+    high: number
+    low: number
+    close: number
+    volume: number
+  }>>([])
   const [isLoading, setIsLoading] = useState(true)
   const [hasNoData, setHasNoData] = useState(false)
 
   useEffect(() => {
-    if (!chartContainerRef.current) return
-
-    const chartOptions = {
-      layout: {
-        background: { color: 'transparent' },
-        textColor: '#9CA3AF',
-      },
-      grid: {
-        vertLines: { color: '#374151' },
-        horzLines: { color: '#374151' },
-      },
-      timeScale: {
-        borderColor: '#374151',
-        timeVisible: true,
-        secondsVisible: false,
-      },
-      crosshair: {
-        vertLine: {
-          color: '#4B5563',
-          width: 1 as LineWidth,
-          style: 3,
+    if (chartContainerRef.current) {
+      chartRef.current = createChart(chartContainerRef.current, {
+        layout: {
+          background: { type: ColorType.Solid, color: 'transparent' },
+          textColor: '#9CA3AF',
         },
-        horzLine: {
-          color: '#4B5563',
-          width: 1 as LineWidth,
-          style: 3,
+        grid: {
+          vertLines: { color: '#374151' },
+          horzLines: { color: '#374151' },
         },
-      },
-    }
+        width: chartContainerRef.current.clientWidth,
+        height: 400,
+      })
 
-    chartRef.current = createChart(chartContainerRef.current, {
-      ...chartOptions,
-      width: chartContainerRef.current.clientWidth,
-      height: 400,
-    }) as ExtendedIChartApi
+      const candlestickSeries = chartRef.current.addCandlestickSeries({
+        upColor: '#22C55E',
+        downColor: '#EF4444',
+        borderVisible: false,
+        wickUpColor: '#22C55E',
+        wickDownColor: '#EF4444',
+      })
 
-    const candlestickSeries = chartRef.current.addCandlestickSeries({
-      upColor: '#10B981',
-      downColor: '#EF4444',
-      borderVisible: false,
-      wickUpColor: '#10B981',
-      wickDownColor: '#EF4444',
-    })
+      const volumeSeries = chartRef.current.addHistogramSeries({
+        color: '#4B5563',
+        priceFormat: { type: 'volume' },
+        priceScaleId: '',
+      })
 
-    const handleResize = () => {
-      if (chartRef.current && chartContainerRef.current) {
-        chartRef.current.applyOptions({
-          width: chartContainerRef.current.clientWidth,
-        })
+      if (data.length > 0) {
+        candlestickSeries.setData(data.map(item => ({
+          time: item.time,
+          open: item.open,
+          high: item.high,
+          low: item.low,
+          close: item.close,
+        })))
+
+        volumeSeries.setData(data.map(item => ({
+          time: item.time,
+          value: item.volume,
+          color: item.close >= item.open ? '#22C55E80' : '#EF444480',
+        })))
+      }
+
+      return () => {
+        chartRef.current?.remove()
       }
     }
+  }, [data])
 
-    window.addEventListener('resize', handleResize)
-
-    const fetchData = async () => {
-      if (!company?.ticker) return
-      
+  useEffect(() => {
+    if (company?.ticker && timeframe) {
       setIsLoading(true)
-      try {
-        const response = await fetch(`/api/stock/price-history?ticker=${company.ticker}&timeframe=${timeframe}`)
-        const data = await response.json()
-
-        if (!data.priceUpdates || data.priceUpdates.length === 0) {
-          setHasNoData(true)
-          return
-        }
-
-        if (chartRef.current && candlestickSeries) {
-          const candleData = processCandleData(data.priceUpdates)
-          if (candleData.length > 0) {
-            candleData.forEach(candle => {
-              try {
-                candlestickSeries.update(candle)
-              } catch (error) {
-                console.error('캔들 데이터 업데이트 오류:', error)
-              }
-            })
-            setHasNoData(false)
-          } else {
+      
+      fetch(`/api/stock/price-history?ticker=${company.ticker}&timeframe=${timeframe}`)
+        .then((res) => res.json())
+        .then((result) => {
+          if (!result.priceUpdates || result.priceUpdates.length === 0) {
             setHasNoData(true)
+            setData([{
+              time: '현재',
+              open: company.current_price,
+              high: company.current_price,
+              low: company.current_price,
+              close: company.current_price,
+              volume: 0
+            }])
+          } else {
+            const formattedData = processChartData(result.priceUpdates)
+            setData(formattedData)
           }
-        }
-      } catch (error) {
-        console.error('가격 데이터 로딩 오류:', error)
-        setHasNoData(true)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    fetchData()
-
-    return () => {
-      window.removeEventListener('resize', handleResize)
-      if (chartRef.current) {
-        chartRef.current.remove()
-      }
+          setIsLoading(false)
+        })
+        .catch((error) => {
+          console.error('가격 기록 로딩 오류:', error)
+          setHasNoData(true)
+          setIsLoading(false)
+        })
     }
   }, [company, timeframe])
 
-  const processCandleData = (updates: any[]): CandleData[] => {
-    const candleData: CandleData[] = []
-    let currentCandle: Partial<CandleData> = {}
-
-    updates.forEach((update, index) => {
-      const price = update.new_price
-      const time = new Date(update.created_at).getTime() / 1000
-
-      if (!price) return
-
-      if (!currentCandle.open) {
-        currentCandle = {
-          time,
-          open: price,
-          high: price,
-          low: price,
-          close: price,
-        }
-      } else {
-        currentCandle.high = Math.max(currentCandle.high!, price)
-        currentCandle.low = Math.min(currentCandle.low!, price)
-        currentCandle.close = price
-      }
-
-      if (
-        index === updates.length - 1 || 
-        new Date(updates[index + 1].created_at).getTime() - new Date(update.created_at).getTime() > getTimeframeInMs(timeframe)
-      ) {
-        candleData.push(currentCandle as CandleData)
-        currentCandle = {}
-      }
-    })
-
-    return candleData
-  }
-
-  const getTimeframeInMs = (tf: string): number => {
-    const minute = 60 * 1000
-    const hour = 60 * minute
-    const day = 24 * hour
-
-    switch (tf) {
-      case '1M': return minute
-      case '5M': return 5 * minute
-      case '30M': return 30 * minute
-      case '1H': return hour
-      case '1D': return day
-      case '7D': return 7 * day
-      default: return minute
+  const formatTime = (timestamp: string, timeframe: string) => {
+    const date = new Date(timestamp)
+    switch (timeframe) {
+      case '1M':
+        return date.toLocaleTimeString('ko-KR', {
+          hour: '2-digit',
+          minute: '2-digit'
+        })
+      case '30M':
+      case '1H':
+        return date.toLocaleTimeString('ko-KR', {
+          hour: '2-digit',
+          minute: '2-digit'
+        })
+      case '1D':
+        return date.toLocaleDateString('ko-KR', {
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit'
+        })
+      case '7D':
+        return date.toLocaleDateString('ko-KR', {
+          month: 'short',
+          day: 'numeric'
+        })
+      default:
+        return date.toLocaleString('ko-KR')
     }
   }
+
+  const processChartData = (updates: any[]) => {
+    let lastValidPrice = company.current_price;
+    return updates.map(update => ({
+      time: formatTime(update.created_at, timeframe),
+      open: update.new_price || lastValidPrice,
+      high: update.new_price || lastValidPrice,
+      low: update.new_price || lastValidPrice,
+      close: update.new_price || lastValidPrice,
+      volume: update.volume || 0,
+    }));
+  };
 
   return (
     <>
@@ -244,10 +210,16 @@ export function PriceChart({
               </p>
             </div>
           ) : (
-            <div ref={chartContainerRef} className="h-full w-full" />
+            <motion.div
+              ref={chartContainerRef}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.3 }}
+              className="h-full"
+            />
           )}
         </div>
       </CardContent>
     </>
   )
-} 
+}
