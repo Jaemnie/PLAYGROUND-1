@@ -108,12 +108,23 @@ export function PriceChart({
 
         if (!data.priceUpdates || data.priceUpdates.length === 0) {
           setHasNoData(true)
-        } else {
+          return
+        }
+
+        if (chartRef.current && candlestickSeries) {
           const candleData = processCandleData(data.priceUpdates)
-          candleData.forEach(candle => {
-            candlestickSeries.update(candle)
-          })
-          setHasNoData(false)
+          if (candleData.length > 0) {
+            candleData.forEach(candle => {
+              try {
+                candlestickSeries.update(candle)
+              } catch (error) {
+                console.error('캔들 데이터 업데이트 오류:', error)
+              }
+            })
+            setHasNoData(false)
+          } else {
+            setHasNoData(true)
+          }
         }
       } catch (error) {
         console.error('가격 데이터 로딩 오류:', error)
