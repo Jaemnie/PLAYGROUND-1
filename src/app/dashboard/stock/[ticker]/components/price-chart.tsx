@@ -176,20 +176,33 @@ export function PriceChart({
 
   const processChartData = (updates: PriceUpdate[]) => {
     let lastValidPrice = company.current_price;
-    // 시간순으로 정렬
     const sortedUpdates = [...updates].sort((a, b) => 
       new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
     );
     
-    return sortedUpdates.map(update => {
+    // 시간대별로 데이터 그룹화
+    const groupedData = new Map<string, number[]>();
+    
+    sortedUpdates.forEach(update => {
+      const timeKey = formatTime(update.created_at, timeframe);
       const price = update.new_price || lastValidPrice;
       lastValidPrice = price;
+      
+      if (!groupedData.has(timeKey)) {
+        groupedData.set(timeKey, [price]); // [prices]
+      } else {
+        groupedData.get(timeKey)?.push(price);
+      }
+    });
+
+    // 각 시간대별 OHLC 계산
+    return Array.from(groupedData.entries()).map(([time, prices]) => {
       return {
-        time: formatTime(update.created_at, timeframe),
-        open: price,
-        high: price,
-        low: price,
-        close: price,
+        time,
+        open: prices[0],
+        high: Math.max(...prices),
+        low: Math.min(...prices),
+        close: prices[prices.length - 1],
       };
     });
   };
