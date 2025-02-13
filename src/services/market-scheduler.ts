@@ -65,9 +65,9 @@ const SIMULATION_PARAMS = {
   PRICE: {
     BASE_RANDOM_CHANGE: 0.035,           // 기본 변동폭 3.5%로 증가 (기존 1%)
     REVERSAL: {
-      BASE_CHANCE: 0.15,                 // 기본 반전 확률 15%로 증가 (기존 10%)
-      MOMENTUM_MULTIPLIER: 0.2,          // 모멘텀당 추가 반전 확률 20%로 증가 (기존 15%)
-      MAX_CHANCE: 0.9                    // 최대 반전 확률 90%로 증가 (기존 85%)
+      BASE_CHANCE: 0.05,                 // 기본 반전 확률 5%로 감소
+      MOMENTUM_MULTIPLIER: 0.07,          // 모멘텀당 추가 반전 확률 7%로 감소
+      MAX_CHANCE: 0.70                    // 최대 반전 확률 70%로 감소
     },
     DAILY_LIMIT: 0.30,                   // 일일 가격 제한폭 유지
     WEIGHTS: {
@@ -611,12 +611,6 @@ export class MarketScheduler {
       Math.pow(movement.consecutiveCount, 1.5) * SIMULATION_PARAMS.PRICE.REVERSAL.MOMENTUM_MULTIPLIER,
       SIMULATION_PARAMS.PRICE.REVERSAL.MAX_CHANCE
     );
-    
-    if (movement.consecutiveCount >= 5) {
-      return movement.direction === 'up' ? 
-        1 - (momentumStrength * 1.2) : 
-        1 + (momentumStrength * 1.5);
-    }
     
     if (Math.random() < reversalChance) {
       return movement.direction === 'up' ? 
