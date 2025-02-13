@@ -43,14 +43,34 @@ export function PriceChart({ company, timeframe, onTimeframeChange }: PriceChart
     theme: {
       mode: 'dark'
     },
-    title: {
-      text: undefined
+    tooltip: {
+      custom: ({ seriesIndex, dataPointIndex, w }) => {
+        const o = w.globals.seriesCandleO[seriesIndex][dataPointIndex];
+        const h = w.globals.seriesCandleH[seriesIndex][dataPointIndex];
+        const l = w.globals.seriesCandleL[seriesIndex][dataPointIndex];
+        const c = w.globals.seriesCandleC[seriesIndex][dataPointIndex];
+        
+        return `
+          <div class="p-2 bg-gray-900 border border-gray-700 rounded-lg">
+            <div class="text-gray-400">시가: ${Math.floor(o).toLocaleString()}원</div>
+            <div class="text-green-400">고가: ${Math.floor(h).toLocaleString()}원</div>
+            <div class="text-red-400">저가: ${Math.floor(l).toLocaleString()}원</div>
+            <div class="text-gray-200">종가: ${Math.floor(c).toLocaleString()}원</div>
+          </div>
+        `;
+      }
     },
     xaxis: {
       type: 'datetime',
       labels: {
         style: {
           colors: '#9CA3AF'
+        },
+        datetimeFormatter: {
+          year: 'yyyy년',
+          month: 'M월',
+          day: 'd일',
+          hour: 'HH:mm'
         }
       }
     },
@@ -62,7 +82,7 @@ export function PriceChart({ company, timeframe, onTimeframeChange }: PriceChart
         style: {
           colors: '#9CA3AF'
         },
-        formatter: (value: number) => Math.round(value).toLocaleString()
+        formatter: (value: number) => `${Math.floor(value).toLocaleString()}원`
       }
     },
     grid: {

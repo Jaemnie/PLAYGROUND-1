@@ -64,14 +64,22 @@ export async function GET(request: Request) {
     
     priceUpdates?.forEach(update => {
       const timeKey = new Date(update.created_at)
-      timeKey.setSeconds(0, 0) // 초와 밀리초 제거
       
-      if (timeframe === '30M') {
-        timeKey.setMinutes(Math.floor(timeKey.getMinutes() / 30) * 30)
-      } else if (timeframe === '1H') {
-        timeKey.setMinutes(0)
-      } else if (timeframe === '1D') {
-        timeKey.setHours(0, 0, 0)
+      // 1분봉일 때는 초만 제거
+      if (timeframe === '1M') {
+        timeKey.setSeconds(0, 0)
+      } else {
+        timeKey.setSeconds(0, 0)
+        
+        if (timeframe === '5M') {
+          timeKey.setMinutes(Math.floor(timeKey.getMinutes() / 5) * 5)
+        } else if (timeframe === '30M') {
+          timeKey.setMinutes(Math.floor(timeKey.getMinutes() / 30) * 30)
+        } else if (timeframe === '1H') {
+          timeKey.setMinutes(0)
+        } else if (timeframe === '1D') {
+          timeKey.setHours(0, 0, 0)
+        }
       }
       
       const key = timeKey.getTime()
