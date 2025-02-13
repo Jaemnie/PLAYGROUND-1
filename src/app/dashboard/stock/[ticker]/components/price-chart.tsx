@@ -122,31 +122,32 @@ export function PriceChart({
 
   const formatTime = (timestamp: string, timeframe: string) => {
     const date = new Date(timestamp)
+    
+    // 날짜를 YYYY-MM-DD 형식으로 변환
+    const formatDate = (date: Date) => {
+      const year = date.getFullYear()
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const day = String(date.getDate()).padStart(2, '0')
+      return `${year}-${month}-${day}`
+    }
+
+    // 시간을 HH:MM 형식으로 변환
+    const formatTimeString = (date: Date) => {
+      const hours = String(date.getHours()).padStart(2, '0')
+      const minutes = String(date.getMinutes()).padStart(2, '0')
+      return `${hours}:${minutes}`
+    }
+
     switch (timeframe) {
       case '1M':
-        return date.toLocaleTimeString('ko-KR', {
-          hour: '2-digit',
-          minute: '2-digit'
-        })
       case '30M':
       case '1H':
-        return date.toLocaleTimeString('ko-KR', {
-          hour: '2-digit',
-          minute: '2-digit'
-        })
+        return `${formatDate(date)} ${formatTimeString(date)}`
       case '1D':
-        return date.toLocaleDateString('ko-KR', {
-          month: 'short',
-          day: 'numeric',
-          hour: '2-digit'
-        })
       case '7D':
-        return date.toLocaleDateString('ko-KR', {
-          month: 'short',
-          day: 'numeric'
-        })
+        return formatDate(date)
       default:
-        return date.toLocaleString('ko-KR')
+        return formatDate(date)
     }
   }
 
