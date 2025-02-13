@@ -9,7 +9,7 @@ import { motion } from "framer-motion"
 import { DocumentIcon, Cog6ToothIcon } from "@heroicons/react/24/outline"
 import { LogoutButton } from "@/components/logout-button"
 import { createClientBrowser } from '@/lib/supabase/client'
-import { GuideSection } from '@/lib/types/guide'
+import { GuideSection, GuideItem } from '@/lib/types/guide'
 import { adminguide } from '@/lib/actions/auth'
 import { useRouter } from 'next/navigation'
 
@@ -31,33 +31,27 @@ export function MainPageClient({ initialSections, initialIsAdmin }: MainPageClie
 
   const loadGuideItems = async () => {
     try {
-      const sectionsWithItems = await Promise.all(
-        sections.map(async (section) => {
-          const { data: itemsData, error: itemsError } = await supabase
-            .from('guide_items')
-            .select('*')
-            .eq('section_id', section.id)
-            .order('created_at', { ascending: true })
+      if (sections.length === 0) return;
+      
+      const sectionIds = sections.map(section => section.id).join(',');
+      const response = await fetch(`/api/guides/items/batch?section_ids=${sectionIds}`);
+      const { items } = await response.json();
 
-          if (itemsError) throw itemsError
+      const sectionsWithItems = sections.map(section => ({
+        ...section,
+        items: (items[section.id] || []).map((item: GuideItem) => ({
+          id: item.id,
+          name: item.title,
+          description: item.description,
+          href: `/guides/${item.id}`
+        }))
+      }));
 
-          return {
-            ...section,
-            items: itemsData?.map(item => ({
-              id: item.id,
-              name: item.title,
-              description: item.description,
-              href: `/guides/${item.id}`
-            })) || []
-          }
-        })
-      )
-
-      setSections(sectionsWithItems)
+      setSections(sectionsWithItems);
     } catch (error) {
-      console.error('가이드 아이템 로딩 에러:', error)
+      console.error('가이드 아이템 로딩 에러:', error);
     }
-  }
+  };
 
   useEffect(() => {
     let isMounted = true
