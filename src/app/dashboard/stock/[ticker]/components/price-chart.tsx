@@ -215,11 +215,56 @@ export function PriceChart({
                     dataKey="price"
                     strokeWidth={2}
                     stroke="#EF4444"
-                    activeDot={{ 
-                      r: 6,
-                      stroke: "#EF4444",
-                      strokeWidth: 2
+                    data={(isLoading ? prevData : data).filter(d => d.priceDirection === 'up')}
+                    activeDot={{ r: 6, stroke: "#EF4444", strokeWidth: 2 }}
+                    dot={(props: any): React.ReactElement<SVGElement> => {
+                      const { payload, cx, cy } = props;
+                      if (!payload.hasData) return <circle cx={cx} cy={cy} r={0} />;
+                      
+                      if (payload.isReversal) {
+                        const color = payload.isPositiveChange ? '#EF4444' : '#3B82F6';
+                        return (
+                          <g>
+                            <circle 
+                              cx={cx} 
+                              cy={cy} 
+                              r={4} 
+                              fill={color}
+                              stroke={color}
+                            />
+                            <circle 
+                              cx={cx} 
+                              cy={cy} 
+                              r={6} 
+                              fill="none"
+                              stroke={color}
+                              strokeWidth="1"
+                              opacity="0.5"
+                            />
+                          </g>
+                        );
+                      }
+                      
+                      const color = payload.priceDirection === 'up' ? '#EF4444' : '#3B82F6';
+                      return (
+                        <circle 
+                          cx={cx} 
+                          cy={cy} 
+                          r={3} 
+                          fill={color}
+                          stroke={color}
+                        />
+                      );
                     }}
+                    connectNulls={true}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="price"
+                    strokeWidth={2}
+                    stroke="#3B82F6"
+                    data={(isLoading ? prevData : data).filter(d => d.priceDirection === 'down')}
+                    activeDot={{ r: 6, stroke: "#3B82F6", strokeWidth: 2 }}
                     dot={(props: any): React.ReactElement<SVGElement> => {
                       const { payload, cx, cy } = props;
                       if (!payload.hasData) return <circle cx={cx} cy={cy} r={0} />;
