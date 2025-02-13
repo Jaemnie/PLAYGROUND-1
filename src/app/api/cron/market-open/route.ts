@@ -1,6 +1,7 @@
 import { Receiver } from '@upstash/qstash'
 import { NextResponse } from 'next/server'
 import { MarketScheduler } from '@/services/market-scheduler'
+import { MarketQueue } from '@/services/market-queue'
 
 const receiver = new Receiver({
   currentSigningKey: process.env.QSTASH_CURRENT_SIGNING_KEY!,
@@ -21,8 +22,17 @@ export async function POST(req: Request) {
       return new Response('Invalid signature', { status: 401 })
     }
     
+    const queue = MarketQueue.getInstance()
     const scheduler = await MarketScheduler.getInstance()
-    await scheduler.setOpeningPrices()
+
+    await queue.addTask({
+      type: 'market-open',
+      priority: 3, // 가장 높은 우선순위
+      execute: async () => {
+        await scheduler.setOpeningPrices()
+      }
+    })
+
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Market opening failed:', error)
