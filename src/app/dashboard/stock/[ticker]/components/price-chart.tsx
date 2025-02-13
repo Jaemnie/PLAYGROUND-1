@@ -17,6 +17,7 @@ interface PriceChartProps {
 
 const TIMEFRAMES = {
   '1M': '1분봉',
+  '5M': '5분봉',
   '30M': '30분봉',
   '1H': '1시간봉',
   '1D': '1일봉',
@@ -121,6 +122,22 @@ export function PriceChart({ company, timeframe, onTimeframeChange }: PriceChart
         })
     }
   }, [company, timeframe])
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (timeframe === '1M') { // 1분봉일 때만 실시간 업데이트
+        fetch(`/api/stock/price-history?ticker=${company.ticker}&timeframe=${timeframe}`)
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.candleData?.length > 0) {
+              setSeries([{ data: data.candleData }])
+            }
+          })
+      }
+    }, 60000) // 1분마다 업데이트
+
+    return () => clearInterval(interval)
+  }, [company.ticker, timeframe])
 
   return (
     <>

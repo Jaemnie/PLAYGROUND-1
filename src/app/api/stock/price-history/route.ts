@@ -36,6 +36,9 @@ export async function GET(request: Request) {
       case '1M':
         startTime.setMinutes(now.getMinutes() - 60)
         break
+      case '5M':
+        startTime.setHours(now.getHours() - 4)
+        break
       case '30M':
         startTime.setHours(now.getHours() - 12)
         break
@@ -65,7 +68,6 @@ export async function GET(request: Request) {
     priceUpdates?.forEach(update => {
       const timeKey = new Date(update.created_at)
       
-      // 1분봉일 때는 초만 제거
       if (timeframe === '1M') {
         timeKey.setSeconds(0, 0)
       } else {
