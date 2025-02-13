@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { CardHeader, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { createChart, ColorType, IChartApi } from 'lightweight-charts'
+import { createChart, ColorType, IChartApi, CandlestickData } from 'lightweight-charts'
 import { motion, AnimatePresence } from 'framer-motion'
 
 interface PriceChartProps {
@@ -37,26 +37,13 @@ export function PriceChart({
 }: PriceChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<IChartApi | null>(null)
-  const [data, setData] = useState<Array<{ 
-    time: string
-    open: number
-    high: number
-    low: number
-    close: number
-  }>>([])
+  const [data, setData] = useState<CandlestickData[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [hasNoData, setHasNoData] = useState(false)
 
   useEffect(() => {
-    const handleResize = () => {
-      if (chartRef.current && chartContainerRef.current) {
-        chartRef.current.applyOptions({
-          width: chartContainerRef.current.clientWidth,
-        });
-      }
-    };
-
     if (chartContainerRef.current) {
+      // 차트 생성
       chartRef.current = createChart(chartContainerRef.current, {
         layout: {
           background: { type: ColorType.Solid, color: 'transparent' },
@@ -75,6 +62,10 @@ export function PriceChart({
         },
         rightPriceScale: {
           borderColor: '#374151',
+          scaleMargins: {
+            top: 0.1,
+            bottom: 0.1,
+          },
         },
         crosshair: {
           mode: 1,
@@ -91,6 +82,7 @@ export function PriceChart({
         },
       })
 
+      // 캔들스틱 시리즈만 추가
       const candlestickSeries = chartRef.current.addCandlestickSeries({
         upColor: '#22C55E',
         downColor: '#EF4444',
@@ -102,6 +94,14 @@ export function PriceChart({
       if (data.length > 0) {
         candlestickSeries.setData(data)
         chartRef.current.timeScale().fitContent()
+      }
+
+      const handleResize = () => {
+        if (chartRef.current && chartContainerRef.current) {
+          chartRef.current.applyOptions({
+            width: chartContainerRef.current.clientWidth,
+          })
+        }
       }
 
       window.addEventListener('resize', handleResize)
@@ -174,7 +174,7 @@ export function PriceChart({
     }
   }
 
-  const processChartData = (updates: PriceUpdate[]) => {
+  const processChartData = (updates: PriceUpdate[]): CandlestickData[] => {
     let lastValidPrice = company.current_price;
     const sortedUpdates = [...updates].sort((a, b) => 
       new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
@@ -189,22 +189,20 @@ export function PriceChart({
       lastValidPrice = price;
       
       if (!groupedData.has(timeKey)) {
-        groupedData.set(timeKey, [price]); // [prices]
+        groupedData.set(timeKey, [price]);
       } else {
         groupedData.get(timeKey)?.push(price);
       }
     });
 
-    // 각 시간대별 OHLC 계산
-    return Array.from(groupedData.entries()).map(([time, prices]) => {
-      return {
-        time,
-        open: prices[0],
-        high: Math.max(...prices),
-        low: Math.min(...prices),
-        close: prices[prices.length - 1],
-      };
-    });
+    // CandlestickData 형식으로 변환
+    return Array.from(groupedData.entries()).map(([time, prices]): CandlestickData => ({
+      time,
+      open: prices[0],
+      high: Math.max(...prices),
+      low: Math.min(...prices),
+      close: prices[prices.length - 1],
+    }));
   };
 
   return (
