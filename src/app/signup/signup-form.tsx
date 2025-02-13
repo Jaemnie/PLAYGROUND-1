@@ -122,18 +122,44 @@ export default function SignUpForm() {
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="absolute text-center text-white"
+          className="fixed inset-0 flex items-center justify-center bg-black/70 backdrop-blur-sm z-50"
         >
           <motion.div
-            animate={{ y: [0, -10, 0] }}
-            transition={{ duration: 0.5, repeat: Infinity }}
-            className="text-6xl mb-4"
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ type: "spring", duration: 0.5 }}
+            className="bg-gradient-to-br from-gray-900 to-black rounded-2xl p-8 border border-gray-800/50 shadow-xl text-center max-w-sm mx-4"
           >
-            ✨
+            <motion.div
+              animate={{ 
+                scale: [1, 1.2, 1],
+                rotate: [0, 10, -10, 0]
+              }}
+              transition={{ 
+                duration: 0.6,
+                ease: "easeInOut",
+                times: [0, 0.3, 0.6, 1]
+              }}
+              className="text-6xl mb-6"
+            >
+              ✨
+            </motion.div>
+            <h3 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-violet-400 bg-clip-text text-transparent mb-4">
+              회원가입 완료!
+            </h3>
+            <p className="text-gray-400 mb-6">
+              이메일로 인증 링크가 발송되었습니다.<br />
+              이메일을 확인하여 인증을 완료해주세요.
+            </p>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.5 }}
+              className="text-sm text-gray-500"
+            >
+              잠시 후 로그인 페이지로 이동합니다...
+            </motion.div>
           </motion.div>
-          <h3 className="text-2xl font-bold text-gradient bg-gradient-to-r from-blue-400 to-violet-400 bg-clip-text text-transparent">
-            회원가입 완료!
-          </h3>
         </motion.div>
       )}
     </>
