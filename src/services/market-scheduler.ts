@@ -63,19 +63,19 @@ const SIMULATION_PARAMS = {
     DECAY_TIME_MINUTES: 45,
   },
   PRICE: {
-    BASE_RANDOM_CHANGE: 0.01,           // 기본 변동폭 (±1%)
+    BASE_RANDOM_CHANGE: 0.035,           // 기본 변동폭 3.5%로 증가 (기존 1%)
     REVERSAL: {
-      BASE_CHANCE: 0.1,                 // 기본 반전 확률 (10%)
-      MOMENTUM_MULTIPLIER: 0.15,        // 모멘텀당 추가 반전 확률 (15%)
-      MAX_CHANCE: 0.85                  // 최대 반전 확률 (85%)
+      BASE_CHANCE: 0.15,                 // 기본 반전 확률 15%로 증가 (기존 10%)
+      MOMENTUM_MULTIPLIER: 0.2,          // 모멘텀당 추가 반전 확률 20%로 증가 (기존 15%)
+      MAX_CHANCE: 0.9                    // 최대 반전 확률 90%로 증가 (기존 85%)
     },
-    DAILY_LIMIT: 0.30,                  // 일일 가격 제한폭 (30%)
+    DAILY_LIMIT: 0.30,                   // 일일 가격 제한폭 유지
     WEIGHTS: {
-      RANDOM: 0.3,
-      NEWS: 0.55,                        // 뉴스 영향력 가중치 감소
-      INDUSTRY: 0.3,
-      MOMENTUM: 0.4,
-      INDUSTRY_LEADER: 0.3
+      RANDOM: 0.4,                       // 랜덤 변동 가중치 증가 (기존 0.3)
+      NEWS: 0.5,                         // 뉴스 영향력 조정 (기존 0.55)
+      INDUSTRY: 0.35,                    // 산업 영향력 증가 (기존 0.3)
+      MOMENTUM: 0.45,                    // 모멘텀 영향력 증가 (기존 0.4)
+      INDUSTRY_LEADER: 0.35              // 산업 리더 영향력 증가 (기존 0.3)
     }
   },
   INDUSTRY: {
@@ -871,9 +871,9 @@ export class MarketScheduler {
     
     const basePrice = company.current_price;
     
-    // 기본 랜덤 변동에 가우시안 노이즈 추가
+    // 가우시안 노이즈 강화
     const baseRandomChange = (Math.random() - 0.5) * SIMULATION_PARAMS.PRICE.BASE_RANDOM_CHANGE;
-    const gaussianNoise = this.randomGaussian(0, 0.002);
+    const gaussianNoise = this.randomGaussian(0, 0.008); // 가우시안 노이즈 증가 (기존 0.002)
     const randomChange = baseRandomChange + gaussianNoise;
     
     const industryVolatility = this.calculateIndustryVolatility(company.industry);
