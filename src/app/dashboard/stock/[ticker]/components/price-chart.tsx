@@ -3,8 +3,9 @@
 import { useEffect, useState, useRef } from 'react'
 import { CardHeader, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { createChart, ColorType } from 'lightweight-charts'
+import * as LightweightCharts from 'lightweight-charts'
 import { motion, AnimatePresence } from 'framer-motion'
+import { IChartApi } from 'lightweight-charts'
 
 interface PriceChartProps {
   company: any
@@ -20,6 +21,11 @@ const TIMEFRAMES = {
   '1D': '1일봉',
   '7D': '7일봉'
 } as const
+
+interface ExtendedChartApi extends IChartApi {
+  addCandlestickSeries: (options: any) => any;
+  addHistogramSeries: (options: any) => any;
+}
 
 type ChartType = {
   addCandlestickSeries: (options: any) => any;
@@ -42,23 +48,15 @@ export function PriceChart({
   onTimeframeChange 
 }: PriceChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null)
-  const [chart, setChart] = useState<ChartType | null>(null)
-  const [data, setData] = useState<Array<{ 
-    time: string
-    open: number
-    high: number
-    low: number
-    close: number
-    volume: number
-  }>>([])
+  const [data, setData] = useState<ChartData[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [hasNoData, setHasNoData] = useState(false)
 
   useEffect(() => {
-    if (chartContainerRef.current) {
-      const chartInstance = createChart(chartContainerRef.current, {
+    if (chartContainerRef.current && data.length > 0) {
+      const chart = LightweightCharts.createChart(chartContainerRef.current, {
         layout: {
-          background: { type: ColorType.Solid, color: 'transparent' },
+          background: { color: 'transparent' },
           textColor: '#9CA3AF',
         },
         grid: {
@@ -67,35 +65,19 @@ export function PriceChart({
         },
         width: chartContainerRef.current.clientWidth,
         height: 400,
-      }) as unknown as ChartType
+      }) as any;
 
-      const candleSeries = chartInstance.addCandlestickSeries({
-        upColor: '#22C55E',
-        downColor: '#EF4444',
-        borderVisible: false,
-        wickUpColor: '#22C55E',
-        wickDownColor: '#EF4444',
-      })
-
-      const volumeSeries = chartInstance.addHistogramSeries({
-        color: '#4B5563',
-        priceFormat: { type: 'volume' },
-        priceScaleId: '',
-      })
-
-      if (data.length > 0) {
-        candleSeries.setData(data)
-        volumeSeries.setData(data.map(item => ({
-          time: item.time,
-          value: item.volume,
-          color: item.close >= item.open ? '#22C55E80' : '#EF444480',
-        })))
-      }
-
-      setChart(chartInstance)
+      const candlestickSeries = chart.addCandlestickSeries()
+      candlestickSeries.setData(data.map(item => ({
+        time: item.time,
+        open: item.open,
+        high: item.high,
+        low: item.low,
+        close: item.close
+      })))
 
       return () => {
-        chartInstance.remove()
+        chart.remove()
       }
     }
   }, [data])
