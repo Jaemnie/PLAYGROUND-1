@@ -1,7 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { redis } from '@/lib/upstash-client'
-import { PortfolioTracker } from '@/services/portfolio-tracker'
 
 async function calculatePriceChange(
   currentPrice: number,
@@ -100,18 +99,10 @@ export async function POST() {
         await redis.del(key);
       })
     );
-
-    // 고유한 user_id 목록 가져오기
-    const { data: users } = await supabase.rpc('get_unique_user_ids')
-
-    const tracker = new PortfolioTracker()
-    await Promise.all(
-      (users || []).map((user: { user_id: string }) => tracker.recordPerformance(user.user_id))
-    )
-
+    
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('가격 업데이트 중 오류:', error)
-    return NextResponse.json({ error: '가격 업데이트 실패' }, { status: 500 })
+    console.error('Price update error:', error)
+    return NextResponse.json({ error: '가격 업데이트 중 오류가 발생했습니다.' }, { status: 500 })
   }
 }

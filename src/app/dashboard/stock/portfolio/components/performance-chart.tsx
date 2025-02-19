@@ -5,33 +5,6 @@ import { CardHeader, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 
-interface PortfolioPerformance {
-  // 시점별 포트폴리오 가치
-  timestamp: string;
-  // 현재 보유 주식의 평가 금액
-  holdingsValue: number;
-  // 실현된 누적 수익금
-  realizedGains: number;
-  // 현금 보유액 (미투자금 + 실현 수익)
-  cashBalance: number;
-  // 총 투자 원금 (누적)
-  totalInvestment: number;
-  // 전체 수익률 = (holdingsValue + realizedGains + cashBalance - totalInvestment) / totalInvestment * 100
-  totalReturnRate: number;
-}
-
-// API 응답 구조
-interface PerformanceResponse {
-  performance: PortfolioPerformance[];
-  summary: {
-    totalRealizedGains: number;    // 총 실현 수익
-    totalUnrealizedGains: number;  // 총 미실현 수익
-    totalReturnRate: number;       // 전체 수익률
-    initialInvestment: number;     // 초기 투자금
-    currentPortfolioValue: number; // 현재 포트폴리오 가치
-  };
-}
-
 interface PerformanceChartProps {
   user: any
   portfolio: any[]
