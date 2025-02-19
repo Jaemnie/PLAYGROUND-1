@@ -1,84 +1,71 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
+interface PortfolioSnapshot {
+  created_at: string;
+  holdings_value: number;
+  realized_gains: number;
+  cash_balance: number;
+  total_investment: number;
+  total_return_rate: number;
+}
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const userId = searchParams.get('user_id')
-  const timeframe = searchParams.get('timeframe') || '1M'
-
-  if (!userId) {
-    return NextResponse.json({ error: 'user_id가 필요합니다.' }, { status: 400 })
-  }
+  const timeframe = searchParams.get('timeframe') || '1D'
 
   const supabase = await createClient()
-  
-  // 시간 범위 계산
-  const now = new Date()
-  const startTime = new Date()
 
-  switch (timeframe) {
-    case '1M':
-      startTime.setMinutes(now.getMinutes() - 60) // 최근 60분의 1분봉
-      break
-    case '30M':
-      startTime.setHours(now.getHours() - 12) // 최근 12시간의 30분봉
-      break
-    case '1H':
-      startTime.setHours(now.getHours() - 24) // 최근 24시간의 1시간봉
-      break
-    case '1D':
-      startTime.setDate(now.getDate() - 7) // 최근 7일의 일봉
-      break
-    case '7D':
-      startTime.setDate(now.getDate() - 30) // 최근 30일의 주봉
-      break
-  }
+  try {
+    // 스냅샷 데이터 조회
+    const { data: snapshots } = await supabase
+      .from('portfolio_snapshots')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: true })
 
-  const { data, error } = await supabase
-    .from('portfolio_performance')
-    .select('recorded_at, profit_rate')
-    .eq('user_id', userId)
-    .gte('recorded_at', startTime.toISOString())
-    .order('recorded_at', { ascending: true })
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
-  }
-
-  const formatTime = (timestamp: string, timeframe: string) => {
-    const date = new Date(timestamp)
-    switch (timeframe) {
-      case '1M':
-        return date.toLocaleTimeString('ko-KR', {
-          hour: '2-digit',
-          minute: '2-digit'
-        })
-      case '30M':
-      case '1H':
-        return date.toLocaleTimeString('ko-KR', {
-          hour: '2-digit',
-          minute: '2-digit'
-        })
-      case '1D':
-        return date.toLocaleDateString('ko-KR', {
-          month: 'short',
-          day: 'numeric',
-          hour: '2-digit'
-        })
-      case '7D':
-        return date.toLocaleDateString('ko-KR', {
-          month: 'short',
-          day: 'numeric'
-        })
-      default:
-        return date.toLocaleString('ko-KR')
+    if (!snapshots || snapshots.length === 0) {
+      return NextResponse.json({ error: '포트폴리오 데이터가 없습니다.' }, { status: 404 })
     }
-  }
 
-  return NextResponse.json({
-    performance: data.map(item => ({
-      time: formatTime(item.recorded_at, timeframe),
-      value: Number(item.profit_rate.toFixed(2))
-    }))
-  })
+    // 시간대별 데이터 그룹화
+    const performanceData = groupSnapshotsByTimeframe(snapshots, timeframe)
+
+    // 최신 스냅샷으로 요약 정보 생성
+    const latestSnapshot = snapshots[snapshots.length - 1]
+    const summary = {
+      totalRealizedGains: latestSnapshot.realized_gains,
+      totalUnrealizedGains: latestSnapshot.holdings_value - latestSnapshot.total_investment,
+      totalReturnRate: latestSnapshot.total_return_rate,
+      initialInvestment: latestSnapshot.total_investment,
+      currentPortfolioValue: latestSnapshot.holdings_value + latestSnapshot.cash_balance
+    }
+
+    return NextResponse.json({
+      performance: performanceData,
+      summary
+    })
+  } catch (error) {
+    console.error('포트폴리오 성과 계산 오류:', error)
+    return NextResponse.json({ error: '성과 데이터 조회 실패' }, { status: 500 })
+  }
+}
+
+function formatTimestamp(timestamp: string, timeframe: string): string {
+  const date = new Date(timestamp)
+  switch(timeframe) {
+    case '1D': return date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
+    case '7D': return date.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })
+    default: return date.toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+  }
+}
+
+function groupSnapshotsByTimeframe(snapshots: PortfolioSnapshot[], timeframe: string) {
+  // 시간대별 그룹화 로직 구현
+  // timeframe에 따라 다른 간격으로 데이터 그룹화
+  return snapshots.map(snapshot => ({
+    time: formatTimestamp(snapshot.created_at, timeframe),
+    value: snapshot.total_return_rate
+  }))
 } 
