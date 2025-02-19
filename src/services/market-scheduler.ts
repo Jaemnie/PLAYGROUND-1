@@ -63,7 +63,7 @@ const SIMULATION_PARAMS = {
     DECAY_TIME_MINUTES: 45,
   },
   PRICE: {
-    BASE_RANDOM_CHANGE: 0.05,           // 기본 변동폭 3.5%로 증가 (기존 1%)
+    BASE_RANDOM_CHANGE: 0.03,           // 기본 변동폭 3.5%로 증가 (기존 1%)
     REVERSAL: {
       BASE_CHANCE: 0.05,                 // 기본 반전 확률 5%로 감소
       MOMENTUM_MULTIPLIER: 0.07,          // 모멘텀당 추가 반전 확률 7%로 감소
@@ -681,10 +681,11 @@ export class MarketScheduler {
   }
 
   private selectWeightedNews(templates: NewsTemplate[]): NewsTemplate {
-    // 각 템플릿의 weight 계산 (낮은 volatility일수록 높은 weight)
+    // volatility 기반 가중치 계산 로직 수정
     const weights = templates.map((template) => {
       const vol = template.volatility ?? 1.0;
-      return 1 / vol;
+      // 지수를 2.0으로 높여서 높은 volatility의 뉴스가 선택될 확률을 더 낮춤
+      return Math.pow(1 / vol, 2.0); // 지수를 2.0으로 증가 (기존 1.0)
     });
 
     // 모든 weight의 합 계산
@@ -702,7 +703,6 @@ export class MarketScheduler {
       }
     }
     
-    // 혹시 선택되지 않으면 마지막 템플릿 반환 (예외 상황 방지)
     return templates[templates.length - 1];
   }
 

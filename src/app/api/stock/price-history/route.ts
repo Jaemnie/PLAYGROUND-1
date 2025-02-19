@@ -33,23 +33,17 @@ export async function GET(request: Request) {
     const startTime = new Date()
 
     switch (timeframe) {
-      case '1M':
-        startTime.setMinutes(now.getMinutes() - 60)
-        break
       case '5M':
-        startTime.setHours(now.getHours() - 4)
+        startTime.setHours(now.getHours() - 24) // 5분봉은 24시간 데이터
         break
       case '30M':
-        startTime.setHours(now.getHours() - 12)
+        startTime.setDate(now.getDate() - 3)    // 30분봉은 3일 데이터
         break
       case '1H':
-        startTime.setHours(now.getHours() - 24)
+        startTime.setDate(now.getDate() - 7)    // 1시간봉은 7일 데이터
         break
       case '1D':
-        startTime.setDate(now.getDate() - 7)
-        break
-      case '7D':
-        startTime.setDate(now.getDate() - 30)
+        startTime.setDate(now.getDate() - 30)   // 일봉은 30일 데이터
         break
     }
 
@@ -65,13 +59,11 @@ export async function GET(request: Request) {
     // 시간 간격(분) 계산 함수
     function getTimeIntervalMinutes(timeframe: string): number {
       switch (timeframe) {
-        case '1M': return 1
         case '5M': return 5
         case '30M': return 30
         case '1H': return 60
         case '1D': return 24 * 60
-        case '7D': return 7 * 24 * 60
-        default: return 1
+        default: return 5
       }
     }
 
