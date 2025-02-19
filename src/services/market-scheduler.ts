@@ -35,13 +35,15 @@ interface Company {
   id: string;
   name: string;
   ticker: string;
+  description: string;
   industry: Industry;
   current_price: number;
+  market_cap: number;
+  shares_issued: number;
   previous_price: number;
   last_closing_price: number;
-  is_delisted?: boolean;
-  consecutive_down_days?: number;
-  market_cap: number;
+  is_delisted: boolean;
+  consecutive_down_days: number;
 }
 
 interface Holdings {
@@ -523,6 +525,10 @@ export class MarketScheduler {
             );
 
             const priceChange = (finalPrice - company.current_price) / company.current_price;
+            
+            // 시가총액 업데이트 계산 (발행주식수 기반)
+            const newMarketCap = Math.round(finalPrice * company.shares_issued);
+
             const previousMovement = this.priceMovementCache.get(company.id) || {
               direction: 'neutral',
               consecutiveCount: 0,
@@ -531,7 +537,6 @@ export class MarketScheduler {
             
             this.updatePriceMovement(company.id, priceChange, previousMovement);
           
-            
             return {
               id: crypto.randomUUID(),
               company_id: company.id,
@@ -539,13 +544,17 @@ export class MarketScheduler {
               new_price: Number(finalPrice.toFixed(4)),
               change_percentage: Number((priceChange * 100).toFixed(4)),
               update_reason: this.generateUpdateReason(companyNewsImpact),
-              created_at: new Date().toISOString()
+              created_at: new Date().toISOString(),
+              old_market_cap: company.market_cap,
+              new_market_cap: newMarketCap
             };
           })
         );
 
+        // 업데이트 실행
         await Promise.all(
           updates.filter(Boolean).map(async (update) => {
+            // price_updates 테이블 업데이트
             await this.retryOperation(async () => {
               const result = await this.supabase
                 .from('price_updates')
@@ -553,12 +562,14 @@ export class MarketScheduler {
               return result;
             });
 
+            // companies 테이블 업데이트
             await this.retryOperation(async () => {
               const result = await this.supabase
                 .from('companies')
                 .update({
                   previous_price: update!.old_price,
                   current_price: update!.new_price,
+                  market_cap: update!.new_market_cap
                 })
                 .eq('id', update!.company_id)
               return result;
@@ -568,6 +579,7 @@ export class MarketScheduler {
       }
       console.log('시장 업데이트 완료');
       
+      // 포트폴리오 성과 기록
       const { data: users } = await this.supabase
         .from('profiles')
         .select('id');
@@ -791,8 +803,8 @@ export class MarketScheduler {
         // 뉴스 해석의 불확실성 추가
         const marketSentiment = Math.random(); // 시장 심리 팩터
         
-        // 긍정적 뉴스도 부정적으로 해석될 수 있는 로직
-        const interpretationChance = news.sentiment === 'positive' ? 0.4 : 0.2; // 긍정뉴스가 부정적으로 해석될 확률 40%
+        // 긍정/부정 뉴스 모두 30% 확률로 반대로 해석될 수 있도록 수정
+        const interpretationChance = 0.3; // 모든 뉴스가 반대로 해석될 확률 30%
         const reverseInterpretation = Math.random() < interpretationChance;
         
         // 방향성 결정 (기존 영향력의 방향을 뒤집을 수 있음)
@@ -927,8 +939,8 @@ export class MarketScheduler {
         companies.map(async (company: Company) => {
           const priceChange = (Math.random() - 0.5) * 0.1; // -5% ~ +5%
           const openingPrice = company.last_closing_price * (1 + priceChange);
+          const newMarketCap = Math.round(openingPrice * company.shares_issued);
           
-          // price_updates 테이블에 기록
           await this.retryOperation(async () => {
             return await this.supabase
               .from('price_updates')
@@ -939,17 +951,19 @@ export class MarketScheduler {
                 new_price: Number(openingPrice.toFixed(4)),
                 change_percentage: Number((priceChange * 100).toFixed(4)),
                 update_reason: '장 시작',
-                created_at: new Date().toISOString()
+                created_at: new Date().toISOString(),
+                old_market_cap: company.market_cap,
+                new_market_cap: newMarketCap
               });
           });
 
-          // companies 테이블 업데이트
           await this.retryOperation(async () => {
             return await this.supabase
               .from('companies')
               .update({
                 previous_price: company.current_price,
                 current_price: openingPrice,
+                market_cap: newMarketCap
               })
               .eq('id', company.id);
           });
@@ -963,7 +977,6 @@ export class MarketScheduler {
     if (companies && companies.length > 0) {
       await Promise.all(
         companies.map(async (company: Company) => {
-          // price_updates 테이블에 기록
           await this.retryOperation(async () => {
             return await this.supabase
               .from('price_updates')
@@ -974,11 +987,12 @@ export class MarketScheduler {
                 new_price: Number(company.current_price.toFixed(4)),
                 change_percentage: 0,
                 update_reason: '장 마감',
-                created_at: new Date().toISOString()
+                created_at: new Date().toISOString(),
+                old_market_cap: company.market_cap,
+                new_market_cap: company.market_cap
               });
           });
 
-          // companies 테이블 업데이트
           await this.retryOperation(async () => {
             return await this.supabase
               .from('companies')
@@ -1062,12 +1076,18 @@ export class MarketScheduler {
   }
 
   private calculateMarketCapVolatility(marketCap: number): number {
-    if (marketCap >= SIMULATION_PARAMS.MARKET_CAP.THRESHOLDS.LARGE) {
-      return SIMULATION_PARAMS.MARKET_CAP.VOLATILITY.LARGE;
-    } else if (marketCap >= SIMULATION_PARAMS.MARKET_CAP.THRESHOLDS.MEDIUM) {
+    // 시가총액 규모별 변동성 차등 적용
+    if (marketCap >= 200000000000) { // 2000억 이상 (대기업)
+      return SIMULATION_PARAMS.MARKET_CAP.VOLATILITY.LARGE * 0.8; // 변동성 20% 감소
+    } else if (marketCap >= 70000000000) { // 700억 이상 (중견기업)
       return SIMULATION_PARAMS.MARKET_CAP.VOLATILITY.MEDIUM;
+    } else if (marketCap >= 30000000000) { // 300억 이상 (중소기업)
+      return SIMULATION_PARAMS.MARKET_CAP.VOLATILITY.MEDIUM * 1.2; // 변동성 20% 증가
+    } else if (marketCap >= 20000000000) { // 200억 이상 (강소기업)
+      return SIMULATION_PARAMS.MARKET_CAP.VOLATILITY.SMALL * 1.3; // 변동성 30% 증가
+    } else { // 스타트업
+      return SIMULATION_PARAMS.MARKET_CAP.VOLATILITY.SMALL * 1.5; // 변동성 50% 증가
     }
-    return SIMULATION_PARAMS.MARKET_CAP.VOLATILITY.SMALL;
   }
 
   private async calculateIndustryLeaderImpact(
