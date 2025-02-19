@@ -2,7 +2,7 @@
 
 import { CardHeader, CardContent } from '@/components/ui/card'
 import { ArrowUpIcon, ArrowDownIcon } from '@heroicons/react/24/outline'
-import { createClient } from '@/lib/supabase/server'
+import { createClientBrowser } from '@/lib/supabase/client'
 
 interface PortfolioAnalysisProps {
   portfolio: any[]
@@ -26,7 +26,7 @@ interface Holding {
 }
 
 async function calculatePortfolioMetrics(userId: string): Promise<PortfolioMetrics> {
-  const supabase = await createClient();
+  const supabase = await createClientBrowser();
   
   // 1. 현재 보유 주식의 미실현 손익 계산
   const { data: holdings } = await supabase
