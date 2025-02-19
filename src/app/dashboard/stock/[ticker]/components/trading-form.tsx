@@ -25,6 +25,7 @@ interface Company {
 
 interface Holding {
   shares: number;
+  average_cost: number;
   // 필요한 추가 필드들
 }
 
@@ -83,7 +84,7 @@ export function TradingForm({
     setShares(String(Math.floor(maxShares / 2)))
   }
 
-  const handleTrade = async (): Promise<void> => {
+  async function handleTrade(): Promise<void> {
     setIsLoading(true)
     
     try {
@@ -95,16 +96,16 @@ export function TradingForm({
         throw new Error('보유 주식이 부족합니다.')
       }
       
-      const { error: transactionError } = await supabase
-        .from('transactions')
-        .insert({
-          user_id: user.id,
-          company_id: company.id,
-          transaction_type: type,
-          shares: Number(shares),
-          price: company.current_price,
-          total_amount: totalAmount
-        })
+      // 트랜잭션 시작
+      const { error: transactionError } = await supabase.rpc('execute_trade', {
+        p_user_id: user.id,
+        p_company_id: company.id,
+        p_transaction_type: type,
+        p_shares: Number(shares),
+        p_price: company.current_price,
+        p_total_amount: totalAmount,
+        p_average_cost: holding?.average_cost || 0
+      })
       
       if (transactionError) throw transactionError
       
