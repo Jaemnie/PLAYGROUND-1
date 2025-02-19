@@ -16,11 +16,11 @@ interface PriceChartProps {
 }
 
 const TIMEFRAMES = {
-  '5M': '5분봉',
-  '30M': '30분봉',
-  '1H': '1시간봉',
-  '1D': '1일봉',
-  '7D': '7일봉'
+  '5M': '5분',
+  '30M': '30분',
+  '1H': '1시간',
+  '1D': '일간',
+  '7D': '주간'
 } as const
 
 export function PriceChart({ company, timeframe = '5M', onTimeframeChange }: PriceChartProps) {
