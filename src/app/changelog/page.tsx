@@ -39,6 +39,35 @@ export default function ChangelogPage() {
 
             <div className="space-y-12">
               <div>
+                <h2 className="text-2xl font-bold text-gray-100">2024년 2월</h2>
+                <div className="mt-4 space-y-4">
+                  <div className="border-l-2 border-blue-500 pl-4">
+                    <h3 className="text-lg font-semibold text-gray-200">v1.4.0</h3>
+                    <p className="text-sm text-gray-400">2024년 2월 13일</p>
+                    <ul className="mt-2 space-y-2 text-gray-300">
+                      <li>실시간 주식 차트 시스템 개선</li>
+                      <li>한국식 캔들스틱 차트 구현</li>
+                      <li>기업 상세 정보에 뉴스 섹션 추가</li>
+                      <li>거래 알고리즘 및 밸런스 조정</li>
+                      <li>장 운영 시간에 따른 거래 제한 기능 구현</li>
+                      <li>회원가입 프로세스 개선</li>
+                    </ul>
+                  </div>
+
+                  <div className="border-l-2 border-blue-500 pl-4">
+                    <h3 className="text-lg font-semibold text-gray-200">v1.3.5</h3>
+                    <p className="text-sm text-gray-400">2024년 2월 12일</p>
+                    <ul className="mt-2 space-y-2 text-gray-300">
+                      <li>실시간 프로필 상태 업데이트 기능 추가</li>
+                      <li>손익 계산 알고리즘 개선</li>
+                      <li>마켓 스케줄러 시스템 통합 및 최적화</li>
+                      <li>전반적인 UI/UX 개선</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <div>
                 <h2 className="text-2xl font-bold text-gray-100">2025년 2월</h2>
                 <div className="mt-4 space-y-4">
                   <div className="border-l-2 border-blue-500 pl-4">
