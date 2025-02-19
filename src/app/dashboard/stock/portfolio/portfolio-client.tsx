@@ -129,11 +129,7 @@ export function PortfolioClient({ user, portfolio: initialPortfolio, transaction
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Card className="bg-black/40 backdrop-blur-sm border-gray-800">
-            <PortfolioAnalysis 
-              portfolio={updatedPortfolio} 
-              points={points}
-              user={user}
-            />
+            <PortfolioAnalysis portfolio={updatedPortfolio} points={points} />
           </Card>
           <Card className="bg-black/40 backdrop-blur-sm border-gray-800">
             <PerformanceChart 
