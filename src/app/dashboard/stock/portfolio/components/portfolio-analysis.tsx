@@ -5,8 +5,9 @@ import { ArrowUpIcon, ArrowDownIcon } from '@heroicons/react/24/outline'
 import { createClientBrowser } from '@/lib/supabase/client'
 
 interface PortfolioAnalysisProps {
-  portfolio: any[]
-  points: number
+  portfolio: any[];
+  points: number;
+  user: { id: string };
 }
 
 interface PortfolioMetrics {
@@ -73,8 +74,8 @@ async function calculatePortfolioMetrics(userId: string): Promise<PortfolioMetri
   };
 }
 
-export default async function PortfolioAnalysis({ portfolio, points }: PortfolioAnalysisProps) {
-  const metrics = await calculatePortfolioMetrics(portfolio[0]?.user_id);
+export default async function PortfolioAnalysis({ portfolio, points, user }: PortfolioAnalysisProps) {
+  const metrics = await calculatePortfolioMetrics(user.id);
   
   // 보유 주식의 총 평가 금액 계산
   const stocksValue = portfolio.reduce((sum, holding) => {
