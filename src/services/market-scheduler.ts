@@ -520,9 +520,7 @@ export class MarketScheduler {
             const newBasePrice = await this.calculateNewPrice(company);
             const companyNewsImpact = await this.calculateCompanyNewsImpact(company.id, recentNews);
             
-            const finalPrice = newBasePrice * (
-              1 + (companyNewsImpact * SIMULATION_PARAMS.PRICE.WEIGHTS.NEWS)
-            );
+            const finalPrice = newBasePrice * (1 + companyNewsImpact);
 
             const priceChange = (finalPrice - company.current_price) / company.current_price;
             
@@ -612,27 +610,40 @@ export class MarketScheduler {
   }): number {
     if (movement.consecutiveCount <= 1) return 1.0;
     
+    // 모멘텀 강도를 로그 스케일로 계산하여 급격한 증가 방지
+    const logBase = 1.5;
     const momentumStrength = Math.min(
-      movement.consecutiveCount * Math.abs(movement.lastChange) * 0.3,
-      0.05
+      (Math.log(movement.consecutiveCount) / Math.log(logBase)) * 
+      Math.abs(movement.lastChange) * 
+      0.2, // 전체적인 영향력 감소
+      0.04  // 최대 영향력 제한
     );
     
+    // 반전 확률을 연속 횟수에 따라 지수적으로 증가
     const baseReversalChance = SIMULATION_PARAMS.PRICE.REVERSAL.BASE_CHANCE;
     const reversalChance = Math.min(
       baseReversalChance + 
-      Math.pow(movement.consecutiveCount, 1.5) * SIMULATION_PARAMS.PRICE.REVERSAL.MOMENTUM_MULTIPLIER,
+      (1 - Math.exp(-movement.consecutiveCount * 0.3)) * // 지수적 증가
+      SIMULATION_PARAMS.PRICE.REVERSAL.MOMENTUM_MULTIPLIER,
       SIMULATION_PARAMS.PRICE.REVERSAL.MAX_CHANCE
     );
     
-    if (Math.random() < reversalChance) {
+    // 반전 확률에 변동성 추가
+    const volatilityFactor = 1 + (Math.random() * 0.2 - 0.1); // ±10% 변동
+    const finalReversalChance = reversalChance * volatilityFactor;
+    
+    if (Math.random() < finalReversalChance) {
+      // 반전 시 영향력을 점진적으로 적용
       return movement.direction === 'up' ? 
-        1 - momentumStrength : 
-        1 + momentumStrength;
+        1 - (momentumStrength * 0.7) : // 하락 반전 시 영향력 감소
+        1 + (momentumStrength * 0.8);  // 상승 반전 시 영향력 증가
     }
     
+    // 기존 추세 유지 시 영향력을 감소
+    const trendDecay = Math.exp(-movement.consecutiveCount * 0.1); // 지속 기간에 따른 감쇠
     return movement.direction === 'up' ? 
-      1 + (momentumStrength * 0.8) :
-      1 - (momentumStrength * 0.7);
+      1 + (momentumStrength * 0.6 * trendDecay) :
+      1 - (momentumStrength * 0.5 * trendDecay);
   }
 
   private updatePriceMovement(
