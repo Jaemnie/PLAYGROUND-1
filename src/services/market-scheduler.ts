@@ -59,33 +59,33 @@ interface Profile {
 // 시뮬레이션 파라미터 상수 수정
 const SIMULATION_PARAMS = {
   NEWS: {
-    COMPANY_NEWS_CHANCE: 1.0,           // 100% 확률로 변경
-    IMPACT_VARIATION_MIN: 1.0,          // 최소 영향력 유지
-    IMPACT_VARIATION_MAX: 1.8,          // 최대 영향력 1.8배로 증가
+    COMPANY_NEWS_CHANCE: 1.0,           
+    IMPACT_VARIATION_MIN: 0.8,          // 최소 영향력 감소 (1.0 -> 0.8)
+    IMPACT_VARIATION_MAX: 1.3,          // 최대 영향력 감소 (1.8 -> 1.3)
     DECAY_TIME_MINUTES: 45,
   },
   PRICE: {
-    BASE_RANDOM_CHANGE: 0.03,           // 기본 변동폭 3.5%로 증가 (기존 1%)
+    BASE_RANDOM_CHANGE: 0.008,          // 기본 변동폭 감소 (0.03 -> 0.008)
     REVERSAL: {
-      BASE_CHANCE: 0.05,                 // 기본 반전 확률 5%로 감소
-      MOMENTUM_MULTIPLIER: 0.07,          // 모멘텀당 추가 반전 확률 7%로 감소
-      MAX_CHANCE: 0.70                    // 최대 반전 확률 70%로 감소
+      BASE_CHANCE: 0.05,                
+      MOMENTUM_MULTIPLIER: 0.07,         
+      MAX_CHANCE: 0.70                   
     },
-    DAILY_LIMIT: 0.30,                   // 일일 가격 제한폭 유지
+    DAILY_LIMIT: 0.30,                   
     WEIGHTS: {
-      RANDOM: 0.4,                       // 랜덤 변동 가중치 증가 (기존 0.3)
-      NEWS: 0.5,                         // 뉴스 영향력 조정 (기존 0.55)
-      INDUSTRY: 0.35,                    // 산업 영향력 증가 (기존 0.3)
-      MOMENTUM: 0.45,                    // 모멘텀 영향력 증가 (기존 0.4)
-      INDUSTRY_LEADER: 0.35              // 산업 리더 영향력 증가 (기존 0.3)
+      RANDOM: 0.25,                     // 랜덤 변동 가중치 감소 (0.4 -> 0.25)
+      NEWS: 0.35,                       // 뉴스 영향력 감소 (0.5 -> 0.35)
+      INDUSTRY: 0.25,                   // 산업 영향력 감소 (0.35 -> 0.25)
+      MOMENTUM: 0.3,                    // 모멘텀 영향력 감소 (0.45 -> 0.3)
+      INDUSTRY_LEADER: 0.25             // 산업 리더 영향력 감소 (0.35 -> 0.25)
     }
   },
   INDUSTRY: {
     VOLATILITY: {
-      'IT': 1.5,
-      '전자': 1.4,
-      '제조': 1.2,
-      '건설': 1.1,
+      'IT': 1.3,                        // 산업별 변동성 감소
+      '전자': 1.2,
+      '제조': 1.1,
+      '건설': 1.05,
       '식품': 1.0
     } as const
   },
@@ -841,8 +841,8 @@ export class MarketScheduler {
         const perMinuteImpact = baseImpact * sentimentMultiplier * volatilityMultiplier * 
                                marketCapMultiplier * marketSentimentMultiplier;
         
-        // 영향력 범위 제한 (-0.08 ~ 0.08)로 확대
-        const clampedImpact = Math.max(Math.min(perMinuteImpact, 0.08), -0.08);
+        // 최종 영향력 범위 제한 값 감소
+        const clampedImpact = Math.max(Math.min(perMinuteImpact, 0.04), -0.04); // 0.08 -> 0.04
         totalPerMinuteImpact += clampedImpact;
       } else {
         await this.supabase
@@ -866,12 +866,12 @@ export class MarketScheduler {
   }
 
   private calculateTimeVolatility(hour: number): number {
-    // 시간대별 변동성 가중치 개선
-    if (hour >= 9 && hour < 10) return 1.8;  // 개장 초반 매우 높은 변동성
-    if (hour >= 10 && hour < 11) return 1.4;  // 개장 1시간 이후 여전히 높은 변동성
-    if (hour >= 11 && hour <= 13) return 0.7; // 점심시간대 낮은 변동성
-    if (hour >= 14 && hour < 15) return 1.2;  // 오후 시작 보통 변동성
-    if (hour >= 15) return 1.6;               // 장 마감 전 높은 변동성
+    // 시간대별 변동성 가중치 감소
+    if (hour >= 9 && hour < 10) return 1.4;  // 1.8 -> 1.4
+    if (hour >= 10 && hour < 11) return 1.2; // 1.4 -> 1.2
+    if (hour >= 11 && hour <= 13) return 0.7;
+    if (hour >= 14 && hour < 15) return 1.1; // 1.2 -> 1.1
+    if (hour >= 15) return 1.3;              // 1.6 -> 1.3
     return 1.0;
   }
 
@@ -890,7 +890,7 @@ export class MarketScheduler {
     
     // 가우시안 노이즈 강화
     const baseRandomChange = (Math.random() - 0.5) * SIMULATION_PARAMS.PRICE.BASE_RANDOM_CHANGE;
-    const gaussianNoise = this.randomGaussian(0, 0.008); // 가우시안 노이즈 증가 (기존 0.002)
+    const gaussianNoise = this.randomGaussian(0, 0.004); // 가우시안 노이즈 감소 (0.008 -> 0.004)
     const randomChange = baseRandomChange + gaussianNoise;
     
     const industryVolatility = this.calculateIndustryVolatility(company.industry);
@@ -1124,8 +1124,8 @@ export class MarketScheduler {
       0
     );
 
-    // 영향도를 -0.02 ~ 0.02 범위로 제한
-    return Math.max(Math.min(averageChange * 0.5, 0.02), -0.02);
+    // 영향도 범위 제한 값 감소
+    return Math.max(Math.min(averageChange * 0.3, 0.01), -0.01); // 0.02 -> 0.01, multiplier 0.5 -> 0.3
   }
 
   public async updateNews(): Promise<void> {
