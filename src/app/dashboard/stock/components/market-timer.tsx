@@ -105,7 +105,8 @@ export function MarketTimer() {
     }
 
     const timer = setInterval(() => {
-      const now = new Date()
+      // 서버 시각 기준으로 계산
+      const now = new Date(new Date().getTime() + serverOffset)
       
       // 다음 주가 업데이트 시간 계산 (1분 간격)
       const nextPrice = new Date(now)
@@ -143,7 +144,7 @@ export function MarketTimer() {
     }, 100)
 
     return () => clearInterval(timer)
-  }, [])
+  }, [serverOffset])
 
   // 플래시 효과 리셋 로직 통합
   useEffect(() => {
@@ -164,7 +165,9 @@ export function MarketTimer() {
   }, [flashPrice, flashNews])
 
   const getTimeRemaining = (targetDate: Date) => {
-    const diff = targetDate.getTime() - currentTime.getTime()
+    // 서버 시각 기준으로 남은 시간 계산
+    const serverNow = new Date(currentTime.getTime() + serverOffset)
+    const diff = targetDate.getTime() - serverNow.getTime()
     if (diff <= 0) return '0:00'
     const minutes = Math.floor(diff / 60000)
     const seconds = Math.floor((diff % 60000) / 1000)
