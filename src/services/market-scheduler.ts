@@ -426,7 +426,13 @@ export class MarketScheduler {
 
       const { error } = await this.retryOperation(async () => {
         const result = await supabase.from('news').insert({
-          ...news,
+          title: news.title,
+          content: news.content,
+          sentiment: news.sentiment,
+          impact: news.impact,
+          type: news.type,
+          volatility: news.volatility || 1.0,
+          company_id: news.company_id,
           published_at: currentTime
         });
         return result;
