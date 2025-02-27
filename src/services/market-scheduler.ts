@@ -114,331 +114,6 @@ export class MarketScheduler {
     consecutiveCount: number,
     lastChange: number
   }> = new Map();
-  private companyNewsTemplates: NewsTemplate[] = [
-    /* Negative Templates (총 20개, volatility 내림차순) */
-    {
-      title: '대규모 회계부정 의혹 제기',
-      content: '내부 고발로 드러난 분식회계 의혹… 금융당국의 특별 감리와 함께 주가 급락 우려!',
-      sentiment: 'negative',
-      impact: -0.45,
-      type: 'company',
-      volatility: 3.0
-    },
-    {
-      title: '대규모 횡령 사건 발생',
-      content: '경영진의 대규모 횡령 사실이 드러나며 기업 신뢰도 급락',
-      sentiment: 'negative',
-      impact: -0.43,
-      type: 'company',
-      volatility: 2.9
-    },
-    {
-      title: '주요 특허 소송 패소',
-      content: '핵심 기술 관련 특허 소송에서 패소... 막대한 배상금 지급 예정',
-      sentiment: 'negative',
-      impact: -0.40,
-      type: 'company',
-      volatility: 2.8
-    },
-    {
-      title: '내부자 거래 의혹',
-      content: '임원진의 내부자 거래 의혹으로 조사 착수',
-      sentiment: 'negative',
-      impact: -0.38,
-      type: 'company',
-      volatility: 2.7
-    },
-    {
-      title: '대규모 담합 혐의',
-      content: '공정위, 수년간의 시장 가격 담합 혐의 조사 착수',
-      sentiment: 'negative',
-      impact: -0.36,
-      type: 'company',
-      volatility: 2.6
-    },
-    {
-      title: '대규모 사이버 보안 사고',
-      content: '회사 시스템 해킹으로 인한 데이터 유출 발생, 신속한 복구 조치 중입니다.',
-      sentiment: 'negative',
-      impact: -0.35,
-      type: 'company',
-      volatility: 2.5
-    },
-    {
-      title: '투자 손실 발생',
-      content: '신규 사업 투자 실패로 대규모 손실 발생',
-      sentiment: 'negative',
-      impact: -0.32,
-      type: 'company',
-      volatility: 2.5
-    },
-    {
-      title: '대형 거래처 계약 해지',
-      content: '주요 매출처와의 계약 중단으로 실적 악화 전망',
-      sentiment: 'negative',
-      impact: -0.30,
-      type: 'company',
-      volatility: 2.4
-    },
-    {
-      title: '제품 안전성 문제 제기',
-      content: '주력 제품의 안전성 결함 발견으로 소비자 신뢰도 하락',
-      sentiment: 'negative',
-      impact: -0.28,
-      type: 'company',
-      volatility: 2.2
-    },
-    {
-      title: '직원 대량 이직 사태',
-      content: '핵심 인재들의 잇따른 퇴사로 기업 경쟁력 약화 우려가 제기됩니다.',
-      sentiment: 'negative',
-      impact: -0.25,
-      type: 'company',
-      volatility: 2.3
-    },
-    {
-      title: '신용등급 하락',
-      content: '재무건전성 악화로 기업 신용등급 강등',
-      sentiment: 'negative',
-      impact: -0.25,
-      type: 'company',
-      volatility: 2.1
-    },
-    {
-      title: '대규모 리콜 발표',
-      content: '품질 결함으로 인한 전량 리콜 결정… 막대한 비용 부담과 함께 이미지 타격 우려!',
-      sentiment: 'negative',
-      impact: -0.20,
-      type: 'company',
-      volatility: 2.1
-    },
-    {
-      title: '부실 경영 의혹',
-      content: '경영 전반의 부실로 인한 의혹 제기, 투자자 신뢰 하락 우려',
-      sentiment: 'negative',
-      impact: -0.30,
-      type: 'company',
-      volatility: 2.0
-    },
-    {
-      title: '해외 사업장 폐쇄',
-      content: '수익성 악화로 주요 해외 생산기지 철수 결정',
-      sentiment: 'negative',
-      impact: -0.22,
-      type: 'company',
-      volatility: 2.0
-    },
-    {
-      title: '주요 인증 취소',
-      content: '품질 관리 미흡으로 핵심 제품 인증 취소',
-      sentiment: 'negative',
-      impact: -0.20,
-      type: 'company',
-      volatility: 2.0
-    },
-    {
-      title: '대규모 구조조정 계획',
-      content: '경영 악화로 인한 인력 감축... 노조와의 갈등 우려',
-      sentiment: 'negative',
-      impact: -0.18,
-      type: 'company',
-      volatility: 1.9
-    },
-    {
-      title: '신제품 출시 연기',
-      content: '기술적 문제로 인한 신제품 출시 무기한 연기',
-      sentiment: 'negative',
-      impact: -0.15,
-      type: 'company',
-      volatility: 1.8
-    },
-    {
-      title: '환경 규제 위반 적발',
-      content: '환경부 특별 단속에서 규정 위반 사실이 드러나 과징금 부과가 예상됩니다.',
-      sentiment: 'negative',
-      impact: -0.15,
-      type: 'company',
-      volatility: 1.7
-    },
-    {
-      title: '주요 임원 사임',
-      content: '핵심 임원진의 갑작스러운 사임으로 경영 불확실성 증가',
-      sentiment: 'negative',
-      impact: -0.12,
-      type: 'company',
-      volatility: 1.6
-    },
-    {
-      title: '노사 갈등 심화',
-      content: '임금 협상 결렬로 노사 관계 악화, 파업 가능성 제기',
-      sentiment: 'negative',
-      impact: -0.10,
-      type: 'company',
-      volatility: 1.5
-    },
-
-    /* Positive Templates (총 20개, volatility 내림차순) */
-    {
-      title: '혁신적 AI 기술 개발',
-      content: '세계 최초 AI 기술 개발 성공으로 시장 지배력 확대 전망',
-      sentiment: 'positive',
-      impact: 0.45,
-      type: 'company',
-      volatility: 3.0
-    },
-    {
-      title: '전설의 CEO 복귀',
-      content: '퇴임 후 갑작스럽게 복귀한 전설의 CEO가 회사에 새로운 바람을 예고합니다!',
-      sentiment: 'positive',
-      impact: 0.42,
-      type: 'company',
-      volatility: 2.9
-    },
-    {
-      title: '획기적인 신기술 특허 취득',
-      content: '글로벌 시장을 선도할 핵심 기술 확보! 향후 5년간 독점권이 보장될 전망입니다.',
-      sentiment: 'positive',
-      impact: 0.40,
-      type: 'company',
-      volatility: 2.8
-    },
-    {
-      title: '신비로운 연구 성과 공개',
-      content: '비밀리에 진행된 혁신 연구 결과가 공개되어 미래 기술에 대한 기대감이 폭발합니다!',
-      sentiment: 'positive',
-      impact: 0.38,
-      type: 'company',
-      volatility: 2.7
-    },
-    {
-      title: '대규모 해외 수주',
-      content: '역대 최대 규모의 해외 프로젝트 수주 성공',
-      sentiment: 'positive',
-      impact: 0.36,
-      type: 'company',
-      volatility: 2.6
-    },
-    {
-      title: '실적 서프라이즈 달성',
-      content: '시장 예상치를 30% 상회하는 영업이익 기록! 주력 사업의 호조가 눈에 띕니다.',
-      sentiment: 'positive',
-      impact: 0.35,
-      type: 'company',
-      volatility: 2.5
-    },
-    {
-      title: '차세대 제품 개발 성공',
-      content: '미래 시장을 선도할 혁신 제품 개발 완료',
-      sentiment: 'positive',
-      impact: 0.34,
-      type: 'company',
-      volatility: 2.5
-    },
-    {
-      title: '글로벌 기업과 전략적 제휴',
-      content: '세계적 기업과의 전략적 파트너십 체결로 시장 지배력 강화 전망',
-      sentiment: 'positive',
-      impact: 0.32,
-      type: 'company',
-      volatility: 2.4
-    },
-    {
-      title: '대형 공급계약 체결',
-      content: '3년간의 대규모 납품 계약 성사! 향후 매출 신장이 기대됩니다.',
-      sentiment: 'positive',
-      impact: 0.30,
-      type: 'company',
-      volatility: 2.3
-    },
-    {
-      title: '시장 점유율 급증',
-      content: '급격한 시장 점유율 확대가 관측되어 주가 상승 모멘텀 강화',
-      sentiment: 'positive',
-      impact: 0.28,
-      type: 'company',
-      volatility: 2.3
-    },
-    {
-      title: '혁신 플랫폼 출시',
-      content: '차세대 디지털 플랫폼 출시로 시장 판도 변화 예고',
-      sentiment: 'positive',
-      impact: 0.28,
-      type: 'company',
-      volatility: 2.2
-    },
-    {
-      title: '신규 특허 포트폴리오 구축',
-      content: '핵심 기술 분야 특허 다수 확보로 기술 경쟁력 강화',
-      sentiment: 'positive',
-      impact: 0.26,
-      type: 'company',
-      volatility: 2.1
-    },
-    {
-      title: '신시장 진출 성공',
-      content: '새로운 시장 진출로 사업 다각화 및 성장동력 확보',
-      sentiment: 'positive',
-      impact: 0.25,
-      type: 'company',
-      volatility: 2.0
-    },
-    {
-      title: '우수 인재 영입 성공',
-      content: '글로벌 최고 수준의 전문가 영입으로 기술력 강화',
-      sentiment: 'positive',
-      impact: 0.24,
-      type: 'company',
-      volatility: 2.0
-    },
-    {
-      title: '획기적 원가절감 달성',
-      content: '혁신적 생산방식 도입으로 수익성 대폭 개선',
-      sentiment: 'positive',
-      impact: 0.22,
-      type: 'company',
-      volatility: 1.9
-    },
-    {
-      title: '정부 지원사업 선정',
-      content: '대규모 국책과제 수행기관으로 선정되어 안정적 성장 기반 마련',
-      sentiment: 'positive',
-      impact: 0.20,
-      type: 'company',
-      volatility: 1.8
-    },
-    {
-      title: '친환경 인증 획득',
-      content: '국제 환경 인증 획득으로 글로벌 시장 확대 전망',
-      sentiment: 'positive',
-      impact: 0.18,
-      type: 'company',
-      volatility: 1.7
-    },
-    {
-      title: '신규 생산라인 구축',
-      content: '최첨단 스마트 팩토리 구축으로 생산성 향상 기대',
-      sentiment: 'positive',
-      impact: 0.15,
-      type: 'company',
-      volatility: 1.6
-    },
-    {
-      title: '고객 만족도 1위',
-      content: '업계 최고 수준의 고객 만족도 달성으로 브랜드 가치 상승',
-      sentiment: 'positive',
-      impact: 0.12,
-      type: 'company',
-      volatility: 1.5
-    },
-    {
-      title: '안정적 실적 달성',
-      content: '분기 실적 시장 전망치 부합으로 안정적 성장세 입증',
-      sentiment: 'positive',
-      impact: 0.10,
-      type: 'company',
-      volatility: 1.4
-    }
-  ];
 
   static async getInstance(): Promise<MarketScheduler> {
     if (!MarketScheduler.instance) {
@@ -459,6 +134,9 @@ export class MarketScheduler {
     if (!this.supabase) {
       this.supabase = await createClient();
     }
+    
+    // 초기화 시 템플릿 캐시 로드
+    await this.loadNewsTemplates();
   }
 
   private isScheduledTime(type: 'market' | 'news'): boolean {
@@ -685,7 +363,7 @@ export class MarketScheduler {
       // 확률 체크 제거, 항상 뉴스 생성
       if (companies && companies.length > 0) {
         const randomCompany = companies[Math.floor(Math.random() * companies.length)];
-        const templatesForIndustry = this.getNewsTemplatesForIndustry(randomCompany.industry);
+        const templatesForIndustry = await this.getNewsTemplatesForIndustry(randomCompany.industry);
         const companyNews = this.selectRandomNews(templatesForIndustry);
         await this.createNews({
           ...companyNews,
@@ -1022,20 +700,13 @@ export class MarketScheduler {
     return this.supabase;
   }
 
-  private getNewsTemplatesForIndustry(industry: string): NewsTemplate[] {
-    if (this.newsTemplateCache.has(industry)) {
-      return this.newsTemplateCache.get(industry)!;
+  private async getNewsTemplatesForIndustry(industry: string): Promise<NewsTemplate[]> {
+    // 캐시에 없으면 다시 로드
+    if (!this.newsTemplateCache.has(industry)) {
+      await this.loadNewsTemplates();
     }
-    // 5개의 분류에 맞게 템플릿 선택
-    const templates = {
-      '전자': this.companyNewsTemplates,
-      'IT': this.companyNewsTemplates,
-      '제조': this.companyNewsTemplates,
-      '건설': this.companyNewsTemplates,
-      '식품': this.companyNewsTemplates
-    }[industry] || this.companyNewsTemplates;
-    this.newsTemplateCache.set(industry, templates);
-    return templates;
+    
+    return this.newsTemplateCache.get(industry) || [];
   }
 
   // 재시도 로직: 비동기 작업을 지정 횟수만큼 재시도합니다.
@@ -1143,6 +814,30 @@ export class MarketScheduler {
     } catch (error) {
       console.error('뉴스 업데이트 중 오류 발생:', error);
       throw error;
+    }
+  }
+
+  // 뉴스 템플릿을 DB에서 로드하는 새 메서드
+  private async loadNewsTemplates() {
+    try {
+      const { data, error } = await this.supabase
+        .from('news_templates')
+        .select('*')
+        .eq('type', 'company');
+        
+      if (error) throw error;
+      
+      // 산업별 템플릿 캐시 초기화
+      const industries: Industry[] = ['전자', 'IT', '제조', '건설', '식품'];
+      
+      for (const industry of industries) {
+        this.newsTemplateCache.set(industry, data);
+      }
+      
+      console.log(`${data.length}개의 뉴스 템플릿을 DB에서 로드했습니다.`);
+    } catch (error) {
+      console.error('뉴스 템플릿 로드 중 오류:', error);
+      throw new Error('뉴스 템플릿 로드 실패');
     }
   }
 }
