@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import ChatInterface from './components/chat-interface'
+import { ChatInterface } from './components/chat-interface'
 import DashboardBackButton from '@/components/DashboardBackButton'
 
 export default async function ChatPage() {

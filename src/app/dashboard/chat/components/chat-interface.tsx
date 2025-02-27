@@ -1,34 +1,126 @@
 'use client'
 
-import React, { useRef, useState } from 'react'
-import { Card, CardContent } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
+import { useState, useRef, useEffect } from 'react'
+import { useRealtimeChat } from '@/hooks/useRealtimeChat'
+import { Card, CardHeader, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Send, MessageSquare } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { MessageSquare, Send, User, Users } from 'lucide-react'
+import { createClientBrowser } from '@/lib/supabase/client'
 import { motion, AnimatePresence } from 'framer-motion'
 import { format } from 'date-fns'
 import { ko } from 'date-fns/locale'
-import { Message } from '@/hooks/useRealtimeChat'
 
 interface ChatInterfaceProps {
   userId: string
   userNickname: string
 }
 
-const ChatInterface: React.FC<ChatInterfaceProps> = ({ userId, userNickname }) => {
-  const [messages, setMessages] = useState<Message[]>([])
+export function ChatInterface({ userId, userNickname }: ChatInterfaceProps) {
+  const { chatRooms, messages, activeRoom, setActiveRoom } = useRealtimeChat(userId)
   const [newMessage, setNewMessage] = useState('')
   const messagesEndRef = useRef<HTMLDivElement>(null)
-
-  const handleSendMessage = () => {
-    // Implementation of handleSendMessage
+  
+  useEffect(() => {
+    // 새 메시지가 추가될 때마다 스크롤을 아래로 이동
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
+  
+  const handleSendMessage = async () => {
+    if (!newMessage.trim() || !activeRoom) return
+    
+    const supabase = createClientBrowser()
+    
+    try {
+      await supabase
+        .from('messages')
+        .insert({
+          chat_room_id: activeRoom,
+          user_id: userId,
+          content: newMessage.trim()
+        })
+      
+      setNewMessage('')
+    } catch (error) {
+      console.error('메시지 전송 오류:', error)
+    }
   }
-
+  
   return (
-    <div className="flex-1 flex items-center justify-center">
-      <Card className="w-full max-w-4xl">
-        {messages.length > 0 ? (
+    <div className="flex h-[calc(100vh-200px)]">
+      {/* 채팅방 목록 */}
+      <div className="w-1/4 bg-black/40 backdrop-blur-sm border-r border-gray-800 overflow-y-auto">
+        <div className="p-4">
+          <h2 className="text-xl font-bold text-gray-100 mb-4">채팅</h2>
+          <div className="space-y-2">
+            {chatRooms.map((room) => {
+              const otherParticipant = room.participants.find(p => p.user_id !== userId)
+              const roomName = room.is_group 
+                ? room.name 
+                : (otherParticipant?.profile.nickname || '알 수 없음')
+              
+              return (
+                <div
+                  key={room.id}
+                  className={`p-3 rounded-lg cursor-pointer transition-colors ${
+                    activeRoom === room.id
+                      ? 'bg-blue-500/20 border border-blue-500/30'
+                      : 'hover:bg-gray-800/50'
+                  }`}
+                  onClick={() => setActiveRoom(room.id)}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center">
+                      {room.is_group ? (
+                        <Users className="w-5 h-5 text-gray-300" />
+                      ) : (
+                        <User className="w-5 h-5 text-gray-300" />
+                      )}
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-200">{roomName}</p>
+                      {room.last_message && (
+                        <p className="text-sm text-gray-400 truncate">
+                          {room.last_message.content}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+      
+      {/* 채팅 내용 */}
+      <Card className="flex-1 flex flex-col bg-black/40 backdrop-blur-sm border-gray-800 rounded-none">
+        {activeRoom ? (
           <>
+            <CardHeader className="border-b border-gray-800 py-4">
+              {(() => {
+                const room = chatRooms.find(r => r.id === activeRoom)
+                if (!room) return null
+                
+                const otherParticipant = room.participants.find(p => p.user_id !== userId)
+                const roomName = room.is_group 
+                  ? room.name 
+                  : (otherParticipant?.profile.nickname || '알 수 없음')
+                  
+                return (
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center">
+                      {room.is_group ? (
+                        <Users className="w-4 h-4 text-gray-300" />
+                      ) : (
+                        <User className="w-4 h-4 text-gray-300" />
+                      )}
+                    </div>
+                    <h2 className="text-xl font-bold text-gray-100">{roomName}</h2>
+                  </div>
+                )
+              })()}
+            </CardHeader>
             <CardContent className="flex-1 overflow-y-auto p-4">
               <div className="space-y-4">
                 <AnimatePresence initial={false}>
@@ -94,6 +186,4 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ userId, userNickname }) =
       </Card>
     </div>
   )
-}
-
-export default ChatInterface 
+} 

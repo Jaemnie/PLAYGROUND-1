@@ -28,11 +28,20 @@ export function FriendsList({ userId }: FriendsListProps) {
     const supabase = createClientBrowser()
     
     try {
-      // 사용자 검색
+      // 먼저 auth.users 테이블에서 이메일로 사용자 ID 찾기
+      const { data: authUser, error: authError } = await supabase
+        .rpc('get_user_id_by_email', { email_input: searchEmail })
+
+      if (authError || !authUser) {
+        toast.error('해당 이메일의 사용자를 찾을 수 없습니다')
+        return
+      }
+      
+      // 이제 찾은 사용자 ID로 프로필 정보 가져오기
       const { data: userData, error: userError } = await supabase
         .from('profiles')
         .select('id')
-        .eq('email', searchEmail)
+        .eq('id', authUser)
         .single()
         
       if (userError || !userData) {

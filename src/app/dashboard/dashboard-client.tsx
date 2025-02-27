@@ -47,6 +47,20 @@ export function DashboardClient({ user, profile, isAdmin }: DashboardClientProps
       description: '프로필 정보를 관리하세요',
       href: '/dashboard/profile'
     },
+    {
+      title: '친구 관리',
+      value: `${profile.friends || 0}명`,
+      icon: <Users2 className="h-6 w-6" />,
+      description: '친구를 추가하고 관리하세요',
+      href: '/dashboard/friends'
+    },
+    {
+      title: '메시지',
+      value: '채팅하기',
+      icon: <MessageSquare className="h-6 w-6" />,
+      description: '친구들과 대화를 나누세요',
+      href: '/dashboard/chat'
+    },
     ...(isAdmin ? [
       {
         title: '스케줄러 모니터링',
@@ -59,95 +73,83 @@ export function DashboardClient({ user, profile, isAdmin }: DashboardClientProps
   ]
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900">
-      <div className="relative">
+    <div className="min-h-screen bg-background">
+      <div className="fixed top-4 left-4 z-50">
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <Button
+            type="button"
+            onClick={() => router.push('/main')}
+            variant="ghost"
+            className="relative bg-zinc-900/60 backdrop-blur-sm border border-zinc-800/50 hover:bg-zinc-800/70 flex items-center gap-2"
+          >
+            <ArrowLeft className="h-[1.2rem] w-[1.2rem] text-zinc-200" />
+            <span className="text-zinc-200">메인으로</span>
+          </Button>
+        </motion.div>
+      </div>
+      <div className="fixed top-4 right-4 z-50">
+        <LogoutButton />
+      </div>
+      
+      {/* 헤더 섹션 */}
+      <section className="relative pt-32 pb-20 px-4 bg-gradient-to-br from-gray-900 via-black to-gray-900">
         <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))]" />
-        <div className="relative container mx-auto px-4 py-20">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* 프로필 카드 */}
-            <Card className="bg-black/40 backdrop-blur-sm border-gray-800">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <h3 className="text-sm font-medium text-gray-400">
-                  안녕하세요, {profile.nickname || '사용자'} 님 👋
-                </h3>
-                <div className="text-violet-400">
-                  <UserCircle className="h-6 w-6" />
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-gray-100">
-                  {profile.nickname || '사용자'}
-                </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  오늘도 새로운 지식을 탐험해보세요.
-                </p>
-              </CardContent>
-            </Card>
-            
-            {/* 메뉴 카드 */}
-            <Card className="bg-black/40 backdrop-blur-sm border-gray-800 md:col-span-2">
-              <CardHeader>
-                <h2 className="text-2xl font-bold text-gray-100">메뉴</h2>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {/* 기존 메뉴 항목들 */}
-                  <motion.div
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    className="bg-gradient-to-br from-blue-500/20 to-purple-600/20 p-6 rounded-xl border border-white/10 cursor-pointer"
-                    onClick={() => router.push('/dashboard/stock')}
-                  >
-                    <ShoppingBag className="h-8 w-8 text-blue-400 mb-4" />
-                    <h3 className="text-lg font-semibold text-gray-100">주식 거래</h3>
-                    <p className="text-sm text-gray-400 mt-1">가상 주식 거래 시뮬레이션</p>
-                  </motion.div>
-                  
-                  {/* 친구 목록 메뉴 추가 */}
-                  <motion.div
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    className="bg-gradient-to-br from-green-500/20 to-teal-600/20 p-6 rounded-xl border border-white/10 cursor-pointer"
-                    onClick={() => router.push('/dashboard/friends')}
-                  >
-                    <Users2 className="h-8 w-8 text-green-400 mb-4" />
-                    <h3 className="text-lg font-semibold text-gray-100">친구</h3>
-                    <p className="text-sm text-gray-400 mt-1">친구 관리 및 추가</p>
-                  </motion.div>
-                  
-                  {/* 채팅 메뉴 추가 */}
-                  <motion.div
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    className="bg-gradient-to-br from-yellow-500/20 to-orange-600/20 p-6 rounded-xl border border-white/10 cursor-pointer"
-                    onClick={() => router.push('/dashboard/chat')}
-                  >
-                    <MessageSquare className="h-8 w-8 text-yellow-400 mb-4" />
-                    <h3 className="text-lg font-semibold text-gray-100">메시지</h3>
-                    <p className="text-sm text-gray-400 mt-1">친구와 채팅하기</p>
-                  </motion.div>
-                  
-                  {/* 기존 메뉴 항목들 */}
-                  <motion.div
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    className="bg-gradient-to-br from-purple-500/20 to-pink-600/20 p-6 rounded-xl border border-white/10 cursor-pointer"
-                    onClick={() => router.push('/dashboard/profile')}
-                  >
-                    <UserCircle className="h-8 w-8 text-purple-400 mb-4" />
-                    <h3 className="text-lg font-semibold text-gray-100">프로필</h3>
-                    <p className="text-sm text-gray-400 mt-1">내 정보 관리</p>
-                  </motion.div>
-                  
-                  {/* ... 기존 메뉴 항목들 ... */}
-                </div>
-              </CardContent>
-            </Card>
-            
-            {/* ... 기존 코드 유지 ... */}
+        <div className="relative container mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="max-w-2xl"
+          >
+            <h1 className="text-3xl font-bold text-gray-100">
+              안녕하세요, {profile.nickname || '사용자'} 님 👋
+            </h1>
+            <p className="mt-2 text-gray-400">
+              오늘도 새로운 지식을 탐험해보세요.
+            </p>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* 통계 카드 섹션 */}
+      <section className="py-12 px-4">
+        <div className="container mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {stats.map((stat, index) => (
+              <motion.div
+                key={stat.title}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
+                onClick={() => router.push(stat.href)}
+                className="cursor-pointer"
+              >
+                <Card className="bg-black/40 backdrop-blur-sm border border-gray-800/50 hover:bg-black/60 transition-colors">
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <h3 className="text-sm font-medium text-gray-400">
+                      {stat.title}
+                    </h3>
+                    <div className="text-violet-400">
+                      {stat.icon}
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-gray-100">
+                      {stat.value}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {stat.description}
+                    </p>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
           </div>
         </div>
-      </div>
+      </section>
     </div>
   )
 } 
