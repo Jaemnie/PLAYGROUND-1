@@ -7,6 +7,8 @@ import { Input } from '@/components/ui/input'
 import { Card, CardHeader } from '@/components/ui/card'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog'
 
 export default function SignUpForm() {
   const router = useRouter()
@@ -15,9 +17,17 @@ export default function SignUpForm() {
   const [error, setError] = useState<string | null>(null)
   const [password, setPassword] = useState('')
   const [isPasswordValid, setIsPasswordValid] = useState(false)
+  const [privacyChecked, setPrivacyChecked] = useState(false)
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false)
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
+    
+    if (!privacyChecked) {
+      setError('개인정보 처리방침에 동의해주세요.')
+      return
+    }
+    
     setIsLoading(true)
     setError(null)
     
@@ -144,6 +154,28 @@ export default function SignUpForm() {
                 </div>
               </div>
             </div>
+            
+            <div className="flex items-center space-x-2 mt-4">
+              <Checkbox 
+                id="privacy" 
+                checked={privacyChecked}
+                onCheckedChange={(checked) => setPrivacyChecked(checked as boolean)}
+                className="border-gray-600 data-[state=checked]:bg-blue-500"
+              />
+              <div className="text-sm text-gray-300">
+                <label htmlFor="privacy" className="cursor-pointer">
+                  <span>개인정보 처리방침에 동의합니다.</span>
+                </label>
+                <button 
+                  type="button"
+                  onClick={() => setShowPrivacyModal(true)}
+                  className="ml-1 text-blue-400 hover:text-blue-300 underline"
+                >
+                  보기
+                </button>
+              </div>
+            </div>
+            
             <div className="pt-2">
               <Button
                 type="submit"
@@ -162,6 +194,53 @@ export default function SignUpForm() {
           </form>
         </Card>
       </motion.div>
+      
+      {/* 개인정보 처리방침 모달 */}
+      <Dialog open={showPrivacyModal} onOpenChange={setShowPrivacyModal}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold">개인정보 처리방침</DialogTitle>
+            <DialogDescription className="text-gray-400">
+              서비스 이용을 위한 개인정보 처리방침입니다.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="prose prose-invert max-w-none text-sm">
+            <h2 className="text-lg font-semibold mt-4">1. 개인정보의 수집 및 이용 목적</h2>
+            <p>
+              PLAYGROUND는 다음의 목적을 위하여 개인정보를 처리합니다. 처리하고 있는 개인정보는 
+              다음의 목적 이외의 용도로는 이용되지 않으며, 이용 목적이 변경되는 경우에는 
+              개인정보 보호법 제18조에 따라 별도의 동의를 받는 등 필요한 조치를 이행할 예정입니다.
+            </p>
+
+            <h2 className="text-lg font-semibold mt-4">2. 개인정보의 처리 및 보유기간</h2>
+            <p>
+              PLAYGROUND는 법령에 따른 개인정보 보유·이용기간 또는 정보주체로부터 개인정보를 
+              수집 시에 동의받은 개인정보 보유·이용기간 내에서 개인정보를 처리·보유합니다.
+            </p>
+
+            <h2 className="text-lg font-semibold mt-4">3. 개인정보의 제3자 제공</h2>
+            <p>
+              PLAYGROUND는 정보주체의 개인정보를 제1조(개인정보의 처리 목적)에서 명시한 범위 
+              내에서만 처리하며, 정보주체의 동의, 법률의 특별한 규정 등 개인정보 보호법 제17조에 
+              해당하는 경우에만 개인정보를 제3자에게 제공합니다.
+            </p>
+            
+            <div className="mt-6 flex justify-end">
+              <Button 
+                onClick={() => {
+                  setPrivacyChecked(true);
+                  setShowPrivacyModal(false);
+                }}
+                className="bg-blue-500 hover:bg-blue-600"
+              >
+                동의하기
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+      
       {isSuccess && (
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
