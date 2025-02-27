@@ -60,12 +60,12 @@ interface Profile {
 const SIMULATION_PARAMS = {
   NEWS: {
     COMPANY_NEWS_CHANCE: 1.0,           
-    IMPACT_VARIATION_MIN: 0.8,          // 최소 영향력 감소 (1.0 -> 0.8)
-    IMPACT_VARIATION_MAX: 1.3,          // 최대 영향력 감소 (1.8 -> 1.3)
+    IMPACT_VARIATION_MIN: 0.9,          // 0.8 -> 0.9 (최소 영향력 증가)
+    IMPACT_VARIATION_MAX: 1.5,          // 1.3 -> 1.5 (최대 영향력 증가)
     DECAY_TIME_MINUTES: 45,
   },
   PRICE: {
-    BASE_RANDOM_CHANGE: 0.008,          // 기본 변동폭 감소 (0.03 -> 0.008)
+    BASE_RANDOM_CHANGE: 0.006,          // 0.008 -> 0.006 (랜덤 변동성 감소)
     REVERSAL: {
       BASE_CHANCE: 0.05,                
       MOMENTUM_MULTIPLIER: 0.07,         
@@ -73,11 +73,11 @@ const SIMULATION_PARAMS = {
     },
     DAILY_LIMIT: 0.30,                   
     WEIGHTS: {
-      RANDOM: 0.25,                     // 랜덤 변동 가중치 감소 (0.4 -> 0.25)
-      NEWS: 0.35,                       // 뉴스 영향력 감소 (0.5 -> 0.35)
-      INDUSTRY: 0.25,                   // 산업 영향력 감소 (0.35 -> 0.25)
-      MOMENTUM: 0.3,                    // 모멘텀 영향력 감소 (0.45 -> 0.3)
-      INDUSTRY_LEADER: 0.25             // 산업 리더 영향력 감소 (0.35 -> 0.25)
+      RANDOM: 0.15,                     // 0.25 -> 0.15 (랜덤 가중치 감소)
+      NEWS: 0.60,                       // 0.35 -> 0.60 (뉴스 영향력 대폭 증가)
+      INDUSTRY: 0.20,                   // 0.25 -> 0.20 (산업 영향력 감소)
+      MOMENTUM: 0.25,                   // 0.3 -> 0.25 (모멘텀 영향력 감소)
+      INDUSTRY_LEADER: 0.20             // 0.25 -> 0.20 (산업 리더 영향력 감소)
     }
   },
   INDUSTRY: {
@@ -446,8 +446,8 @@ export class MarketScheduler {
 
   private calculateSentimentMultiplier(sentiment: string): number {
     switch (sentiment) {
-      case 'positive': return 1.4;  // 긍정 뉴스 영향력 증가
-      case 'negative': return 1.6;  // 부정 뉴스 영향력 더 큰 폭 증가
+      case 'positive': return 2.0;  // 1.4 -> 2.0 (긍정 뉴스 영향력 대폭 증가)
+      case 'negative': return 2.2;  // 1.6 -> 2.2 (부정 뉴스 영향력 대폭 증가)
       default: return 1.0;
     }
   }
@@ -498,8 +498,8 @@ export class MarketScheduler {
         // 뉴스 해석의 불확실성 추가
         const marketSentiment = Math.random(); // 시장 심리 팩터
         
-        // 긍정/부정 뉴스 모두 30% 확률로 반대로 해석될 수 있도록 수정
-        const interpretationChance = 0.3; // 모든 뉴스가 반대로 해석될 확률 30%
+        // 긍정/부정 뉴스 반대로 해석될 확률 대폭 감소
+        const interpretationChance = 0.15; // 0.3 -> 0.15 (30% -> 15%)
         const reverseInterpretation = Math.random() < interpretationChance;
         
         // 방향성 결정 (기존 영향력의 방향을 뒤집을 수 있음)
@@ -513,10 +513,10 @@ export class MarketScheduler {
         // 기본 영향력 계산
         const baseImpact = news.impact * impactVariation * directionMultiplier;
         
-        // 시장 심리에 따른 증폭/감소
-        const marketSentimentMultiplier = marketSentiment < 0.3 ? 0.5 : // 부정적 시장
-                                        marketSentiment > 0.7 ? 1.5 : // 긍정적 시장
-                                        1.0; // 중립적 시장
+        // 시장 심리에 따른 증폭/감소 조정
+        const marketSentimentMultiplier = marketSentiment < 0.3 ? 0.7 : // 0.5 -> 0.7 (부정적 시장 영향 감소)
+                                        marketSentiment > 0.7 ? 1.8 : // 1.5 -> 1.8 (긍정적 시장 영향 증가)
+                                        1.2; // 1.0 -> 1.2 (중립적 시장도 약간 긍정적으로)
         
         const sentimentMultiplier = this.calculateSentimentMultiplier(news.sentiment);
         const volatilityMultiplier = news.volatility >= 1.8 ? 1.2 : 1.0;
@@ -525,8 +525,8 @@ export class MarketScheduler {
         const perMinuteImpact = baseImpact * sentimentMultiplier * volatilityMultiplier * 
                                marketCapMultiplier * marketSentimentMultiplier;
         
-        // 최종 영향력 범위 제한 값 감소
-        const clampedImpact = Math.max(Math.min(perMinuteImpact, 0.04), -0.04); // 0.08 -> 0.04
+        // 최종 영향력 범위 제한 값 증가
+        const clampedImpact = Math.max(Math.min(perMinuteImpact, 0.08), -0.08); // 0.04 -> 0.08
         totalPerMinuteImpact += clampedImpact;
       } else {
         await this.supabase
