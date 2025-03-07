@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRealtimeFriends, Friend } from '@/hooks/useRealtimeFriends'
 import { Card, CardHeader, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -17,6 +17,29 @@ export function FriendsList({ userId }: FriendsListProps) {
   const { friends, pendingRequests } = useRealtimeFriends(userId)
   const [searchEmail, setSearchEmail] = useState('')
   const [isSearching, setIsSearching] = useState(false)
+  const [newRequestsCount, setNewRequestsCount] = useState(0)
+  
+  // 이전 요청 수를 추적하여 새 요청이 왔는지 확인
+  useEffect(() => {
+    // 로컬 스토리지에서 마지막으로 확인한 요청 수 가져오기
+    const lastCheckedCount = parseInt(localStorage.getItem('lastCheckedRequestsCount') || '0')
+    
+    if (pendingRequests.length > lastCheckedCount) {
+      // 새 요청이 있으면 카운터 업데이트 및 알림 표시
+      setNewRequestsCount(pendingRequests.length - lastCheckedCount)
+      
+      if (pendingRequests.length > 0 && lastCheckedCount < pendingRequests.length) {
+        // 새 친구 요청 알림 표시
+        toast.info('새로운 친구 요청이 있습니다!')
+      }
+    }
+    
+    // 컴포넌트가 마운트되면 현재 요청 수를 저장
+    return () => {
+      localStorage.setItem('lastCheckedRequestsCount', pendingRequests.length.toString())
+      setNewRequestsCount(0)
+    }
+  }, [pendingRequests.length])
   
   const handleAddFriend = async () => {
     if (!searchEmail.trim()) {
@@ -34,6 +57,7 @@ export function FriendsList({ userId }: FriendsListProps) {
 
       if (authError || !authUser) {
         toast.error('해당 이메일의 사용자를 찾을 수 없습니다')
+        setIsSearching(false)
         return
       }
       
@@ -54,15 +78,29 @@ export function FriendsList({ userId }: FriendsListProps) {
         return
       }
       
-      // 이미 친구인지 확인
-      const { data: existingFriend } = await supabase
-        .from('friends')
-        .select('*')
-        .or(`and(user_id.eq.${userId},friend_id.eq.${userData.id}),and(user_id.eq.${userData.id},friend_id.eq.${userId})`)
-        .single()
+      const checkResult = await checkExistingFriendship(userId, userData.id)
+      
+      if (checkResult.error) {
+        toast.error('친구 확인 중 오류가 발생했습니다')
+        setIsSearching(false)
+        return
+      }
+      
+      if (checkResult.relationship) {
+        // 이미 친구 관계가 있음
+        const relationship = checkResult.relationship
         
-      if (existingFriend) {
-        toast.error('이미 친구이거나 친구 요청이 진행 중입니다')
+        if (relationship.status === 'accepted') {
+          toast.error('이미 친구입니다')
+        } else if (relationship.status === 'pending') {
+          toast.error('이미 친구 요청이 진행 중입니다')
+        } else if (relationship.status === 'rejected') {
+          toast.error('이전에 거절된 친구 요청입니다')
+        } else {
+          toast.error('이미 친구 관계가 있습니다')
+        }
+        
+        setIsSearching(false)
         return
       }
       
@@ -76,11 +114,12 @@ export function FriendsList({ userId }: FriendsListProps) {
         })
         
       if (requestError) {
+        console.error('친구 요청 오류:', requestError)
         toast.error('친구 요청 중 오류가 발생했습니다')
         return
       }
       
-      toast.success('친구 요청을 보냈습니다')
+      toast.success(`${searchEmail}님에게 친구 요청을 보냈습니다`)
       setSearchEmail('')
     } catch (error) {
       console.error('Error adding friend:', error)
@@ -148,6 +187,22 @@ export function FriendsList({ userId }: FriendsListProps) {
     }
   }
   
+  const checkExistingFriendship = async (userId: string, friendId: string) => {
+    const supabase = createClientBrowser()
+    
+    const { data, error } = await supabase
+      .from('friends')
+      .select('*')
+      .or(`and(user_id.eq.${userId},friend_id.eq.${friendId}),and(user_id.eq.${friendId},friend_id.eq.${userId})`)
+    
+    if (error) {
+      console.error('친구 관계 확인 오류:', error)
+      return { error, relationship: null }
+    }
+    
+    return { error: null, relationship: data && data.length > 0 ? data[0] : null }
+  }
+  
   return (
     <div className="space-y-6">
       {/* 친구 검색 */}
@@ -179,7 +234,12 @@ export function FriendsList({ userId }: FriendsListProps) {
       
       {/* 친구 요청 */}
       {pendingRequests.length > 0 && (
-        <Card className="bg-black/40 backdrop-blur-sm border-gray-800">
+        <Card className="bg-black/40 backdrop-blur-sm border-gray-800 relative">
+          {newRequestsCount > 0 && (
+            <div className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">
+              {newRequestsCount}
+            </div>
+          )}
           <CardHeader>
             <div className="flex items-center gap-2">
               <UserCircle className="w-5 h-5 text-yellow-400" />
