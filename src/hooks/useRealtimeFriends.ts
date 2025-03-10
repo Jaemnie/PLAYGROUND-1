@@ -9,7 +9,6 @@ export interface Friend {
   created_at: string
   profile: {
     nickname: string
-    avatar_url?: string
   }
 }
 
@@ -18,71 +17,85 @@ export function useRealtimeFriends(userId: string) {
   const [pendingRequests, setPendingRequests] = useState<Friend[]>([])
   
   useEffect(() => {
-    const supabase = createClientBrowser()
-    
-    // 초기 데이터 로드
-    const loadFriends = async () => {
-      // 내가 친구 요청을 보낸 사람들 + 수락된 친구들
-      const { data: myFriends, error: myFriendsError } = await supabase
+    const fetchFriends = async () => {
+      const supabase = createClientBrowser()
+      
+      // 1. 친구 목록 가져오기 (조인 없이)
+      const { data: friendsData, error: friendsError } = await supabase
         .from('friends')
-        .select(`
-          *,
-          profile:profiles!friend_id(nickname, avatar_url)
-        `)
+        .select('*')
         .eq('user_id', userId)
+        .eq('status', 'accepted')
         
-      // 나에게 친구 요청을 보낸 사람들
-      const { data: friendRequests, error: requestsError } = await supabase
+      if (friendsError) {
+        console.error('친구 목록 가져오기 오류:', friendsError)
+        return
+      }
+      
+      // 2. 친구 요청 가져오기 (조인 없이)
+      const { data: requestsData, error: requestsError } = await supabase
         .from('friends')
-        .select(`
-          *,
-          profile:profiles!user_id(nickname, avatar_url)
-        `)
+        .select('*')
         .eq('friend_id', userId)
         .eq('status', 'pending')
         
-      if (myFriends) {
-        setFriends(myFriends.filter(f => f.status === 'accepted'))
+      if (requestsError) {
+        console.error('친구 요청 가져오기 오류:', requestsError)
+        return
       }
       
-      if (friendRequests) {
-        setPendingRequests(friendRequests)
+      // 3. 친구 프로필 정보 가져오기 (avatar_url 제외)
+      if (friendsData && friendsData.length > 0) {
+        const friendIds = friendsData.map(f => f.friend_id)
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('id, nickname')  // avatar_url 제거
+          .in('id', friendIds)
+          
+        // 프로필 정보 합치기
+        const friendsWithProfiles = friendsData.map(friend => {
+          const profile = profilesData?.find(p => p.id === friend.friend_id) || { nickname: '알 수 없음' }
+          return { ...friend, profile }
+        })
+        
+        setFriends(friendsWithProfiles)
+      } else {
+        setFriends([])
+      }
+      
+      // 4. 친구 요청 프로필 정보 가져오기 (avatar_url 제외)
+      if (requestsData && requestsData.length > 0) {
+        const requesterIds = requestsData.map(r => r.user_id)
+        const { data: requesterProfiles } = await supabase
+          .from('profiles')
+          .select('id, nickname')  // avatar_url 제거
+          .in('id', requesterIds)
+          
+        // 프로필 정보 합치기
+        const requestsWithProfiles = requestsData.map(request => {
+          const profile = requesterProfiles?.find(p => p.id === request.user_id) || { nickname: '알 수 없음' }
+          return { ...request, profile }
+        })
+        
+        setPendingRequests(requestsWithProfiles)
+      } else {
+        setPendingRequests([])
       }
     }
     
-    loadFriends()
+    fetchFriends()
     
-    // 실시간 구독
-    const friendsChannel = supabase
+    // 실시간 구독 설정
+    const supabase = createClientBrowser()
+    const friendsSubscription = supabase
       .channel('friends-changes')
-      .on(
-        'postgres_changes',
-        { 
-          event: '*', 
-          schema: 'public', 
-          table: 'friends',
-          filter: `user_id=eq.${userId}` 
-        },
-        (payload) => {
-          loadFriends() // 변경 시 전체 데이터 다시 로드
-        }
-      )
-      .on(
-        'postgres_changes',
-        { 
-          event: '*', 
-          schema: 'public', 
-          table: 'friends',
-          filter: `friend_id=eq.${userId}` 
-        },
-        (payload) => {
-          loadFriends() // 변경 시 전체 데이터 다시 로드
-        }
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'friends' }, () => {
+        fetchFriends()
+      })
       .subscribe()
       
     return () => {
-      supabase.removeChannel(friendsChannel)
+      supabase.removeChannel(friendsSubscription)
     }
   }, [userId])
   
