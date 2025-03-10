@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import { ProfileClient } from './profile-client'
+import { ProfileClient } from './components/ProfileClient'
 import { redirect } from 'next/navigation'
 import { Suspense } from 'react'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
