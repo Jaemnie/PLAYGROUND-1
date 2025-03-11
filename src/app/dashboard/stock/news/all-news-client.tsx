@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Card, CardHeader, CardContent } from '@/components/ui/card'
-import { NewspaperIcon, ArrowLeftIcon } from '@heroicons/react/24/outline'
+import { NewspaperIcon, ArrowLeftIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import { Input } from '@/components/ui/input'
@@ -23,6 +23,12 @@ interface NewsItem {
   };
 }
 
+interface NewsGroup {
+  timestamp: number;
+  formattedTime: string;
+  news: NewsItem[];
+}
+
 interface AllNewsClientProps {
   allNews: NewsItem[];
 }
@@ -30,6 +36,8 @@ interface AllNewsClientProps {
 export function AllNewsClient({ allNews }: AllNewsClientProps) {
   const [searchTerm, setSearchTerm] = useState('')
   const [currentTab, setCurrentTab] = useState('all')
+  const [currentPage, setCurrentPage] = useState(0)
+  const itemsPerPage = 1 // 페이지당 30분 그룹 1개씩 표시
   
   // 검색어로 필터링
   const filteredNews = allNews.filter(news => 
@@ -42,6 +50,64 @@ export function AllNewsClient({ allNews }: AllNewsClientProps) {
   const filteredBySentiment = currentTab === 'all' 
     ? filteredNews 
     : filteredNews.filter(news => news.sentiment === currentTab)
+
+  // 30분 단위로 뉴스 그룹화
+  const newsGroups = useMemo(() => {
+    const groups: NewsGroup[] = []
+    const sortedNews = [...filteredBySentiment].sort((a, b) => 
+      new Date(b.published_at).getTime() - new Date(a.published_at).getTime()
+    )
+    
+    sortedNews.forEach(news => {
+      const date = new Date(news.published_at)
+      // 30분 단위로 그룹화 (0분 또는 30분으로 내림)
+      date.setMinutes(date.getMinutes() >= 30 ? 30 : 0)
+      date.setSeconds(0)
+      date.setMilliseconds(0)
+      
+      const timestamp = date.getTime()
+      
+      // 해당 타임스탬프 그룹이 있는지 확인
+      let group = groups.find(g => g.timestamp === timestamp)
+      
+      if (!group) {
+        const formattedTime = new Intl.DateTimeFormat('ko-KR', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        }).format(date)
+        
+        group = {
+          timestamp,
+          formattedTime,
+          news: []
+        }
+        groups.push(group)
+      }
+      
+      group.news.push(news)
+    })
+    
+    // 타임스탬프 기준 내림차순 정렬 (최신순)
+    return groups.sort((a, b) => b.timestamp - a.timestamp)
+  }, [filteredBySentiment])
+  
+  // 페이지네이션 계산
+  const totalPages = Math.ceil(newsGroups.length / itemsPerPage)
+  const currentNewsGroups = newsGroups.slice(
+    currentPage * itemsPerPage, 
+    (currentPage + 1) * itemsPerPage
+  )
+  
+  const handlePrevPage = () => {
+    setCurrentPage(prev => Math.max(0, prev - 1))
+  }
+  
+  const handleNextPage = () => {
+    setCurrentPage(prev => Math.min(totalPages - 1, prev + 1))
+  }
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
@@ -119,47 +185,87 @@ export function AllNewsClient({ allNews }: AllNewsClientProps) {
           </CardContent>
         </Card>
 
-        {filteredBySentiment.length === 0 ? (
+        {newsGroups.length === 0 ? (
           <Card className="bg-black/40 backdrop-blur-sm border-gray-800">
             <CardContent className="py-12">
               <p className="text-center text-gray-400">검색 결과가 없습니다.</p>
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-4">
-            {filteredBySentiment.map((news) => (
-              <Card key={news.id} className="overflow-hidden bg-black/40 backdrop-blur-sm border-gray-800">
-                <CardContent className="p-6">
-                  <div className="flex flex-col gap-4">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h2 className="text-xl font-bold text-gray-100">{news.title}</h2>
-                        {news.companies && (
-                          <Link 
-                            href={`/dashboard/stock/${news.companies.ticker}`}
-                            className="text-sm text-blue-400 hover:text-blue-300 transition-colors mt-1 inline-block"
-                          >
-                            {news.companies.name}
-                          </Link>
-                        )}
-                      </div>
-                      <Badge className={`${getSentimentStyle(news.sentiment)}`}>
-                        {getSentimentText(news.sentiment)}
-                      </Badge>
-                    </div>
-                    <p className="text-gray-300/90 leading-relaxed">{news.content}</p>
-                    <p className="text-sm text-gray-400/80">
-                      {formatDate(news.published_at)}
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
+          <>
+            {currentNewsGroups.map((group) => (
+              <div key={group.timestamp} className="mb-8">
+                <div className="sticky top-0 z-10 bg-gradient-to-r from-blue-500/10 to-purple-500/10 backdrop-blur-sm p-3 rounded-lg mb-4 border border-blue-500/20">
+                  <h2 className="text-lg font-medium text-blue-300">
+                    {group.formattedTime} 뉴스 ({group.news.length}개)
+                  </h2>
+                </div>
+                <div className="space-y-4">
+                  {group.news.map((news) => (
+                    <Card key={news.id} className="overflow-hidden bg-black/40 backdrop-blur-sm border-gray-800">
+                      <CardContent className="p-6">
+                        <div className="flex flex-col gap-4">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <h2 className="text-xl font-bold text-gray-100">{news.title}</h2>
+                              {news.companies && (
+                                <Link 
+                                  href={`/dashboard/stock/${news.companies.ticker}`}
+                                  className="text-sm text-blue-400 hover:text-blue-300 transition-colors mt-1 inline-block"
+                                >
+                                  {news.companies.name}
+                                </Link>
+                              )}
+                            </div>
+                            <Badge className={`${getSentimentStyle(news.sentiment)}`}>
+                              {getSentimentText(news.sentiment)}
+                            </Badge>
+                          </div>
+                          <p className="text-gray-300/90 leading-relaxed">{news.content}</p>
+                          <p className="text-sm text-gray-400/80">
+                            {formatDate(news.published_at)}
+                          </p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
             ))}
-          </div>
+            
+            {/* 페이지네이션 컨트롤 */}
+            <div className="flex justify-between items-center mt-8 mb-4">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handlePrevPage} 
+                disabled={currentPage === 0}
+                className="border-gray-800 text-gray-300"
+              >
+                <ChevronLeftIcon className="w-5 h-5 mr-1" />
+                이전
+              </Button>
+              
+              <div className="text-gray-300">
+                {currentPage + 1} / {totalPages} 페이지
+              </div>
+              
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleNextPage} 
+                disabled={currentPage >= totalPages - 1}
+                className="border-gray-800 text-gray-300"
+              >
+                다음
+                <ChevronRightIcon className="w-5 h-5 ml-1" />
+              </Button>
+            </div>
+          </>
         )}
         
         <div className="mt-6 text-center text-sm text-gray-500">
-          총 {filteredBySentiment.length}개의 뉴스가 있습니다.
+          총 {filteredBySentiment.length}개의 뉴스가 {newsGroups.length}개 시간대에 있습니다.
         </div>
       </div>
     </div>
