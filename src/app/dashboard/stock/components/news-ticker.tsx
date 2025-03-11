@@ -2,11 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import { CardHeader, CardContent } from '@/components/ui/card'
-import { NewspaperIcon } from '@heroicons/react/24/outline'
+import { NewspaperIcon, ArrowRightIcon } from '@heroicons/react/24/outline'
 import { Button } from '@/components/ui/button'
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useRealtimeNews } from '@/hooks/useRealtimeNews'
+import Link from 'next/link'
 
 interface NewsTickerProps {
   news: {
@@ -22,20 +23,12 @@ interface NewsTickerProps {
 function NewsAlert() {
   return (
     <motion.div
-      initial={{ opacity: 0, y: -20 }}
+      initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      className="absolute -top-4 left-1/2 -translate-x-1/2 px-2 py-1 bg-blue-500/20 backdrop-blur-sm rounded-full border border-blue-500/30"
+      exit={{ opacity: 0, y: -10 }}
+      className="absolute -top-10 left-0 right-0 bg-blue-500/20 text-blue-300 px-4 py-2 rounded-md text-sm"
     >
-      <div className="flex items-center gap-1">
-        <NewspaperIcon className="w-3 h-3 text-blue-400" />
-        <span className="text-xs font-bold text-blue-400">새로운 뉴스!</span>
-      </div>
-      <motion.div 
-        className="absolute inset-0 rounded-full bg-blue-400/20"
-        animate={{ scale: [1, 1.5, 1] }}
-        transition={{ duration: 1.5, repeat: Infinity }}
-      />
+      새로운 뉴스가 추가되었습니다!
     </motion.div>
   )
 }
@@ -44,7 +37,6 @@ export function NewsTicker({ news: initialNews }: NewsTickerProps) {
   const { newsData, latestUpdate } = useRealtimeNews(initialNews)
   const [currentPage, setCurrentPage] = useState(1)
   const [showAlert, setShowAlert] = useState(false)
-  const [autoSlideEnabled, setAutoSlideEnabled] = useState(true)
   
   const itemsPerPage = 1
   const totalPages = Math.ceil(newsData.length / itemsPerPage)
@@ -54,25 +46,47 @@ export function NewsTicker({ news: initialNews }: NewsTickerProps) {
     if (latestUpdate) {
       setCurrentPage(1)
       setShowAlert(true)
-      setAutoSlideEnabled(false)
-      
-      setTimeout(() => {
-        setShowAlert(false)
-        setAutoSlideEnabled(true)
-      }, 3000)
+      setTimeout(() => setShowAlert(false), 3000)
     }
   }, [latestUpdate])
 
-  // 자동 슬라이드 효과
-  useEffect(() => {
-    if (!autoSlideEnabled) return
+  // 페이지 버튼 생성 함수
+  const renderPageButtons = () => {
+    const buttons = []
+    const maxVisibleButtons = 5
+    let startPage = 1
+    let endPage = totalPages
     
-    const interval = setInterval(() => {
-      setCurrentPage((prev) => (prev === totalPages ? 1 : prev + 1))
-    }, 10000)
-
-    return () => clearInterval(interval)
-  }, [totalPages, autoSlideEnabled])
+    if (totalPages > maxVisibleButtons) {
+      // 현재 페이지 주변의 버튼만 표시
+      const halfVisible = Math.floor(maxVisibleButtons / 2)
+      startPage = Math.max(1, currentPage - halfVisible)
+      endPage = Math.min(totalPages, startPage + maxVisibleButtons - 1)
+      
+      // 끝 부분에 도달하면 시작 페이지 조정
+      if (endPage === totalPages) {
+        startPage = Math.max(1, endPage - maxVisibleButtons + 1)
+      }
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+      buttons.push(
+        <Button
+          key={i}
+          variant={i === currentPage ? "default" : "ghost"}
+          size="sm"
+          onClick={() => setCurrentPage(i)}
+          className={i === currentPage 
+            ? "bg-blue-500 text-white hover:bg-blue-600 w-8 h-8 p-0" 
+            : "text-gray-400 hover:bg-gray-800/50 hover:text-gray-300 w-8 h-8 p-0"}
+        >
+          {i}
+        </Button>
+      )
+    }
+    
+    return buttons
+  }
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
@@ -106,12 +120,17 @@ export function NewsTicker({ news: initialNews }: NewsTickerProps) {
               실시간 뉴스
             </h2>
           </div>
-          <AnimatePresence>
-            {showAlert && <NewsAlert />}
-          </AnimatePresence>
-          <span className="text-sm text-gray-500/70">
-            {currentPage} / {totalPages}
-          </span>
+          <div className="flex items-center gap-2">
+            <Link 
+              href="/dashboard/stock/news" 
+              className="px-2 py-1 text-sm font-medium text-blue-400 hover:text-blue-300 border border-blue-500/30 rounded-md hover:bg-blue-500/10 transition-colors"
+            >
+              더보기 →
+            </Link>
+            <AnimatePresence>
+              {showAlert && <NewsAlert />}
+            </AnimatePresence>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
@@ -128,32 +147,20 @@ export function NewsTicker({ news: initialNews }: NewsTickerProps) {
               }}
               className={`absolute inset-0 space-y-3 p-4 rounded-xl ${getImpactStyle(currentNews?.impact || 'neutral')}`}
             >
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.3, duration: 0.5 }}
-                className="space-y-2"
-              >
-                <h3 className="font-bold text-gray-100 mb-2 line-clamp-1 text-lg">
-                  {currentNews?.title}
-                </h3>
-                <p className="text-sm text-gray-300/90 line-clamp-2 mb-2 leading-relaxed">
-                  {currentNews?.content}
-                </p>
-                <motion.p 
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.5 }}
-                  className="text-xs text-gray-400/80"
-                >
-                  {currentNews?.published_at && formatDate(currentNews.published_at)}
-                </motion.p>
-              </motion.div>
+              <h3 className="font-bold text-gray-100 mb-2 line-clamp-1 text-lg">
+                {currentNews?.title}
+              </h3>
+              <p className="text-sm text-gray-300/90 line-clamp-2 mb-2 leading-relaxed">
+                {currentNews?.content}
+              </p>
+              <p className="text-xs text-gray-400/80">
+                {currentNews?.published_at && formatDate(currentNews.published_at)}
+              </p>
             </motion.div>
           </AnimatePresence>
         </div>
 
-        <div className="flex justify-between items-center mt-6">
+        <div className="flex justify-center items-center mt-6 gap-1">
           <Button
             variant="ghost"
             size="sm"
@@ -163,6 +170,9 @@ export function NewsTicker({ news: initialNews }: NewsTickerProps) {
           >
             <ChevronLeftIcon className="w-4 h-4" />
           </Button>
+          
+          {renderPageButtons()}
+          
           <Button
             variant="ghost"
             size="sm"

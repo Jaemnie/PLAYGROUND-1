@@ -2,14 +2,16 @@
 
 import { useState, useEffect } from 'react'
 import { CardHeader, CardContent } from '@/components/ui/card'
-import { NewspaperIcon } from '@heroicons/react/24/outline'
+import { NewspaperIcon, ArrowLeftIcon, ArrowRightIcon } from '@heroicons/react/24/outline'
 import { Button } from '@/components/ui/button'
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useRealtimeNews } from '@/hooks/useRealtimeNews'
+import Link from 'next/link'
 
 interface CompanyNewsProps {
   companyId: string;
+  ticker: string;
   initialNews: {
     id: string;
     title: string;
@@ -19,7 +21,7 @@ interface CompanyNewsProps {
   }[];
 }
 
-export function CompanyNews({ companyId, initialNews }: CompanyNewsProps) {
+export function CompanyNews({ companyId, ticker, initialNews }: CompanyNewsProps) {
   const { newsData, latestUpdate } = useRealtimeNews(initialNews)
   const [currentPage, setCurrentPage] = useState(1)
   const [showAlert, setShowAlert] = useState(false)
@@ -58,6 +60,44 @@ export function CompanyNews({ companyId, initialNews }: CompanyNewsProps) {
     }
   }
 
+  // 페이지 버튼 생성 함수
+  const renderPageButtons = () => {
+    const buttons = []
+    const maxVisibleButtons = 5
+    let startPage = 1
+    let endPage = totalPages
+    
+    if (totalPages > maxVisibleButtons) {
+      // 현재 페이지 주변의 버튼만 표시
+      const halfVisible = Math.floor(maxVisibleButtons / 2)
+      startPage = Math.max(1, currentPage - halfVisible)
+      endPage = Math.min(totalPages, startPage + maxVisibleButtons - 1)
+      
+      // 끝 부분에 도달하면 시작 페이지 조정
+      if (endPage === totalPages) {
+        startPage = Math.max(1, endPage - maxVisibleButtons + 1)
+      }
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+      buttons.push(
+        <Button
+          key={i}
+          variant={i === currentPage ? "default" : "ghost"}
+          size="sm"
+          onClick={() => setCurrentPage(i)}
+          className={i === currentPage 
+            ? "bg-blue-500 text-white hover:bg-blue-600 w-8 h-8 p-0" 
+            : "text-gray-400 hover:bg-gray-800/50 hover:text-gray-300 w-8 h-8 p-0"}
+        >
+          {i}
+        </Button>
+      )
+    }
+    
+    return buttons
+  }
+
   if (newsData.length === 0) {
     return (
       <>
@@ -86,9 +126,14 @@ export function CompanyNews({ companyId, initialNews }: CompanyNewsProps) {
               기업 뉴스
             </h2>
           </div>
-          <span className="text-sm text-gray-500/70">
-            {currentPage} / {totalPages}
-          </span>
+          <div className="flex items-center gap-2">
+            <Link 
+              href={`/dashboard/stock/${ticker}/news`} 
+              className="px-2 py-1 text-sm font-medium text-blue-400 hover:text-blue-300 border border-blue-500/30 rounded-md hover:bg-blue-500/10 transition-colors"
+            >
+              더보기 →
+            </Link>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
@@ -115,7 +160,7 @@ export function CompanyNews({ companyId, initialNews }: CompanyNewsProps) {
           </AnimatePresence>
         </div>
 
-        <div className="flex justify-between items-center mt-6">
+        <div className="flex justify-center items-center mt-6 gap-1">
           <Button
             variant="ghost"
             size="sm"
@@ -125,6 +170,9 @@ export function CompanyNews({ companyId, initialNews }: CompanyNewsProps) {
           >
             <ChevronLeftIcon className="w-4 h-4" />
           </Button>
+          
+          {renderPageButtons()}
+          
           <Button
             variant="ghost"
             size="sm"

@@ -160,6 +160,7 @@ export function StockDetailClient({
         <Card className="mt-6 bg-black/40 backdrop-blur-sm border-gray-800">
           <CompanyNews 
             companyId={company.id}
+            ticker={company.ticker}
             initialNews={companyNews}
           />
         </Card>

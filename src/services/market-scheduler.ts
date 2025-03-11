@@ -60,9 +60,10 @@ interface Profile {
 const SIMULATION_PARAMS = {
   NEWS: {
     COMPANY_NEWS_CHANCE: 1.0,           
-    IMPACT_VARIATION_MIN: 0.9,          // 0.8 -> 0.9 (최소 영향력 증가)
-    IMPACT_VARIATION_MAX: 1.5,          // 1.3 -> 1.5 (최대 영향력 증가)
-    DECAY_TIME_MINUTES: 45,
+    IMPACT_VARIATION_MIN: 0.7,          // 0.9 -> 0.7 (최소 영향력 감소)
+    IMPACT_VARIATION_MAX: 1.2,          // 1.5 -> 1.2 (최대 영향력 감소)
+    DECAY_TIME_MINUTES: 30,             // 45 -> 30 (뉴스 영향력 지속 시간 감소)
+    NEWS_COUNT_PER_UPDATE: 10,          // 추가: 한 번에 생성할 뉴스 개수
   },
   PRICE: {
     BASE_RANDOM_CHANGE: 0.006,          // 0.008 -> 0.006 (랜덤 변동성 감소)
@@ -74,10 +75,10 @@ const SIMULATION_PARAMS = {
     DAILY_LIMIT: 0.30,                   
     WEIGHTS: {
       RANDOM: 0.15,                     // 0.25 -> 0.15 (랜덤 가중치 감소)
-      NEWS: 0.35,                       // 0.35 -> 0.60 (뉴스 영향력 대폭 증가)
-      INDUSTRY: 0.20,                   // 0.25 -> 0.20 (산업 영향력 감소)
-      MOMENTUM: 0.25,                   // 0.3 -> 0.25 (모멘텀 영향력 감소)
-      INDUSTRY_LEADER: 0.20             // 0.25 -> 0.20 (산업 리더 영향력 감소)
+      NEWS: 0.20,                       // 0.35 -> 0.20 (뉴스 영향력 감소)
+      INDUSTRY: 0.25,                   // 0.20 -> 0.25 (산업 영향력 증가)
+      MOMENTUM: 0.30,                   // 0.25 -> 0.30 (모멘텀 영향력 증가)
+      INDUSTRY_LEADER: 0.25             // 0.20 -> 0.25 (산업 리더 영향력 증가)
     }
   },
   INDUSTRY: {
@@ -360,18 +361,31 @@ export class MarketScheduler {
         .select('*');
       if (error) throw error;
 
-      // 확률 체크 제거, 항상 뉴스 생성
+      // 뉴스 생성 개수 설정 (10개)
+      const newsCount = Math.min(SIMULATION_PARAMS.NEWS.NEWS_COUNT_PER_UPDATE, companies?.length || 0);
+      
       if (companies && companies.length > 0) {
-        const randomCompany = companies[Math.floor(Math.random() * companies.length)];
-        const templatesForIndustry = await this.getNewsTemplatesForIndustry(randomCompany.industry);
-        const companyNews = this.selectRandomNews(templatesForIndustry);
-        await this.createNews({
-          ...companyNews,
-          title: `[${randomCompany.name}] ${companyNews.title}`,
-          content: `${randomCompany.name}(${randomCompany.ticker}): ${companyNews.content}`,
-          company_id: randomCompany.id
-        });
-        console.log(`${randomCompany.name} 기업 뉴스 발생:`, companyNews.title);
+        // 기업 목록을 섞어서 중복 없이 선택하기 위한 배열 생성
+        const shuffledCompanies = [...companies].sort(() => Math.random() - 0.5);
+        
+        // 최대 newsCount 개수만큼 뉴스 생성 (기업 수보다 많을 수 없음)
+        for (let i = 0; i < newsCount; i++) {
+          // 섞인 배열에서 순서대로 기업 선택 (중복 없음)
+          const company = shuffledCompanies[i];
+          const templatesForIndustry = await this.getNewsTemplatesForIndustry(company.industry);
+          const companyNews = this.selectRandomNews(templatesForIndustry);
+          
+          await this.createNews({
+            ...companyNews,
+            title: `[${company.name}] ${companyNews.title}`,
+            content: `${company.name}(${company.ticker}): ${companyNews.content}`,
+            company_id: company.id
+          });
+          
+          console.log(`${company.name} 기업 뉴스 발생:`, companyNews.title);
+        }
+        
+        console.log(`총 ${newsCount}개의 뉴스가 생성되었습니다. (각 기업당 최대 1개)`);
       }
       
       this.priceCache.clear();
@@ -446,15 +460,18 @@ export class MarketScheduler {
 
   private calculateSentimentMultiplier(sentiment: string): number {
     switch (sentiment) {
-      case 'positive': return 2.0;  // 1.4 -> 2.0 (긍정 뉴스 영향력 대폭 증가)
-      case 'negative': return 2.2;  // 1.6 -> 2.2 (부정 뉴스 영향력 대폭 증가)
-      default: return 1.0;
+      case 'positive':
+        return 1.2; // 기존 값 유지
+      case 'negative':
+        return -1.2; // 기존 값 유지
+      default:
+        return 0.3; // 0.5 -> 0.3 (중립적 뉴스 영향력 감소)
     }
   }
 
   private getEffectiveDuration(volatility: number): number {
-    const minDuration = 1;    // 최소 1분
-    const maxDuration = 20;   // 최대 20분
+    const minDuration = 5;    // 최소 1분 -> 5분
+    const maxDuration = 30;   // 최대 20분 -> 30분
     const volatilityMin = 1.0; // volatility 최소값
     const volatilityMax = 3.0; // volatility 최대값
 
@@ -514,19 +531,19 @@ export class MarketScheduler {
         const baseImpact = news.impact * impactVariation * directionMultiplier;
         
         // 시장 심리에 따른 증폭/감소 조정
-        const marketSentimentMultiplier = marketSentiment < 0.3 ? 0.7 : // 0.5 -> 0.7 (부정적 시장 영향 감소)
-                                        marketSentiment > 0.7 ? 1.8 : // 1.5 -> 1.8 (긍정적 시장 영향 증가)
-                                        1.2; // 1.0 -> 1.2 (중립적 시장도 약간 긍정적으로)
+        const marketSentimentMultiplier = marketSentiment < 0.3 ? 0.6 : // 0.7 -> 0.6 (부정적 시장 영향 더 감소)
+                                        marketSentiment > 0.7 ? 1.4 : // 1.8 -> 1.4 (긍정적 시장 영향 감소)
+                                        1.0; // 1.2 -> 1.0 (중립적 시장 영향 감소)
         
         const sentimentMultiplier = this.calculateSentimentMultiplier(news.sentiment);
-        const volatilityMultiplier = news.volatility >= 1.8 ? 1.2 : 1.0;
+        const volatilityMultiplier = news.volatility >= 1.8 ? 1.1 : 0.9; // 1.2/1.0 -> 1.1/0.9 (변동성 영향 감소)
 
         // 최종 영향력 계산
         const perMinuteImpact = baseImpact * sentimentMultiplier * volatilityMultiplier * 
                                marketCapMultiplier * marketSentimentMultiplier;
         
-        // 최종 영향력 범위 제한 값 증가
-        const clampedImpact = Math.max(Math.min(perMinuteImpact, 0.08), -0.08); // 0.04 -> 0.08
+        // 최종 영향력 범위 제한 값 감소
+        const clampedImpact = Math.max(Math.min(perMinuteImpact, 0.05), -0.05); // 0.08 -> 0.05 (최대 영향력 감소)
         totalPerMinuteImpact += clampedImpact;
       } else {
         await this.supabase
@@ -537,8 +554,12 @@ export class MarketScheduler {
     }
 
     // 최종 영향도에 랜덤 노이즈 추가
-    const randomNoise = (Math.random() - 0.5) * 0.02; // ±1% 랜덤 노이즈
-    return (totalPerMinuteImpact * SIMULATION_PARAMS.PRICE.WEIGHTS.NEWS) + randomNoise;
+    const randomNoise = (Math.random() - 0.5) * 0.01; // 0.02 -> 0.01 (랜덤 노이즈 감소)
+    
+    // 뉴스 개수가 많아졌으므로 영향력 분산을 위해 추가 감소 계수 적용
+    const newsCountDampener = 0.7; // 뉴스 개수가 많아져서 각 뉴스의 영향력을 분산시키는 계수
+    
+    return (totalPerMinuteImpact * SIMULATION_PARAMS.PRICE.WEIGHTS.NEWS * newsCountDampener) + randomNoise;
   }
 
   private calculateMarketCapNewsMultiplier(marketCap: number): number {
