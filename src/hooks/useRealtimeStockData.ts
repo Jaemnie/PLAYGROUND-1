@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { redis } from '@/lib/upstash-client'
+// 직접 Redis 접근 제거
+// import { redis } from '@/lib/upstash-client'
 import { createClientBrowser } from '@/lib/supabase/client'
 
 interface StockPrice {
@@ -16,23 +17,26 @@ export function useRealtimeStockData(companyIds: string[]) {
   useEffect(() => {
     // 초기 데이터 로드
     const loadInitialData = async () => {
-      const cachedData = await Promise.all(
-        companyIds.map(async (id) => {
-          const key = `stock:${id}`
-          const cached = await redis.get(key)
-          return { id, data: cached }
-        })
-      )
-      
-      const initialData = new Map()
-      cachedData.forEach(({ id, data }) => {
-        if (data) initialData.set(id, data)
-      })
-      
-      setStockData(initialData)
+      try {
+        // API를 통해 데이터 가져오기
+        const response = await fetch(`/api/stock/batch?tickers=${companyIds.join(',')}`)
+        const data = await response.json()
+        
+        if (data.companies) {
+          const initialData = new Map()
+          Object.entries(data.companies).forEach(([id, companyData]) => {
+            initialData.set(id, companyData)
+          })
+          setStockData(initialData)
+        }
+      } catch (error) {
+        console.error('주식 데이터 로드 실패:', error)
+      }
     }
     
-    loadInitialData()
+    if (companyIds.length > 0) {
+      loadInitialData()
+    }
 
     // Supabase Realtime 구독
     const supabase = createClientBrowser()

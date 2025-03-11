@@ -97,6 +97,8 @@ export function MarketTimer() {
         setServerOffset(serverDate.getTime() - Date.now())
       } catch (error) {
         console.error('서버 시각 가져오기 실패:', error)
+        // 오류 발생 시 서버 오프셋을 0으로 설정
+        setServerOffset(0)
       }
     }
     fetchServerTime()
@@ -108,7 +110,9 @@ export function MarketTimer() {
       try {
         const res = await fetch('/api/active-users')
         const data = await res.json()
-        setActiveUsers(data.count)
+        if (data && typeof data.count === 'number') {
+          setActiveUsers(data.count)
+        }
       } catch (error) {
         console.error('접속자 수 가져오기 실패:', error)
         // 오류 발생 시 기본값 유지

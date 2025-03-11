@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { redis } from '@/lib/upstash-client'
+// 직접 Redis 접근 제거
+// import { redis } from '@/lib/upstash-client'
 import { createClientBrowser } from '@/lib/supabase/client'
 
 export function useStockPrice(ticker: string) {
@@ -7,15 +8,15 @@ export function useStockPrice(ticker: string) {
 
   useEffect(() => {
     const fetchInitialPrice = async () => {
-      const cacheKey = `stock:${ticker}`
-      const cachedData = await redis.get(cacheKey) as { current_price: number } | null
-      
-      if (cachedData) {
-        setPrice(cachedData.current_price)
-      } else {
+      try {
+        // API를 통해 데이터 가져오기
         const response = await fetch(`/api/stock/market/${ticker}`)
         const data = await response.json()
-        setPrice(data.company.current_price)
+        if (data.company && data.company.current_price) {
+          setPrice(data.company.current_price)
+        }
+      } catch (error) {
+        console.error('주식 가격 가져오기 실패:', error)
       }
     }
 
