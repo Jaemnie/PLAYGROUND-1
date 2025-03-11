@@ -41,6 +41,13 @@ export function DashboardClient({ user, profile, isAdmin }: DashboardClientProps
       href: '/dashboard/stock'
     },
     {
+      title: '리더보드',
+      value: '랭킹 확인',
+      icon: <Trophy className="h-6 w-6" />,
+      description: '랭킹 및 업적을 확인하세요',
+      href: '/dashboard/stock/leaderboard'
+    },
+    {
       title: '내 프로필',
       value: profile.nickname || '프로필',
       icon: <UserCircle className="h-6 w-6" />,
