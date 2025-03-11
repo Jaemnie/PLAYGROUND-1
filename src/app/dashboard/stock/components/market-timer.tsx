@@ -5,6 +5,8 @@ import { ChartBarIcon, NewspaperIcon } from '@heroicons/react/24/outline'
 import { motion, AnimatePresence } from 'framer-motion'
 import { CardHeader, CardContent } from '@/components/ui/card'
 import { ClockIcon } from '@heroicons/react/24/outline'
+import { UserIcon } from '@heroicons/react/24/outline'
+import { useSession } from '@/lib/useSession'
 
 interface AnimatedLabelProps {
   show: boolean;
@@ -73,6 +75,10 @@ export function MarketTimer() {
   const [currentTime, setCurrentTime] = useState(new Date())
   const [showNumbers, setShowNumbers] = useState(true)
   const [serverOffset, setServerOffset] = useState<number>(0)
+  const [activeUsers, setActiveUsers] = useState<number>(0)
+
+  // 세션 관리 훅 사용
+  useSession();
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -94,6 +100,28 @@ export function MarketTimer() {
       }
     }
     fetchServerTime()
+  }, [])
+
+  useEffect(() => {
+    // 실시간 접속자 수를 가져오는 함수
+    const fetchActiveUsers = async () => {
+      try {
+        const res = await fetch('/api/active-users')
+        const data = await res.json()
+        setActiveUsers(data.count)
+      } catch (error) {
+        console.error('접속자 수 가져오기 실패:', error)
+        // 오류 발생 시 기본값 유지
+      }
+    }
+
+    // 초기 접속자 수 가져오기
+    fetchActiveUsers()
+
+    // 5초마다 접속자 수 업데이트
+    const userCountTimer = setInterval(fetchActiveUsers, 5000)
+    
+    return () => clearInterval(userCountTimer)
   }, [])
 
   useEffect(() => {
@@ -286,11 +314,13 @@ export function MarketTimer() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
-          className="mt-4 text-center"
+          className="mt-4 text-center flex items-center justify-center gap-2"
         >
+          <UserIcon className="w-4 h-4 text-blue-400" />
           <span className="text-sm text-white/70">
-            현재 서버 시각:{' '}
-            {new Date(currentTime.getTime() + serverOffset).toLocaleTimeString('ko-KR', { hour12: false })}
+            현재 접속자 수:{' '}
+            <span className="font-bold text-blue-400">{activeUsers.toLocaleString()}</span>
+            <span className="inline-block ml-1 text-xs text-blue-400/70">명</span>
           </span>
         </motion.div>
       </CardContent>

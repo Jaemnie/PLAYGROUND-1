@@ -312,6 +312,89 @@ export function FriendsList({ userId }: FriendsListProps) {
     }
   }
   
+  const handleMessageClick = async (friendId: string) => {
+    const supabase = createClientBrowser()
+    
+    try {
+      // 1. 이미 존재하는 1:1 채팅방 확인
+      const { data: myRooms } = await supabase
+        .from('chat_participants')
+        .select('chat_room_id')
+        .eq('user_id', userId)
+      
+      if (!myRooms || myRooms.length === 0) {
+        // 채팅방이 없으면 새로 생성
+        await createNewChatRoom(friendId)
+        router.push('/dashboard/chat')
+        return
+      }
+      
+      const roomIds = myRooms.map(room => room.chat_room_id)
+      
+      // 2. 해당 친구와의 채팅방 찾기
+      const { data: friendRooms } = await supabase
+        .from('chat_participants')
+        .select('chat_room_id')
+        .eq('user_id', friendId)
+        .in('chat_room_id', roomIds)
+      
+      if (friendRooms && friendRooms.length > 0) {
+        // 이미 채팅방이 존재하면 채팅 페이지로 이동
+        router.push('/dashboard/chat')
+      } else {
+        // 채팅방이 없으면 새로 생성
+        await createNewChatRoom(friendId)
+        router.push('/dashboard/chat')
+      }
+    } catch (error) {
+      console.error('채팅방 확인 오류:', error)
+      toast.error('채팅방을 확인하는 중 오류가 발생했습니다')
+    }
+  }
+  
+  const createNewChatRoom = async (friendId: string) => {
+    const supabase = createClientBrowser()
+    
+    try {
+      // 1. 새 채팅방 생성
+      const { data: newRoom, error: roomError } = await supabase
+        .from('chat_rooms')
+        .insert({
+          is_group: false,
+          name: ''
+        })
+        .select()
+        .single()
+      
+      if (roomError || !newRoom) {
+        console.error('채팅방 생성 오류:', roomError)
+        toast.error('채팅방을 생성하는 중 오류가 발생했습니다')
+        return
+      }
+      
+      // 2. 채팅방 참여자 추가 (나)
+      await supabase
+        .from('chat_participants')
+        .insert({
+          chat_room_id: newRoom.id,
+          user_id: userId
+        })
+      
+      // 3. 채팅방 참여자 추가 (친구)
+      await supabase
+        .from('chat_participants')
+        .insert({
+          chat_room_id: newRoom.id,
+          user_id: friendId
+        })
+      
+      toast.success('새 채팅방이 생성되었습니다')
+    } catch (error) {
+      console.error('채팅방 생성 오류:', error)
+      toast.error('채팅방을 생성하는 중 오류가 발생했습니다')
+    }
+  }
+  
   return (
     <div className="space-y-6">
       {/* 친구 검색 */}
@@ -421,7 +504,7 @@ export function FriendsList({ userId }: FriendsListProps) {
                       size="sm"
                       variant="outline"
                       className="border-gray-700"
-                      onClick={() => router.push(`/dashboard/chat?friend=${friend.friend_id}`)}
+                      onClick={() => handleMessageClick(friend.friend_id)}
                     >
                       메시지
                     </Button>
