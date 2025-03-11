@@ -208,11 +208,7 @@ export class MarketScheduler {
             const newBasePrice = await this.calculateNewPrice(company);
             const companyNewsImpact = await this.calculateCompanyNewsImpact(company.id, recentNews);
             
-            // 뉴스 영향력을 2배로 증폭 (기존 1배)
-            const amplifiedNewsImpact = companyNewsImpact * 2.0;
-            
-            // 최종 가격 계산에 증폭된 뉴스 영향력 적용
-            const finalPrice = newBasePrice * (1 + amplifiedNewsImpact);
+            const finalPrice = newBasePrice * (1 + companyNewsImpact);
 
             const priceChange = (finalPrice - company.current_price) / company.current_price;
             
@@ -233,7 +229,7 @@ export class MarketScheduler {
               old_price: Number(company.current_price.toFixed(4)),
               new_price: Number(finalPrice.toFixed(4)),
               change_percentage: Number((priceChange * 100).toFixed(4)),
-              update_reason: this.generateUpdateReason(amplifiedNewsImpact),
+              update_reason: this.generateUpdateReason(companyNewsImpact),
               created_at: new Date().toISOString(),
               old_market_cap: company.market_cap,
               new_market_cap: newMarketCap
@@ -513,19 +509,19 @@ export class MarketScheduler {
     const timeMultiplier = this.calculateTimeVolatility(currentHour);
     
     // 시간대별로 감정 영향력 조정 (시간대 변동성이 높을수록 감정 영향력도 강화)
-    const timeAdjustment = (timeMultiplier - 1.0) * 0.5; // 0.3 -> 0.5로 증가
+    const timeAdjustment = (timeMultiplier - 1.0) * 0.3; // 0.2 -> 0.3으로 증가
     
-    // 랜덤 변동성 추가 (±10%)
-    const randomVariation = 1.0 + (Math.random() * 0.2 - 0.1); // ±15% -> ±10%로 감소 (더 일관된 영향력)
+    // 랜덤 변동성 추가 (±15%)
+    const randomVariation = 1.0 + (Math.random() * 0.3 - 0.15); // ±10% -> ±15%로 증가
     
     switch (sentiment) {
       case 'positive':
-        return (1.8 + timeAdjustment) * randomVariation; // 1.3 -> 1.8 (긍정적 뉴스 영향력 크게 증가)
+        return (1.3 + timeAdjustment) * randomVariation; // 1.1 -> 1.3 (긍정적 뉴스 영향력 증가)
       case 'negative':
-        return (-2.2 - timeAdjustment) * randomVariation; // -1.3 -> -2.2 (부정적 뉴스 영향력 더 크게 증가)
+        return (-1.3 - timeAdjustment) * randomVariation; // -1.1 -> -1.3 (부정적 뉴스 영향력 증가)
       default:
         // 중립적 뉴스는 시간대와 관계없이 약한 랜덤 변동
-        return (Math.random() - 0.5) * 0.2 * randomVariation; // 0.15 -> 0.2로 증가
+        return (Math.random() - 0.5) * 0.15 * randomVariation; // 0.1 -> 0.15로 증가
     }
   }
 
@@ -623,28 +619,28 @@ export class MarketScheduler {
         const sentimentMultiplier = this.calculateSentimentMultiplier(news.sentiment);
         
         // volatility에 따른 영향력 조정 - volatility가 높을수록 sentiment 방향으로 더 강한 영향
-        const volatilityMultiplier = news.volatility >= 1.5 ? 2.0 : 1.5; // 1.5/1.2 -> 2.0/1.5로 증가
+        const volatilityMultiplier = news.volatility >= 1.5 ? 1.5 : 1.2; // 1.2/0.9 -> 1.5/1.2로 증가
         
         // 단기 변동성 계산 - sentiment 방향을 고려하여 변동폭 조정
-        let shortTermFluctuation = (marketSentiment - 0.5) * 0.8; // 변동폭 0.6 -> 0.8으로 증가
+        let shortTermFluctuation = (marketSentiment - 0.5) * 0.6; // 변동폭 0.4 -> 0.6으로 증가
         
         // sentiment에 따라 단기 변동성 조정
         if (news.sentiment === 'negative' && shortTermFluctuation > 0) {
-          // negative 뉴스인데 상승하려는 경우 변동폭을 80% 감소 (기존 50%)
-          shortTermFluctuation *= 0.2;
+          // negative 뉴스인데 상승하려는 경우 변동폭을 50% 감소 (기존 60%)
+          shortTermFluctuation *= 0.5;
         } else if (news.sentiment === 'positive' && shortTermFluctuation < 0) {
-          // positive 뉴스인데 하락하려는 경우 변동폭을 80% 감소 (기존 50%)
-          shortTermFluctuation *= 0.2;
+          // positive 뉴스인데 하락하려는 경우 변동폭을 50% 감소 (기존 60%)
+          shortTermFluctuation *= 0.5;
         }
         
         // 최종 영향력 계산: 장기적 추세(sentiment) + 단기 변동성(fluctuation)
         const perMinuteImpact = (
           baseImpact * sentimentMultiplier * volatilityMultiplier * 
-          marketCapMultiplier * timeMultiplier * industryVolatility * 1.5 // 1.2 -> 1.5로 증가
+          marketCapMultiplier * timeMultiplier * industryVolatility * 1.2 // 1.0 -> 1.2로 증가
         ) + shortTermFluctuation;
         
-        // 최종 영향력 범위 제한 (0.05 -> 0.08로 증가)
-        const clampedImpact = Math.max(Math.min(perMinuteImpact, 0.08), -0.08);
+        // 최종 영향력 범위 제한 (0.03 -> 0.05로 증가)
+        const clampedImpact = Math.max(Math.min(perMinuteImpact, 0.05), -0.05);
         totalPerMinuteImpact += clampedImpact;
       } else {
         await this.supabase
