@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import Link from "next/link"
 import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
@@ -29,7 +29,7 @@ export function MainPageClient({ initialSections, initialIsAdmin }: MainPageClie
   )
   const supabase = createClientBrowser()
 
-  const loadGuideItems = async () => {
+  const loadGuideItems = useCallback(async () => {
     try {
       if (sections.length === 0) return;
       
@@ -37,7 +37,7 @@ export function MainPageClient({ initialSections, initialIsAdmin }: MainPageClie
       const response = await fetch(`/api/guides/items/batch?section_ids=${sectionIds}`);
       const { items } = await response.json();
 
-      const sectionsWithItems = sections.map(section => ({
+      setSections(prevSections => prevSections.map(section => ({
         ...section,
         items: (items[section.id] || []).map((item: GuideItem) => ({
           id: item.id,
@@ -45,13 +45,11 @@ export function MainPageClient({ initialSections, initialIsAdmin }: MainPageClie
           description: item.description,
           href: `/guides/${item.id}`
         }))
-      }));
-
-      setSections(sectionsWithItems);
+      })));
     } catch (error) {
       console.error('가이드 아이템 로딩 에러:', error);
     }
-  };
+  }, []);
 
   useEffect(() => {
     let isMounted = true
@@ -71,7 +69,7 @@ export function MainPageClient({ initialSections, initialIsAdmin }: MainPageClie
     return () => {
       isMounted = false
     }
-  }, [sections.length, loadGuideItems])
+  }, [sections.length])
 
   const scrollToGuides = () => {
     const guidesSection = document.querySelector('#guides-section')
