@@ -5,10 +5,17 @@ import { createClient } from '@supabase/supabase-js';
 // 접속자 세션 만료 시간 (초)
 const SESSION_EXPIRY = 300; // 5분 (실제 서비스에서는 더 길게 설정 가능)
 
-// Supabase 클라이언트 초기화
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const supabase = createClient(supabaseUrl, supabaseKey);
+// Supabase 클라이언트 초기화 함수
+const getSupabaseClient = () => {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  
+  if (!supabaseUrl || !supabaseKey) {
+    return null;
+  }
+  
+  return createClient(supabaseUrl, supabaseKey);
+};
 
 export async function GET() {
   try {
@@ -138,13 +145,17 @@ export async function POST(request: Request) {
     // 프로필 확인 (userId가 있는 경우)
     let hasProfile = false;
     if (userId) {
-      const { data } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('id', userId)
-        .single();
+      const supabase = getSupabaseClient();
       
-      hasProfile = !!data;
+      if (supabase) {
+        const { data } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('id', userId)
+          .single();
+        
+        hasProfile = !!data;
+      }
     }
     
     return NextResponse.json({ 
