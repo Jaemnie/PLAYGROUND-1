@@ -20,7 +20,7 @@ interface NewItemFormProps {
 export function NewItemForm({ user, sectionId }: NewItemFormProps) {
   const router = useRouter()
   const [formData, setFormData] = useState({
-    name: '',
+    title: '',
     description: '',
     content: ''
   })
@@ -42,6 +42,8 @@ export function NewItemForm({ user, sectionId }: NewItemFormProps) {
     setIsLoading(true)
 
     try {
+      const now = new Date().toISOString()
+      
       const response = await fetch('/api/guides/items', {
         method: 'POST',
         headers: {
@@ -50,11 +52,16 @@ export function NewItemForm({ user, sectionId }: NewItemFormProps) {
         body: JSON.stringify({
           ...formData,
           section_id: sectionId,
-          created_by: user.id
+          created_by: user.id,
+          created_at: now,
+          updated_at: now
         }),
       })
 
-      if (!response.ok) throw new Error('아이템 생성에 실패했습니다')
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || '아이템 생성에 실패했습니다')
+      }
 
       toast.success('아이템이 생성되었습니다')
       router.push(`/admin/guides/sections/${sectionId}`)
@@ -98,8 +105,8 @@ export function NewItemForm({ user, sectionId }: NewItemFormProps) {
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-gray-200">이름</label>
                     <Input
-                      name="name"
-                      value={formData.name}
+                      name="title"
+                      value={formData.title}
                       onChange={handleChange}
                       required
                       placeholder="아이템 이름을 입력하세요"
