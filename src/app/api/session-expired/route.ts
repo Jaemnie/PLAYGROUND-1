@@ -25,7 +25,10 @@ export async function POST(request: Request) {
       // 세션 데이터에서 userId 추출
       if (sessionData) {
         try {
-          const parsedData = JSON.parse(sessionData as string);
+          // 세션 데이터가 문자열인 경우에만 파싱
+          const parsedData = typeof sessionData === 'string' 
+            ? JSON.parse(sessionData) 
+            : (typeof sessionData === 'object' ? sessionData : {});
           userId = parsedData.userId;
         } catch (e) {
           console.error('세션 데이터 파싱 오류:', e);
@@ -51,7 +54,10 @@ export async function POST(request: Request) {
             const data = await redis.get(key);
             if (!data) return null;
             try {
-              return JSON.parse(data as string);
+              // 세션 데이터가 문자열인 경우에만 파싱
+              return typeof data === 'string' 
+                ? JSON.parse(data) 
+                : (typeof data === 'object' ? data : null);
             } catch (e) {
               return null;
             }

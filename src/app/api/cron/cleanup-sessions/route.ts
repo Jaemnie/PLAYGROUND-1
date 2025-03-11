@@ -88,7 +88,9 @@ async function cleanupExpiredSessions() {
       }
       
       try {
-        const session = JSON.parse(sessionData as string)
+        const session = typeof sessionData === 'string' 
+          ? JSON.parse(sessionData as string) 
+          : (typeof sessionData === 'object' ? sessionData : {});
         const sessionId = sessionKey.split(':')[1]
         
         // 세션 데이터 저장

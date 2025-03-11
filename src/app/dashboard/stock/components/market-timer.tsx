@@ -68,6 +68,8 @@ const IconMap: IconType = {
 };
 
 export function MarketTimer() {
+  // 클라이언트 사이드 렌더링 여부를 확인하는 상태 추가
+  const [isClient, setIsClient] = useState(false)
   const [nextPriceUpdate, setNextPriceUpdate] = useState<Date | null>(null)
   const [nextNewsUpdate, setNextNewsUpdate] = useState<Date | null>(null)
   const [flashPrice, setFlashPrice] = useState(false)
@@ -76,19 +78,29 @@ export function MarketTimer() {
   const [showNumbers, setShowNumbers] = useState(true)
   const [serverOffset, setServerOffset] = useState<number>(0)
   const [activeUsers, setActiveUsers] = useState<number>(0)
+  const [marketIsOpen, setMarketIsOpen] = useState(false)
 
   // 세션 관리 훅 사용
   useSession();
 
+  // 클라이언트 사이드 렌더링 확인
   useEffect(() => {
+    setIsClient(true)
+  }, [])
+
+  useEffect(() => {
+    if (!isClient) return;
+    
     const timer = setInterval(() => {
       setCurrentTime(new Date())
     }, 100)
 
     return () => clearInterval(timer)
-  }, [])
+  }, [isClient])
 
   useEffect(() => {
+    if (!isClient) return;
+    
     const fetchServerTime = async () => {
       try {
         const res = await fetch('/api/server-time')
@@ -102,9 +114,11 @@ export function MarketTimer() {
       }
     }
     fetchServerTime()
-  }, [])
+  }, [isClient])
 
   useEffect(() => {
+    if (!isClient) return;
+    
     // 실시간 접속자 수를 가져오는 함수
     const fetchActiveUsers = async () => {
       try {
@@ -126,11 +140,37 @@ export function MarketTimer() {
     const userCountTimer = setInterval(fetchActiveUsers, 5000)
     
     return () => clearInterval(userCountTimer)
-  }, [])
+  }, [isClient])
+
+  // 시장 오픈 여부 확인 함수
+  const isMarketOpen = () => {
+    if (!isClient) return false;
+    
+    // 현재 클라이언트 시간에 서버 오프셋을 적용하여 서버 기준 시간을 계산
+    const serverTime = new Date(new Date().getTime() + serverOffset);
+    // 서버 타임스탬프를 UTC 기준으로 가져온 후, 한국 시간으로 보정 (UTC + 9)
+    const koreaHour = (serverTime.getUTCHours() + 9) % 24;
+    return koreaHour >= 9 && koreaHour < 24;
+  }
 
   useEffect(() => {
+    if (!isClient) return;
+    
+    // 장이 열려있는지 확인하고 상태 업데이트
+    setMarketIsOpen(isMarketOpen());
+    
+    const checkMarketStatus = setInterval(() => {
+      setMarketIsOpen(isMarketOpen());
+    }, 60000); // 1분마다 확인
+    
+    return () => clearInterval(checkMarketStatus);
+  }, [isClient, serverOffset]);
+
+  useEffect(() => {
+    if (!isClient) return;
+    
     // 장이 열려있을 때만 타이머 작동
-    if (!isMarketOpen()) {
+    if (!marketIsOpen) {
       setNextPriceUpdate(null)
       setNextNewsUpdate(null)
       return
@@ -176,10 +216,12 @@ export function MarketTimer() {
     }, 100)
 
     return () => clearInterval(timer)
-  }, [serverOffset])
+  }, [isClient, marketIsOpen, serverOffset])
 
   // 플래시 효과 리셋 로직 통합
   useEffect(() => {
+    if (!isClient) return;
+    
     const resetFlash = (flash: boolean, setFlash: (value: boolean) => void) => {
       if (flash) {
         setShowNumbers(false)
@@ -194,9 +236,11 @@ export function MarketTimer() {
 
     resetFlash(flashPrice, setFlashPrice)
     resetFlash(flashNews, setFlashNews)
-  }, [flashPrice, flashNews])
+  }, [isClient, flashPrice, flashNews])
 
   const getTimeRemaining = (targetDate: Date) => {
+    if (!isClient) return '0:00';
+    
     // 서버 시각 기준으로 남은 시간 계산
     const serverNow = new Date(currentTime.getTime() + serverOffset)
     const diff = targetDate.getTime() - serverNow.getTime()
@@ -206,14 +250,61 @@ export function MarketTimer() {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`
   }
 
-  const isMarketOpen = () => {
-    // 현재 클라이언트 시간에 서버 오프셋을 적용하여 서버 기준 시간을 계산
-    const serverTime = new Date(new Date().getTime() + serverOffset);
-    // 서버 타임스탬프를 UTC 기준으로 가져온 후, 한국 시간으로 보정 (UTC + 9)
-    const koreaHour = (serverTime.getUTCHours() + 9) % 24;
-    return koreaHour >= 9 && koreaHour < 24;
+  // 서버 사이드 렌더링 시 기본 UI 반환
+  if (!isClient) {
+    return (
+      <>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <ClockIcon className="w-5 h-5 text-blue-400" />
+            <h2 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent">
+              시장 타이머
+            </h2>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="flex justify-center gap-4 w-full">
+            {['price', 'news'].map((type, index) => (
+              <div key={type} className="relative flex-1">
+                <div className="flex flex-col items-center gap-2 p-3 rounded-xl bg-black/20 border border-white/5 backdrop-blur-sm">
+                  {type === 'price' ? (
+                    <ChartBarIcon className="w-5 h-5 text-blue-400" />
+                  ) : (
+                    <NewspaperIcon className="w-5 h-5 text-blue-400" />
+                  )}
+                  <div className="text-gray-400 text-xs font-medium mb-0.5">
+                    {type === 'price' ? '다음 주가 갱신' : '다음 뉴스 갱신'}
+                  </div>
+                  <div className="font-bold text-white text-lg tracking-tight">
+                    로딩 중...
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          
+          <div className="mt-4 flex items-center justify-center">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/20 border border-white/5">
+              <div className="w-2 h-2 rounded-full bg-blue-400" />
+              <span className="text-sm font-medium text-blue-400">
+                로딩 중...
+              </span>
+            </div>
+          </div>
+          
+          <div className="mt-4 text-center flex items-center justify-center gap-2">
+            <UserIcon className="w-4 h-4 text-blue-400" />
+            <span className="text-sm text-white/70">
+              현재 접속자 수:{' '}
+              <span className="font-bold text-blue-400">로딩 중...</span>
+            </span>
+          </div>
+        </CardContent>
+      </>
+    );
   }
 
+  // 클라이언트 사이드 렌더링 시 동적 UI 반환
   return (
     <>
       <CardHeader>
@@ -270,7 +361,7 @@ export function MarketTimer() {
                   }}
                 >
                   <IconComponent className={`w-5 h-5 ${colors[type as keyof typeof colors]}`} />
-                  <div className="text-center">
+                  
                     <div className="text-gray-400 text-xs font-medium mb-0.5">
                       {type === 'price' ? '다음 주가 갱신' : '다음 뉴스 갱신'}
                     </div>
@@ -282,16 +373,15 @@ export function MarketTimer() {
                       } : {}}
                       transition={{ duration: 0.4 }}
                     >
-                      {!isMarketOpen() 
+                      {!marketIsOpen 
                         ? '장 마감' 
                         : (currentFlash && !showNumbers ? '변동!' : (nextUpdate ? getTimeRemaining(nextUpdate) : '0:00'))}
                     </motion.div>
-                  </div>
+                  </motion.div>
                 </motion.div>
-              </motion.div>
-            )
-          })}
-        </div>
+              )
+            })}
+          </div>
         
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
@@ -307,14 +397,15 @@ export function MarketTimer() {
                 repeat: Infinity,
                 ease: "easeInOut"
               }}
-              className={`w-2 h-2 rounded-full ${isMarketOpen() ? 'bg-blue-400' : 'bg-red-400'}`} 
+              className={`w-2 h-2 rounded-full ${marketIsOpen ? 'bg-blue-400' : 'bg-red-400'}`} 
             />
-            <span className={`text-sm font-medium ${isMarketOpen() ? 'text-blue-400' : 'text-red-400'}`}>
-              {isMarketOpen() ? '장 운영중' : '장 마감'}
+            <span className={`text-sm font-medium ${marketIsOpen ? 'text-blue-400' : 'text-red-400'}`}>
+              {marketIsOpen ? '장 운영중' : '장 마감'}
             </span>
           </div>
         </motion.div>
-        <motion.div 
+        
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}

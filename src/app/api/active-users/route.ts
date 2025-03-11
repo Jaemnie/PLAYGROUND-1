@@ -52,7 +52,9 @@ export async function GET() {
           const data = await redis.get(key);
           if (!data) return null;
           try {
-            return JSON.parse(data as string);
+            return typeof data === 'string' 
+              ? JSON.parse(data as string) 
+              : (typeof data === 'object' ? data : null);
           } catch (e) {
             return null;
           }
@@ -157,7 +159,9 @@ export async function POST(request: Request) {
     if (existingSession) {
       // 기존 세션 업데이트
       try {
-        const parsedSession = JSON.parse(existingSession as string);
+        const parsedSession = typeof existingSession === 'string' 
+          ? JSON.parse(existingSession as string) 
+          : (typeof existingSession === 'object' ? existingSession : {});
         sessionData.createdAt = parsedSession.createdAt || now;
         
         // userId가 없었는데 새로 생긴 경우 업데이트
