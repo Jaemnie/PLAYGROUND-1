@@ -327,15 +327,15 @@ export class MarketScheduler {
     if (Math.random() < (finalReversalChance + extraReversalForHighCount)) {
       // 반전 시 영향력을 점진적으로 적용
       return movement.direction === 'up' ? 
-        1 - (momentumStrength * 0.8) : // 0.7 -> 0.8 (하락 반전 시 영향력 증가)
-        1 + (momentumStrength * 0.9);  // 0.8 -> 0.9 (상승 반전 시 영향력 증가)
+        1 - (momentumStrength * 0.85) : // 0.8 -> 0.85
+        1 + (momentumStrength * 0.85);  // 0.9 -> 0.85
     }
     
     // 기존 추세 유지 시 영향력을 감소
     const trendDecay = Math.exp(-movement.consecutiveCount * 0.12); // 0.1 -> 0.12 (지속 기간에 따른 감쇠 증가)
     return movement.direction === 'up' ? 
-      1 + (momentumStrength * 0.5 * trendDecay) : // 0.6 -> 0.5 (상승 지속 시 영향력 감소)
-      1 - (momentumStrength * 0.4 * trendDecay);  // 0.5 -> 0.4 (하락 지속 시 영향력 감소)
+      1 + (momentumStrength * 0.45 * trendDecay) : // 0.5 -> 0.45
+      1 - (momentumStrength * 0.45 * trendDecay);  // 0.4 -> 0.45
   }
 
   private updatePriceMovement(
@@ -520,8 +520,8 @@ export class MarketScheduler {
       case 'negative':
         return (-1.1 - timeAdjustment) * randomVariation; // -1.2 -> -1.1 (부정적 뉴스 영향력 감소)
       default:
-        // 중립적 뉴스는 시간대에 따라 약간 다른 영향력 (오전에는 약한 상승, 오후에는 약한 하락)
-        return currentHour < 15 ? 0.15 * randomVariation : -0.05 * randomVariation;
+        // 중립적 뉴스는 시간대와 관계없이 약한 랜덤 변동
+        return (Math.random() - 0.5) * 0.1 * randomVariation;
     }
   }
 
