@@ -33,7 +33,7 @@ export async function POST(request: Request) {
     if (error) {
       console.error('Supabase error:', error)
       return NextResponse.json(
-        { error: '아이템 생성에 실패했습니다', details: error.message },
+        { error: '아이템 생성에 실패했습니다', details: error instanceof Error ? error.message : String(error) },
         { status: 500 }
       )
     }
@@ -42,7 +42,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('Error:', error)
     return NextResponse.json(
-      { error: '아이템 생성에 실패했습니다', details: error.message },
+      { error: '아이템 생성에 실패했습니다', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     )
   }
