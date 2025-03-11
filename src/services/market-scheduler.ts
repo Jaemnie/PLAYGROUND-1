@@ -63,7 +63,10 @@ const SIMULATION_PARAMS = {
     IMPACT_VARIATION_MIN: 0.7,          // 0.9 -> 0.7 (최소 영향력 감소)
     IMPACT_VARIATION_MAX: 1.2,          // 1.5 -> 1.2 (최대 영향력 감소)
     DECAY_TIME_MINUTES: 30,             // 45 -> 30 (뉴스 영향력 지속 시간 감소)
-    NEWS_COUNT_PER_UPDATE: 10,          // 추가: 한 번에 생성할 뉴스 개수
+    NEWS_COUNT_PER_UPDATE: {
+      MIN: 1,                           // 최소 뉴스 생성 개수
+      MAX: 10                           // 최대 뉴스 생성 개수
+    },          
   },
   PRICE: {
     BASE_RANDOM_CHANGE: 0.006,          // 0.008 -> 0.006 (랜덤 변동성 감소)
@@ -361,8 +364,12 @@ export class MarketScheduler {
         .select('*');
       if (error) throw error;
 
-      // 뉴스 생성 개수 설정 (10개)
-      const newsCount = Math.min(SIMULATION_PARAMS.NEWS.NEWS_COUNT_PER_UPDATE, companies?.length || 0);
+      // 뉴스 생성 개수를 1~10개 사이에서 랜덤하게 설정
+      const randomNewsCount = Math.floor(
+        Math.random() * (SIMULATION_PARAMS.NEWS.NEWS_COUNT_PER_UPDATE.MAX - SIMULATION_PARAMS.NEWS.NEWS_COUNT_PER_UPDATE.MIN + 1)
+      ) + SIMULATION_PARAMS.NEWS.NEWS_COUNT_PER_UPDATE.MIN;
+      
+      const newsCount = Math.min(randomNewsCount, companies?.length || 0);
       
       if (companies && companies.length > 0) {
         // 기업 목록을 섞어서 중복 없이 선택하기 위한 배열 생성
