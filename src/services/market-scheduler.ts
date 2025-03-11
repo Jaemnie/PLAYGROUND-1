@@ -509,26 +509,26 @@ export class MarketScheduler {
     const timeMultiplier = this.calculateTimeVolatility(currentHour);
     
     // 시간대별로 감정 영향력 조정 (시간대 변동성이 높을수록 감정 영향력도 강화)
-    const timeAdjustment = (timeMultiplier - 1.0) * 0.2;
+    const timeAdjustment = (timeMultiplier - 1.0) * 0.3; // 0.2 -> 0.3으로 증가
     
-    // 랜덤 변동성 추가 (±10%)
-    const randomVariation = 1.0 + (Math.random() * 0.2 - 0.1);
+    // 랜덤 변동성 추가 (±15%)
+    const randomVariation = 1.0 + (Math.random() * 0.3 - 0.15); // ±10% -> ±15%로 증가
     
     switch (sentiment) {
       case 'positive':
-        return (1.1 + timeAdjustment) * randomVariation; // 1.2 -> 1.1 (긍정적 뉴스 영향력 감소)
+        return (1.3 + timeAdjustment) * randomVariation; // 1.1 -> 1.3 (긍정적 뉴스 영향력 증가)
       case 'negative':
-        return (-1.1 - timeAdjustment) * randomVariation; // -1.2 -> -1.1 (부정적 뉴스 영향력 감소)
+        return (-1.3 - timeAdjustment) * randomVariation; // -1.1 -> -1.3 (부정적 뉴스 영향력 증가)
       default:
         // 중립적 뉴스는 시간대와 관계없이 약한 랜덤 변동
-        return (Math.random() - 0.5) * 0.1 * randomVariation;
+        return (Math.random() - 0.5) * 0.15 * randomVariation; // 0.1 -> 0.15로 증가
     }
   }
 
   private getEffectiveDuration(volatility: number): number {
     // 기본 지속 시간 범위 설정
-    const minDuration = 5;    // 최소 5분
-    const maxDuration = 25;   // 최대 30분 -> 25분
+    const minDuration = 8;    // 최소 5분 -> 8분으로 증가
+    const maxDuration = 35;   // 최대 25분 -> 35분으로 증가
     
     // volatility 범위 설정
     const volatilityMin = 1.0; // volatility 최소값
@@ -547,13 +547,13 @@ export class MarketScheduler {
     // 오전과 오후에 따라 지속 시간 조정
     if (currentHour >= 9 && currentHour < 12) {
       // 오전에는 뉴스 영향력 지속 시간 감소 (빠른 변동성)
-      timeMultiplier = 0.8;
+      timeMultiplier = 0.85; // 0.8 -> 0.85로 증가
     } else if (currentHour >= 12 && currentHour < 15) {
       // 점심 시간대에는 뉴스 영향력 지속 시간 증가 (느린 변동성)
-      timeMultiplier = 1.2;
+      timeMultiplier = 1.3; // 1.2 -> 1.3으로 증가
     } else if (currentHour >= 21) {
       // 마감 전에는 뉴스 영향력 지속 시간 감소 (빠른 변동성)
-      timeMultiplier = 0.9;
+      timeMultiplier = 0.95; // 0.9 -> 0.95로 증가
     }
     
     // 선형 매핑: normalized가 0이면 minDuration, 1이면 maxDuration
@@ -594,7 +594,7 @@ export class MarketScheduler {
 
     // 시간대별 뉴스 영향력 조정 계수
     const hourOfDay = now.getHours();
-    const timeMultiplier = this.calculateTimeVolatility(hourOfDay) * 0.9; // 시간대별 영향력 10% 감소
+    const timeMultiplier = this.calculateTimeVolatility(hourOfDay) * 1.1; // 0.9 -> 1.1로 증가 (시간대별 영향력 10% 증가)
 
     for (const news of activeNews) {
       const timeElapsed = (now.getTime() - new Date(news.published_at).getTime()) / (60 * 1000);
@@ -602,10 +602,10 @@ export class MarketScheduler {
       
       if (timeElapsed <= effectiveDuration) {
         // 시간 경과에 따른 영향력 감소 (지수 감쇠)
-        const decayFactor = Math.exp(-timeElapsed / (effectiveDuration * 0.7));
+        const decayFactor = Math.exp(-timeElapsed / (effectiveDuration * 0.9)); // 0.7 -> 0.9로 증가 (감쇠 속도 감소)
         
         // 시장 심리 팩터 (랜덤 변동성)
-        const marketSentiment = 0.5 + (Math.random() * 0.4 - 0.2); // 0.3~0.7 범위로 제한
+        const marketSentiment = 0.5 + (Math.random() * 0.5 - 0.25); // 0.3~0.7 -> 0.25~0.75 범위로 확대
         
         // 변동성에 따른 임팩트 변화
         const impactVariation = 
@@ -619,28 +619,28 @@ export class MarketScheduler {
         const sentimentMultiplier = this.calculateSentimentMultiplier(news.sentiment);
         
         // volatility에 따른 영향력 조정 - volatility가 높을수록 sentiment 방향으로 더 강한 영향
-        const volatilityMultiplier = news.volatility >= 1.5 ? 1.2 : 0.9;
+        const volatilityMultiplier = news.volatility >= 1.5 ? 1.5 : 1.2; // 1.2/0.9 -> 1.5/1.2로 증가
         
         // 단기 변동성 계산 - sentiment 방향을 고려하여 변동폭 조정
-        let shortTermFluctuation = (marketSentiment - 0.5) * 0.4; // 변동폭 0.5 -> 0.4로 감소
+        let shortTermFluctuation = (marketSentiment - 0.5) * 0.6; // 변동폭 0.4 -> 0.6으로 증가
         
         // sentiment에 따라 단기 변동성 조정
         if (news.sentiment === 'negative' && shortTermFluctuation > 0) {
-          // negative 뉴스인데 상승하려는 경우 변동폭을 60% 감소
-          shortTermFluctuation *= 0.4;
+          // negative 뉴스인데 상승하려는 경우 변동폭을 50% 감소 (기존 60%)
+          shortTermFluctuation *= 0.5;
         } else if (news.sentiment === 'positive' && shortTermFluctuation < 0) {
-          // positive 뉴스인데 하락하려는 경우 변동폭을 60% 감소
-          shortTermFluctuation *= 0.4;
+          // positive 뉴스인데 하락하려는 경우 변동폭을 50% 감소 (기존 60%)
+          shortTermFluctuation *= 0.5;
         }
         
         // 최종 영향력 계산: 장기적 추세(sentiment) + 단기 변동성(fluctuation)
         const perMinuteImpact = (
           baseImpact * sentimentMultiplier * volatilityMultiplier * 
-          marketCapMultiplier * timeMultiplier * industryVolatility * 1.0
+          marketCapMultiplier * timeMultiplier * industryVolatility * 1.2 // 1.0 -> 1.2로 증가
         ) + shortTermFluctuation;
         
-        // 최종 영향력 범위 제한 (0.04 -> 0.03으로 감소)
-        const clampedImpact = Math.max(Math.min(perMinuteImpact, 0.03), -0.03);
+        // 최종 영향력 범위 제한 (0.03 -> 0.05로 증가)
+        const clampedImpact = Math.max(Math.min(perMinuteImpact, 0.05), -0.05);
         totalPerMinuteImpact += clampedImpact;
       } else {
         await this.supabase
