@@ -13,15 +13,14 @@ export function AdminGuideContainer({ initialSections }: AdminGuideContainerProp
   const [sections] = useState<GuideSection[]>(initialSections)
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      <section className="relative h-[40vh] overflow-hidden bg-gradient-to-br from-gray-900 via-black to-gray-900">
-        <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))]" />
-        <div className="relative container mx-auto h-full flex flex-col items-center justify-center text-center space-y-8 px-4">
+    <div className="flex flex-col w-full">
+      <section className="relative overflow-hidden">
+        <div className="container mx-auto flex flex-col items-center justify-center text-center space-y-8 px-4 py-16">
           <AdminGuideHeader />
         </div>
       </section>
       
-      <section className="py-20 px-4 bg-black/40">
+      <section className="py-12 px-4">
         <div className="container mx-auto">
           <AdminGuideList sections={sections} />
         </div>

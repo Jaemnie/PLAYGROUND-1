@@ -5,7 +5,6 @@ import { CardHeader, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { createClientBrowser } from '@/lib/supabase/client'
-import { toast } from 'sonner'
 import { TradeAlert } from '@/components/ui/trade-alert'
 
 interface User {
@@ -109,19 +108,10 @@ export function TradingForm({
       if (transactionError) throw transactionError
       
       onTradeComplete(type)
-      toast.success(
-        type === 'buy' 
-          ? '매수가 완료되었습니다.' 
-          : '매도가 완료되었습니다.'
-      )
       
       setShares('')
     } catch (error: unknown) {
-      if (error instanceof Error) {
-        toast.error(error.message)
-      } else {
-        toast.error('알 수 없는 오류가 발생했습니다.')
-      }
+      console.error('거래 오류:', error instanceof Error ? error.message : '알 수 없는 오류')
     } finally {
       setIsLoading(false)
     }
