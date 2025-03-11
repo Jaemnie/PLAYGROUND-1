@@ -299,43 +299,43 @@ export class MarketScheduler {
     if (movement.consecutiveCount <= 1) return 1.0;
     
     // 모멘텀 강도를 로그 스케일로 계산하여 급격한 증가 방지
-    const logBase = 1.8; // 1.5 -> 1.8 (로그 기반 증가, 모멘텀 영향력 감소)
+    const logBase = 1.4; // 1.6 -> 1.4 (로그 기반 더 감소, 모멘텀 영향력 더 증가)
     const momentumStrength = Math.min(
       (Math.log(movement.consecutiveCount) / Math.log(logBase)) * 
       Math.abs(movement.lastChange) * 
-      0.15, // 0.2 -> 0.15 (전체적인 영향력 감소)
-      0.03  // 0.04 -> 0.03 (최대 영향력 제한)
+      0.35, // 0.25 -> 0.35 (전체적인 영향력 더 증가)
+      0.08  // 0.05 -> 0.08 (최대 영향력 제한 더 증가)
     );
     
-    // 반전 확률을 연속 횟수에 따라 지수적으로 증가
-    const baseReversalChance = SIMULATION_PARAMS.PRICE.REVERSAL.BASE_CHANCE;
+    // 반전 확률을 연속 횟수에 따라 지수적으로 증가 (파도치듯 반전 확률 크게 증가)
+    const baseReversalChance = SIMULATION_PARAMS.PRICE.REVERSAL.BASE_CHANCE * 1.5; // 기본 반전 확률 50% 증가
     const reversalChance = Math.min(
       baseReversalChance + 
-      (1 - Math.exp(-movement.consecutiveCount * 0.35)) * // 0.3 -> 0.35 (지수적 증가 강화)
-      SIMULATION_PARAMS.PRICE.REVERSAL.MOMENTUM_MULTIPLIER,
-      SIMULATION_PARAMS.PRICE.REVERSAL.MAX_CHANCE
+      (1 - Math.exp(-movement.consecutiveCount * 0.5)) * // 0.3 -> 0.5 (지수적 증가 크게 강화)
+      SIMULATION_PARAMS.PRICE.REVERSAL.MOMENTUM_MULTIPLIER * 1.3, // 모멘텀 승수 30% 증가
+      SIMULATION_PARAMS.PRICE.REVERSAL.MAX_CHANCE * 1.2 // 최대 반전 확률 20% 증가
     );
     
     // 반전 확률에 변동성 추가
-    const volatilityFactor = 1 + (Math.random() * 0.15 - 0.075); // 0.2 -> 0.15 (±7.5% 변동)
+    const volatilityFactor = 1 + (Math.random() * 0.25 - 0.125); // 0.15/0.075 -> 0.25/0.125 (±12.5% 변동)
     const finalReversalChance = reversalChance * volatilityFactor;
     
     // 연속 상승/하락 횟수가 많을수록 반전 확률 증가
-    const extraReversalForHighCount = movement.consecutiveCount > 5 ? 
-      Math.min((movement.consecutiveCount - 5) * 0.03, 0.15) : 0;
+    const extraReversalForHighCount = movement.consecutiveCount > 3 ? // 5 -> 3 (더 빨리 반전 확률 증가)
+      Math.min((movement.consecutiveCount - 3) * 0.05, 0.2) : 0; // 0.025/0.12 -> 0.05/0.2 (반전 확률 크게 증가)
     
     if (Math.random() < (finalReversalChance + extraReversalForHighCount)) {
-      // 반전 시 영향력을 점진적으로 적용
+      // 반전 시 영향력을 강하게 적용 (파도치듯 강한 반전)
       return movement.direction === 'up' ? 
-        1 - (momentumStrength * 0.85) : // 0.8 -> 0.85
-        1 + (momentumStrength * 0.85);  // 0.9 -> 0.85
+        1 - (momentumStrength * 1.2) : // 0.8 -> 1.2 (반전 시 영향력 크게 증가)
+        1 + (momentumStrength * 1.2);  // 0.8 -> 1.2
     }
     
-    // 기존 추세 유지 시 영향력을 감소
-    const trendDecay = Math.exp(-movement.consecutiveCount * 0.12); // 0.1 -> 0.12 (지속 기간에 따른 감쇠 증가)
+    // 기존 추세 유지 시 영향력을 약화 (파도치듯 추세 약화)
+    const trendDecay = Math.exp(-movement.consecutiveCount * 0.15); // 0.08 -> 0.15 (지속 기간에 따른 감쇠 증가)
     return movement.direction === 'up' ? 
-      1 + (momentumStrength * 0.45 * trendDecay) : // 0.5 -> 0.45
-      1 - (momentumStrength * 0.45 * trendDecay);  // 0.4 -> 0.45
+      1 + (momentumStrength * 0.5 * trendDecay) : // 0.7 -> 0.5 (추세 유지 시 영향력 감소)
+      1 - (momentumStrength * 0.5 * trendDecay);  // 0.7 -> 0.5
   }
 
   private updatePriceMovement(
@@ -348,7 +348,7 @@ export class MarketScheduler {
     }
   ) {
     // 변화가 너무 작으면 중립으로 처리
-    const minChangeThreshold = 0.0005; // 0.05% 미만은 중립으로 간주
+    const minChangeThreshold = 0.0002; // 0.0003 -> 0.0002 (0.02% 미만은 중립으로 간주)
     const newDirection = 
       Math.abs(change) < minChangeThreshold ? 'neutral' :
       change > 0 ? 'up' : 'down';
@@ -358,24 +358,24 @@ export class MarketScheduler {
       newDirection === previousMovement.direction && newDirection !== 'neutral' ? 
       previousMovement.consecutiveCount + 1 : 1;
     
-    // 연속 카운트가 높을수록 반전 확률 증가
-    const baseReversalThreshold = 0.2; // 기본 반전 확률
-    const countFactor = Math.min(consecutiveCount * 0.05, 0.5); // 최대 50%까지 추가
+    // 연속 카운트가 높을수록 반전 확률 증가 (파도치듯 반전 확률 증가)
+    const baseReversalThreshold = 0.25; // 0.15 -> 0.25 (기본 반전 확률 크게 증가)
+    const countFactor = Math.min(consecutiveCount * 0.08, 0.6); // 0.04/0.4 -> 0.08/0.6 (최대 60%까지 추가)
     const reversalThreshold = baseReversalThreshold + countFactor;
     
     // 연속 카운트가 높고 랜덤 확률이 반전 임계값을 넘으면 반전 적용
-    if (consecutiveCount > 3 && Math.random() < reversalThreshold) {
-      // 반전 시 연속 카운트 리셋 및 변화량 감소
+    if (consecutiveCount > 2 && Math.random() < reversalThreshold) { // 3 -> 2 (더 빨리 반전 적용)
+      // 반전 시 연속 카운트 리셋 및 변화량 증가 (파도치듯 강한 반전)
       consecutiveCount = 1;
-      change *= 0.4; // 0.5 -> 0.4 (반전 시 변화량 더 감소)
+      change *= -0.8; // 0.5 -> -0.8 (반전 시 반대 방향으로 강한 변화)
     }
     
     // 중립 상태가 지속되면 랜덤하게 방향 결정
     if (newDirection === 'neutral' && previousMovement.direction === 'neutral') {
-      // 3회 이상 중립이 지속되면 랜덤 방향으로 약한 움직임 생성
-      if (previousMovement.consecutiveCount >= 2) {
+      // 중립이 지속되면 랜덤 방향으로 약한 움직임 생성
+      if (previousMovement.consecutiveCount >= 1) { // 변동 없음
         const randomDirection = Math.random() > 0.5 ? 'up' : 'down';
-        const smallChange = (Math.random() * 0.002 + 0.001) * (randomDirection === 'up' ? 1 : -1);
+        const smallChange = (Math.random() * 0.005 + 0.002) * (randomDirection === 'up' ? 1 : -1); // 0.003/0.0015 -> 0.005/0.002
         
         this.priceMovementCache.set(key, {
           direction: randomDirection,
@@ -721,31 +721,31 @@ export class MarketScheduler {
     const dailyChange = company.last_closing_price > 0 ? 
       (company.current_price - company.last_closing_price) / company.last_closing_price : 0;
     
-    // 일중 변동률이 큰 경우 반대 방향으로의 조정 압력 증가
+    // 일중 변동률이 큰 경우 반대 방향으로의 조정 압력 증가 (파도치듯 반전 압력 강화)
     let dailyChangeAdjustment = 0;
-    if (Math.abs(dailyChange) > 0.25) { // 25% 이상 변동 시 조정 압력 적용
-      // 변동 방향의 반대 방향으로 조정 압력 적용 (0.25를 넘어갈수록 강해짐)
-      dailyChangeAdjustment = -dailyChange * 0.05 * (Math.abs(dailyChange) - 0.25);
+    if (Math.abs(dailyChange) > 0.15) { // 0.2 -> 0.15 (더 일찍 조정 압력 적용)
+      // 변동 방향의 반대 방향으로 조정 압력 적용 (0.15를 넘어갈수록 강해짐)
+      dailyChangeAdjustment = -dailyChange * 0.08 * (Math.abs(dailyChange) - 0.15); // 0.04 -> 0.08 (조정 압력 증가)
     }
     
     // 변동성 요소들을 결합하여 최종 가격 변화율 계산
     const baseChange = (
-      randomChange * SIMULATION_PARAMS.PRICE.WEIGHTS.RANDOM +
+      randomChange * SIMULATION_PARAMS.PRICE.WEIGHTS.RANDOM * 1.3 + // 랜덤 변화 30% 증가
       industryLeaderImpact * SIMULATION_PARAMS.PRICE.WEIGHTS.INDUSTRY_LEADER
-    ) * industryVolatility * timeVolatility * marketCapVolatility * momentumFactor;
+    ) * industryVolatility * timeVolatility * marketCapVolatility * momentumFactor * 1.2; // 모멘텀 효과 20% 증가
     
     // 일중 변동 조정 적용
     const adjustedChange = baseChange + dailyChangeAdjustment;
     
-    // 최종 변화율 제한 (한 번의 업데이트에서 최대 ±2.5%)
-    const limitedChange = Math.max(Math.min(adjustedChange, 0.025), -0.025);
+    // 최종 변화율 제한 (한 번의 업데이트에서 최대 ±4%)
+    const limitedChange = Math.max(Math.min(adjustedChange, 0.04), -0.04); // 3% -> 4%
     
     let newPrice = basePrice * (1 + limitedChange);
     
-    // 일중 최대 변동폭 제한 (40% 제한)
+    // 일중 최대 변동폭 제한 (50% 제한)
     if (company.last_closing_price > 0) {
-      const maxDailyPrice = company.last_closing_price * 1.4;
-      const minDailyPrice = company.last_closing_price * 0.6;
+      const maxDailyPrice = company.last_closing_price * 1.5; // 1.4 -> 1.5
+      const minDailyPrice = company.last_closing_price * 0.5; // 0.6 -> 0.5
       newPrice = Math.min(Math.max(newPrice, minDailyPrice), maxDailyPrice);
     }
     
