@@ -20,7 +20,7 @@ interface NewsTickerProps {
   }[]
 }
 
-function NewsAlert() {
+function NewsAlert({ count }: { count: number }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: -10 }}
@@ -28,13 +28,15 @@ function NewsAlert() {
       exit={{ opacity: 0, y: -10 }}
       className="absolute -top-10 left-0 right-0 bg-blue-500/20 text-blue-300 px-4 py-2 rounded-md text-sm"
     >
-      새로운 뉴스가 추가되었습니다!
+      {count > 1 
+        ? `${count}개의 새로운 뉴스가 추가되었습니다!` 
+        : '새로운 뉴스가 추가되었습니다!'}
     </motion.div>
   )
 }
 
 export function NewsTicker({ news: initialNews }: NewsTickerProps) {
-  const { newsData, latestUpdate } = useRealtimeNews(initialNews)
+  const { newsData, latestUpdate, newItemsCount, resetNewItemsCount } = useRealtimeNews(initialNews)
   const [currentPage, setCurrentPage] = useState(1)
   const [showAlert, setShowAlert] = useState(false)
   
@@ -46,9 +48,12 @@ export function NewsTicker({ news: initialNews }: NewsTickerProps) {
     if (latestUpdate) {
       setCurrentPage(1)
       setShowAlert(true)
-      setTimeout(() => setShowAlert(false), 3000)
+      setTimeout(() => {
+        setShowAlert(false)
+        resetNewItemsCount()
+      }, 3000)
     }
-  }, [latestUpdate])
+  }, [latestUpdate, resetNewItemsCount])
 
   // 페이지 버튼 생성 함수
   const renderPageButtons = () => {
@@ -128,7 +133,7 @@ export function NewsTicker({ news: initialNews }: NewsTickerProps) {
               더보기 →
             </Link>
             <AnimatePresence>
-              {showAlert && <NewsAlert />}
+              {showAlert && <NewsAlert count={newItemsCount} />}
             </AnimatePresence>
           </div>
         </div>
