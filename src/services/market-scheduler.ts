@@ -509,19 +509,19 @@ export class MarketScheduler {
     const timeMultiplier = this.calculateTimeVolatility(currentHour);
     
     // 시간대별로 감정 영향력 조정 (시간대 변동성이 높을수록 감정 영향력도 강화)
-    const timeAdjustment = (timeMultiplier - 1.0) * 0.3; // 0.2 -> 0.3으로 증가
+    const timeAdjustment = (timeMultiplier - 1.0) * 0.5; // 0.3 -> 0.5로 증가
     
-    // 랜덤 변동성 추가 (±15%)
-    const randomVariation = 1.0 + (Math.random() * 0.3 - 0.15); // ±10% -> ±15%로 증가
+    // 랜덤 변동성 추가 (±10%)
+    const randomVariation = 1.0 + (Math.random() * 0.2 - 0.1); // ±15% -> ±10%로 감소 (더 일관된 영향력)
     
     switch (sentiment) {
       case 'positive':
-        return (1.3 + timeAdjustment) * randomVariation; // 1.1 -> 1.3 (긍정적 뉴스 영향력 증가)
+        return (1.8 + timeAdjustment) * randomVariation; // 1.3 -> 1.8 (긍정적 뉴스 영향력 크게 증가)
       case 'negative':
-        return (-1.3 - timeAdjustment) * randomVariation; // -1.1 -> -1.3 (부정적 뉴스 영향력 증가)
+        return (-2.2 - timeAdjustment) * randomVariation; // -1.3 -> -2.2 (부정적 뉴스 영향력 더 크게 증가)
       default:
         // 중립적 뉴스는 시간대와 관계없이 약한 랜덤 변동
-        return (Math.random() - 0.5) * 0.15 * randomVariation; // 0.1 -> 0.15로 증가
+        return (Math.random() - 0.5) * 0.2 * randomVariation; // 0.15 -> 0.2로 증가
     }
   }
 
