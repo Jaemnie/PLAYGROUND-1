@@ -627,7 +627,10 @@ export class MarketScheduler {
         perMinuteImpact = -Math.abs(perMinuteImpact);
         
         // 최종 영향력 범위 제한
-        let clampedImpact = Math.max(Math.min(perMinuteImpact, 0.03), -0.03); // 변동 없음
+        // volatility에 따라 기하급수적으로 영향력 증가
+        const volatilityFactor = Math.pow(news.volatility, 1.8);
+        const maxImpactByVolatility = 0.02 * volatilityFactor; // 기본 영향력을 2%로 낮춤
+        let clampedImpact = Math.max(Math.min(perMinuteImpact, maxImpactByVolatility), -maxImpactByVolatility);
         
         totalPerMinuteImpact += clampedImpact;
       } else {
@@ -691,7 +694,10 @@ export class MarketScheduler {
         }
         
         // 최종 영향력 범위 제한
-        let clampedImpact = Math.max(Math.min(perMinuteImpact, 0.03), -0.03); // 변동 없음
+        // volatility에 따라 기하급수적으로 영향력 증가
+        const volatilityFactor = Math.pow(news.volatility, 1.8);
+        const maxImpactByVolatility = 0.02 * volatilityFactor; // 기본 영향력을 2%로 낮춤
+        let clampedImpact = Math.max(Math.min(perMinuteImpact, maxImpactByVolatility), -maxImpactByVolatility);
         
         totalPerMinuteImpact += clampedImpact;
       } else {
@@ -768,6 +774,23 @@ export class MarketScheduler {
     // 시가총액 규모별 변동성 적용 - 더 가변적으로
     const marketCapVolatility = this.calculateMarketCapVolatility(company.market_cap) * (1.1 + Math.random() * 0.2); // 1.2 -> 1.1~1.3 (랜덤 요소 추가)
     
+    // 뉴스의 최대 volatility를 찾아서 변동폭에 반영
+    const { data: recentNewsForCompany } = await this.supabase
+      .from('news')
+      .select('volatility')
+      .eq('company_id', company.id)
+      .gte('published_at', getDbTimeXMinutesAgo(30))
+      .is('applied', false);
+    
+    const activeNewsVolatilities = recentNewsForCompany?.map(n => n.volatility) || [];
+    
+    const maxVolatilityInNews = activeNewsVolatilities.length > 0 
+      ? Math.max(...activeNewsVolatilities) 
+      : 1.0;
+    
+    // 기하급수적 증가를 위해 제곱 사용
+    const volatilityAdjustment = Math.pow(maxVolatilityInNews, 2) / 2;
+    
     // 산업 리더 영향력 적용
     return this.calculateIndustryLeaderImpact(company.industry, company.id)
       .then(industryLeaderImpact => {
@@ -804,20 +827,18 @@ export class MarketScheduler {
         // 일중 변동 조정 적용
         const adjustedChange = baseChange + dailyChangeAdjustment;
         
-        // 최종 변화율 제한 - 더 가변적으로
-        const maxChange = 0.035 + Math.random() * 0.01; // 0.04 -> 0.035~0.045 (랜덤 요소 추가)
+        // 최종 변화율 제한 - volatility에 따라 기하급수적으로 증가
+        // 기본 변동폭을 2.5~3.0%로 낮춤
+        const baseMaxChange = 0.025 + Math.random() * 0.005;
+        
+        // 최종 변동폭 계산 (제한 없음)
+        const maxChange = baseMaxChange * volatilityAdjustment;
         const limitedChange = Math.max(Math.min(adjustedChange, maxChange), -maxChange);
         
         let newPrice = basePrice * (1 + limitedChange);
         
-        // 일중 최대 변동폭 제한 - 더 가변적으로
-        if (company.last_closing_price > 0) {
-          const maxDailyPrice = company.last_closing_price * (1.25 + Math.random() * 0.1); // 1.3 -> 1.25~1.35 (랜덤 요소 추가)
-          const minDailyPrice = company.last_closing_price * (0.65 + Math.random() * 0.1); // 0.7 -> 0.65~0.75 (랜덤 요소 추가)
-          newPrice = Math.min(Math.max(newPrice, minDailyPrice), maxDailyPrice);
-        }
-        
-        // 주가가 0원 이하면 상장폐지 처리
+        // 일중 최대 변동폭 제한 제거 - volatility에 따라 더 큰 변동 허용
+        // 단, 주가가 0원 이하면 상장폐지 처리
         if (newPrice <= 0) {
           this.supabase
             .from('companies')
