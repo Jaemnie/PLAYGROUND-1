@@ -67,38 +67,38 @@ const SIMULATION_PARAMS = {
       MIN: 3,                           // 변동 없음
       MAX: 10                           // 변동 없음
     },
-    NEGATIVE_MULTIPLIER: 0.5,           // 2.0 -> 1.0 (부정적 뉴스 영향력 승수 감소)
-    POSITIVE_MULTIPLIER: 0.25           // 1.0 -> 0.25 (긍정적 뉴스 영향력 승수 감소)
+    NEGATIVE_MULTIPLIER: 0.8,           // 0.5 -> 0.8 (부정적 뉴스 영향력 승수 증가)
+    POSITIVE_MULTIPLIER: 0.4            // 0.25 -> 0.4 (긍정적 뉴스 영향력 승수 증가)
   },
   PRICE: {
-    BASE_RANDOM_CHANGE: 0.025,          // 0.008 -> 0.025 (랜덤 변동성 크게 증가)
+    BASE_RANDOM_CHANGE: 0.015,          // 0.025 -> 0.015 (랜덤 변동성 감소)
     REVERSAL: {
-      BASE_CHANCE: 0.15,                // 0.08 -> 0.15 (반전 확률 크게 증가)
-      MOMENTUM_MULTIPLIER: 0.08,        // 0.05 -> 0.08 (모멘텀 영향력 증가)
-      MAX_CHANCE: 0.75                  // 0.65 -> 0.75 (최대 반전 확률 증가)
+      BASE_CHANCE: 0.15,                // 변동 없음
+      MOMENTUM_MULTIPLIER: 0.08,        // 변동 없음
+      MAX_CHANCE: 0.75                  // 변동 없음
     },  
     WEIGHTS: {
-      RANDOM: 0.25,                     // 0.15 -> 0.25 (랜덤 가중치 증가)
-      NEWS: 0.30,                       // 0.22 -> 0.30 (뉴스 영향력 크게 증가)
-      INDUSTRY: 0.25,                   // 0.30 -> 0.25 (산업 영향력 감소)
-      MOMENTUM: 0.25,                   // 0.30 -> 0.25 (모멘텀 영향력 감소)
-      INDUSTRY_LEADER: 0.25             // 0.30 -> 0.25 (산업 리더 영향력 감소)
+      RANDOM: 0.25,                     // 변동 없음
+      NEWS: 0.30,                       // 변동 없음
+      INDUSTRY: 0.25,                   // 변동 없음
+      MOMENTUM: 0.25,                   // 변동 없음
+      INDUSTRY_LEADER: 0.25             // 변동 없음
     }
   },
   INDUSTRY: {
     VOLATILITY: {
-      'IT': 1.4,                        // 1.2 -> 1.4 (IT 산업 변동성 증가)
-      '전자': 1.3,                      // 1.1 -> 1.3 (전자 산업 변동성 증가)
-      '제조': 1.2,                      // 1.0 -> 1.2 (제조 산업 변동성 증가)
-      '건설': 1.1,                      // 0.95 -> 1.1 (건설 산업 변동성 증가)
-      '식품': 1.0                       // 0.9 -> 1.0 (식품 산업 변동성 증가)
+      'IT': 1.4,                        // 변동 없음
+      '전자': 1.3,                      // 변동 없음
+      '제조': 1.2,                      // 변동 없음
+      '건설': 1.1,                      // 변동 없음
+      '식품': 1.0                       // 변동 없음
     } as const
   },
   MARKET_CAP: {
     VOLATILITY: {
-      LARGE: 0.9,                       // 1.0 -> 0.9 (대형주 변동성 감소)
-      MEDIUM: 1.1,                      // 1.3 -> 1.1 (중형주 변동성 감소)
-      SMALL: 1.3,                       // 1.6 -> 1.3 (소형주 변동성 감소)
+      LARGE: 0.9,                       // 변동 없음
+      MEDIUM: 1.1,                      // 변동 없음
+      SMALL: 1.3,                       // 변동 없음
     },
     THRESHOLDS: {
       LARGE: 100_000_000_000,
@@ -106,10 +106,10 @@ const SIMULATION_PARAMS = {
     }
   },
   TIME: {                               // 시간대별 변동성 추가
-    MORNING_RUSH: 1.2,                  // 오전 9-10시 변동성
-    MIDDAY: 0.8,                        // 점심시간대 변동성
-    AFTERNOON: 1.0,                     // 오후 일반 변동성
-    CLOSING_RUSH: 1.1                   // 마감 전 변동성
+    MORNING_RUSH: 1.2,                  // 변동 없음
+    MIDDAY: 0.8,                        // 변동 없음
+    AFTERNOON: 1.0,                     // 변동 없음
+    CLOSING_RUSH: 1.1                   // 변동 없음
   }
 } as const;
 
@@ -533,8 +533,8 @@ export class MarketScheduler {
 
   private getEffectiveDuration(volatility: number): number {
     // 기본 지속 시간 범위 설정
-    const minDuration = 8;    // 최소 5분 -> 8분으로 증가
-    const maxDuration = 35;   // 최대 25분 -> 35분으로 증가
+    const minDuration = 5;    // 8 -> 15분으로 증가
+    const maxDuration = 30;    // 35 -> 45분으로 증가
     
     // volatility 범위 설정
     const volatilityMin = 1.0; // volatility 최소값
@@ -553,13 +553,13 @@ export class MarketScheduler {
     // 오전과 오후에 따라 지속 시간 조정
     if (currentHour >= 9 && currentHour < 12) {
       // 오전에는 뉴스 영향력 지속 시간 감소 (빠른 변동성)
-      timeMultiplier = 0.85; // 0.8 -> 0.85로 증가
+      timeMultiplier = 0.85; // 변동 없음
     } else if (currentHour >= 12 && currentHour < 15) {
       // 점심 시간대에는 뉴스 영향력 지속 시간 증가 (느린 변동성)
-      timeMultiplier = 1.3; // 1.2 -> 1.3으로 증가
+      timeMultiplier = 1.3; // 변동 없음
     } else if (currentHour >= 21) {
       // 마감 전에는 뉴스 영향력 지속 시간 감소 (빠른 변동성)
-      timeMultiplier = 0.95; // 0.9 -> 0.95로 증가
+      timeMultiplier = 0.95; // 변동 없음
     }
     
     // 선형 매핑: normalized가 0이면 minDuration, 1이면 maxDuration
@@ -776,17 +776,17 @@ export class MarketScheduler {
     
     // 가우시안 노이즈 적용
     const baseRandomChange = (Math.random() - 0.5) * SIMULATION_PARAMS.PRICE.BASE_RANDOM_CHANGE * 1.5;
-    const gaussianNoise = this.randomGaussian(0, 0.015);  // 0.005 -> 0.015 (가우시안 노이즈 증가)
+    const gaussianNoise = this.randomGaussian(0, 0.01);  // 0.015 -> 0.01 (가우시안 노이즈 감소)
     const randomChange = baseRandomChange + gaussianNoise;
     
     // 시간대별 변동성 적용
-    const timeVolatility = this.calculateTimeVolatility(currentHour) * 1.5;  // 1.2 -> 1.5 (시간대별 변동성 증가)
+    const timeVolatility = this.calculateTimeVolatility(currentHour) * 1.3;  // 1.5 -> 1.3 (시간대별 변동성 감소)
     
     // 산업별 변동성 적용
-    const industryVolatility = this.calculateIndustryVolatility(company.industry) * 1.3;  // 1.1 -> 1.3 (산업별 변동성 증가)
+    const industryVolatility = this.calculateIndustryVolatility(company.industry) * 1.2;  // 1.3 -> 1.2 (산업별 변동성 감소)
     
     // 시가총액 규모별 변동성 적용
-    const marketCapVolatility = this.calculateMarketCapVolatility(company.market_cap) * 1.3;  // 1.1 -> 1.3 (시가총액별 변동성 증가)
+    const marketCapVolatility = this.calculateMarketCapVolatility(company.market_cap) * 1.2;  // 1.3 -> 1.2 (시가총액별 변동성 감소)
     
     // 산업 리더 영향력 적용
     return this.calculateIndustryLeaderImpact(company.industry, company.id)
@@ -811,22 +811,22 @@ export class MarketScheduler {
         
         // 변동성 요소들을 결합하여 최종 가격 변화율 계산
         const baseChange = (
-          randomChange * SIMULATION_PARAMS.PRICE.WEIGHTS.RANDOM * 2.0 +  // 1.5 -> 2.0 (랜덤 변동성 영향력 증가)
-          industryLeaderImpact * SIMULATION_PARAMS.PRICE.WEIGHTS.INDUSTRY_LEADER * 1.5  // 1.2 -> 1.5 (산업 리더 영향력 증가)
-        ) * industryVolatility * timeVolatility * marketCapVolatility * momentumFactor * 1.5;  // 1.3 -> 1.5 (전체 변동성 증가)
+          randomChange * SIMULATION_PARAMS.PRICE.WEIGHTS.RANDOM * 1.7 +  // 2.0 -> 1.7 (랜덤 변동성 영향력 감소)
+          industryLeaderImpact * SIMULATION_PARAMS.PRICE.WEIGHTS.INDUSTRY_LEADER * 1.5  // 변동 없음
+        ) * industryVolatility * timeVolatility * marketCapVolatility * momentumFactor * 1.3;  // 1.5 -> 1.3 (전체 변동성 감소)
         
         // 일중 변동 조정 적용
         const adjustedChange = baseChange + dailyChangeAdjustment;
         
-        // 최종 변화율 제한 (한 번의 업데이트에서 최대 ±5%)
-        const limitedChange = Math.max(Math.min(adjustedChange, 0.05), -0.05);
+        // 최종 변화율 제한 (한 번의 업데이트에서 최대 ±4%)
+        const limitedChange = Math.max(Math.min(adjustedChange, 0.04), -0.04); // 0.05 -> 0.04 (최대 변동폭 감소)
         
         let newPrice = basePrice * (1 + limitedChange);
         
         // 일중 최대 변동폭 제한
         if (company.last_closing_price > 0) {
-          const maxDailyPrice = company.last_closing_price * 1.5;
-          const minDailyPrice = company.last_closing_price * 0.5;
+          const maxDailyPrice = company.last_closing_price * 1.3; // 1.5 -> 1.3 (일중 최대 상승폭 감소)
+          const minDailyPrice = company.last_closing_price * 0.7; // 0.5 -> 0.7 (일중 최대 하락폭 감소)
           newPrice = Math.min(Math.max(newPrice, minDailyPrice), maxDailyPrice);
         }
         
@@ -1036,8 +1036,8 @@ export class MarketScheduler {
       0
     );
 
-    // 영향도 범위 제한 값 감소
-    return Math.max(Math.min(averageChange * 0.3, 0.01), -0.01); // 0.02 -> 0.01, multiplier 0.5 -> 0.3
+    // 영향도 범위 제한 값 증가
+    return Math.max(Math.min(averageChange * 0.5, 0.015), -0.015); // 0.3/0.01 -> 0.5/0.015 (산업 리더 영향력 증가)
   }
 
   public async updateNews(): Promise<void> {
