@@ -67,8 +67,8 @@ const SIMULATION_PARAMS = {
       MIN: 3,                           // 변동 없음
       MAX: 10                           // 변동 없음
     },
-    NEGATIVE_MULTIPLIER: 0.5,           // 0.8 -> 0.5 (부정적 뉴스 영향력 승수 감소)
-    POSITIVE_MULTIPLIER: 0.25           // 0.4 -> 0.25 (긍정적 뉴스 영향력 승수 감소)
+    NEGATIVE_MULTIPLIER: 0.45,          // 0.5 -> 0.45 (부정적 뉴스 영향력 승수 감소)
+    POSITIVE_MULTIPLIER: 0.3            // 0.25 -> 0.3 (긍정적 뉴스 영향력 승수 증가)
   },
   PRICE: {
     BASE_RANDOM_CHANGE: 0.015,          // 변동 없음
@@ -79,7 +79,7 @@ const SIMULATION_PARAMS = {
     },  
     WEIGHTS: {
       RANDOM: 0.25,                     // 변동 없음
-      NEWS: 0.20,                       // 0.30 -> 0.20 (뉴스 영향력 감소)
+      NEWS: 0.20,                       // 변동 없음
       INDUSTRY: 0.25,                   // 변동 없음
       MOMENTUM: 0.25,                   // 변동 없음
       INDUSTRY_LEADER: 0.25             // 변동 없음
@@ -520,7 +520,7 @@ export class MarketScheduler {
     const timeMultiplier = this.calculateTimeVolatility(currentHour);
     
     // 시간대별로 감정 영향력 조정 (시간대 변동성이 높을수록 감정 영향력도 강화)
-    const timeAdjustment = (timeMultiplier - 1.0) * 0.2; // 0.3 -> 0.2 (시간대별 영향력 조정 감소)
+    const timeAdjustment = (timeMultiplier - 1.0) * 0.2; // 변동 없음
     
     // 랜덤 변동성 추가 (부정적 뉴스는 변동성 감소)
     let randomVariation = 1.0;
@@ -528,16 +528,16 @@ export class MarketScheduler {
     switch (sentiment) {
       case 'positive':
         randomVariation = 1.0 + (Math.random() * 0.3 - 0.15); // 기존 랜덤 변동성 유지
-        return (0.35 + timeAdjustment) * randomVariation;  // 0.5 -> 0.35 (긍정적 영향 감소)
+        return (0.45 + timeAdjustment) * randomVariation;  // 0.35 -> 0.45 (긍정적 영향 증가)
       case 'negative':
         // 부정적 뉴스는 랜덤 변동성 감소 (±5%만 허용)
         randomVariation = 1.0 + (Math.random() * 0.1 - 0.05);
         // 부정적 뉴스는 항상 음수 값을 반환하도록 보장 (절대값 사용)
-        return (-0.7 - timeAdjustment) * Math.abs(randomVariation); // -1.0 -> -0.7 (부정적 영향 감소)
+        return (-0.65 - timeAdjustment) * Math.abs(randomVariation); // -0.7 -> -0.65 (부정적 영향 감소)
       default:
         // 중립적 뉴스는 시간대와 관계없이 약한 랜덤 변동
         randomVariation = 1.0 + (Math.random() * 0.3 - 0.15);
-        return (Math.random() - 0.5) * 0.1 * randomVariation; // 0.15 -> 0.1 (중립적 영향 감소)
+        return (Math.random() - 0.5) * 0.1 * randomVariation; // 변동 없음
     }
   }
 
@@ -606,18 +606,18 @@ export class MarketScheduler {
         const sentimentMultiplier = this.calculateSentimentMultiplier(news.sentiment);
         
         // volatility에 따른 영향력 조정
-        let volatilityMultiplier = 1.0;  // 1.2 -> 1.0 (감소)
+        let volatilityMultiplier = 1.0;  // 변동 없음
         if (news.volatility >= 1.5) {
-          volatilityMultiplier = 1.2;  // 1.5 -> 1.2 (감소)
+          volatilityMultiplier = 1.2;  // 변동 없음
         }
         
         // 단기 변동성 계산
-        let shortTermFluctuation = (marketSentiment - 0.5) * 0.25;  // 0.4 -> 0.25 (감소)
+        let shortTermFluctuation = (marketSentiment - 0.5) * 0.25;  // 변동 없음
         
         // 최종 영향력 계산
         let perMinuteImpact = (
           baseImpact * sentimentMultiplier * volatilityMultiplier * 
-          marketCapMultiplier * timeMultiplier * industryVolatility * 1.0  // 1.2 -> 1.0 (감소)
+          marketCapMultiplier * timeMultiplier * industryVolatility * 1.0  // 변동 없음
         ) + shortTermFluctuation;
         
         // 부정적 뉴스 추가 영향력 승수 적용
@@ -626,8 +626,8 @@ export class MarketScheduler {
         // 부정적 뉴스는 항상 음수 값을 가지도록 보장
         perMinuteImpact = -Math.abs(perMinuteImpact);
         
-        // 최종 영향력 범위 제한 (유지)
-        let clampedImpact = Math.max(Math.min(perMinuteImpact, 0.03), -0.03); // 0.05/-0.05 -> 0.03/-0.03 (범위 감소)
+        // 최종 영향력 범위 제한
+        let clampedImpact = Math.max(Math.min(perMinuteImpact, 0.03), -0.03); // 변동 없음
         
         totalPerMinuteImpact += clampedImpact;
       } else {
@@ -662,26 +662,36 @@ export class MarketScheduler {
         const sentimentMultiplier = this.calculateSentimentMultiplier(news.sentiment);
         
         // volatility에 따른 영향력 조정
-        let volatilityMultiplier = 0.8;  // 1.0 -> 0.8 (감소)
+        let volatilityMultiplier = 0.9;  // 0.8 -> 0.9 (긍정적 뉴스 영향력 증가)
         if (news.volatility >= 1.5) {
-          volatilityMultiplier = 1.0;  // 1.2 -> 1.0 (감소)
+          volatilityMultiplier = 1.1;  // 1.0 -> 1.1 (긍정적 뉴스 영향력 증가)
         }
         
         // 단기 변동성 계산
-        let shortTermFluctuation = (marketSentiment - 0.5) * 0.25;  // 0.4 -> 0.25 (감소)
+        let shortTermFluctuation = (marketSentiment - 0.5) * 0.25;  // 변동 없음
+        
+        // 긍정적 뉴스의 경우 상승 방향으로 편향 추가
+        if (news.sentiment === 'positive') {
+          // 긍정적 뉴스는 상승 방향으로 편향 (0.5~0.7 범위)
+          const positiveMarketSentiment = 0.5 + Math.random() * 0.2;
+          shortTermFluctuation = (positiveMarketSentiment - 0.5) * 0.3; // 0.25 -> 0.3 (상승 편향 강화)
+        }
         
         // 최종 영향력 계산
         let perMinuteImpact = (
           baseImpact * sentimentMultiplier * volatilityMultiplier * 
-          marketCapMultiplier * timeMultiplier * industryVolatility * 1.0  // 1.2 -> 1.0 (감소)
+          marketCapMultiplier * timeMultiplier * industryVolatility * 1.0  // 변동 없음
         ) + shortTermFluctuation;
         
         if (news.sentiment === 'positive') {
           perMinuteImpact *= SIMULATION_PARAMS.NEWS.POSITIVE_MULTIPLIER;
+          
+          // 긍정적 뉴스는 항상 양수 값을 가지도록 보장
+          perMinuteImpact = Math.abs(perMinuteImpact);
         }
         
-        // 최종 영향력 범위 제한 (유지)
-        let clampedImpact = Math.max(Math.min(perMinuteImpact, 0.03), -0.03); // 0.05/-0.05 -> 0.03/-0.03 (범위 감소)
+        // 최종 영향력 범위 제한
+        let clampedImpact = Math.max(Math.min(perMinuteImpact, 0.03), -0.03); // 변동 없음
         
         totalPerMinuteImpact += clampedImpact;
       } else {
@@ -693,14 +703,16 @@ export class MarketScheduler {
     }
 
     // 최종 영향도에 랜덤 노이즈 추가 (단기 변동성)
-    // 부정적 뉴스가 있는 경우 랜덤 노이즈를 하락 방향으로 편향
     let randomNoise = 0;
-    if (negativeNews.length > 0) {
-      // 부정적 뉴스가 있으면 노이즈를 하락 방향으로 편향 (-0.008 ~ 0.002)
-      randomNoise = (Math.random() * 0.006 - 0.005); // 0.01/-0.008 -> 0.006/-0.005 (감소)
+    if (negativeNews.length > 0 && nonNegativeNews.length === 0) {
+      // 부정적 뉴스만 있으면 노이즈를 하락 방향으로 편향
+      randomNoise = (Math.random() * 0.006 - 0.005); // 변동 없음
+    } else if (nonNegativeNews.length > 0 && negativeNews.length === 0) {
+      // 긍정적 뉴스만 있으면 노이즈를 상승 방향으로 편향
+      randomNoise = (Math.random() * 0.006); // 상승 방향 편향 추가
     } else {
-      // 부정적 뉴스가 없으면 기존 노이즈 유지
-      randomNoise = (Math.random() - 0.5) * 0.005; // 0.008 -> 0.005 (감소)
+      // 둘 다 있거나 없으면 중립적 노이즈
+      randomNoise = (Math.random() - 0.5) * 0.005; // 변동 없음
     }
     
     // 뉴스 개수가 많을수록 영향력 분산을 위해 추가 감소 계수 적용
