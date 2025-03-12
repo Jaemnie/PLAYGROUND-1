@@ -67,8 +67,8 @@ const SIMULATION_PARAMS = {
       MIN: 3,                           // 변동 없음
       MAX: 10                           // 변동 없음
     },
-    NEGATIVE_MULTIPLIER: 2.0,           // 부정적 뉴스 영향력 승수 크게 증가
-    POSITIVE_MULTIPLIER: 1.0            // 긍정적 뉴스 영향력 승수 추가
+    NEGATIVE_MULTIPLIER: 0.5,           // 2.0 -> 1.0 (부정적 뉴스 영향력 승수 감소)
+    POSITIVE_MULTIPLIER: 0.25           // 1.0 -> 0.25 (긍정적 뉴스 영향력 승수 감소)
   },
   PRICE: {
     BASE_RANDOM_CHANGE: 0.008,          // 0.004 -> 0.008 (랜덤 변동성 증가)
@@ -519,12 +519,12 @@ export class MarketScheduler {
     switch (sentiment) {
       case 'positive':
         randomVariation = 1.0 + (Math.random() * 0.3 - 0.15); // 기존 랜덤 변동성 유지
-        return (1.3 + timeAdjustment) * randomVariation;
+        return (0.5 + timeAdjustment) * randomVariation;  // 1.3 -> 0.5 (긍정적 영향 감소)
       case 'negative':
         // 부정적 뉴스는 랜덤 변동성 감소 (±5%만 허용)
         randomVariation = 1.0 + (Math.random() * 0.1 - 0.05);
         // 부정적 뉴스는 항상 음수 값을 반환하도록 보장 (절대값 사용)
-        return (-2.0 - timeAdjustment) * Math.abs(randomVariation); // -1.6 -> -2.0 (부정적 영향 25% 증가)
+        return (-1.0 - timeAdjustment) * Math.abs(randomVariation); // -2.0 -> -1.0 (부정적 영향 감소)
       default:
         // 중립적 뉴스는 시간대와 관계없이 약한 랜덤 변동
         randomVariation = 1.0 + (Math.random() * 0.3 - 0.15);
@@ -631,21 +631,21 @@ export class MarketScheduler {
         const sentimentMultiplier = Math.abs(this.calculateSentimentMultiplier(news.sentiment));
         
         // volatility에 따른 영향력 조정 - volatility가 높을수록 더 강한 영향
-        let volatilityMultiplier = 1.5; // 기본값 증가 (1.2 -> 1.5)
+        let volatilityMultiplier = 1.2; // 1.5 -> 1.2 (기본값 감소)
         if (news.volatility >= 1.5) {
-          volatilityMultiplier = 2.0; // 1.5 -> 2.0으로 증가
+          volatilityMultiplier = 1.5; // 2.0 -> 1.5 (감소)
         }
         
         // 단기 변동성 계산 - 부정적 뉴스는 항상 하락 방향으로 설정
-        const shortTermFluctuation = -Math.abs((marketSentiment - 0.5) * 0.8); // 0.6 -> 0.8로 증가
+        const shortTermFluctuation = -Math.abs((marketSentiment - 0.5) * 0.5); // 0.8 -> 0.5로 감소
         
         // 추가 하락 압력 적용 (volatility가 높을수록 더 강한 하락)
-        const extraNegativePressure = -0.02 * news.volatility; // 0.01 -> 0.02로 증가
+        const extraNegativePressure = -0.01 * news.volatility; // -0.02 -> -0.01로 감소
         
         // 최종 영향력 계산: 장기적 추세(sentiment) + 단기 변동성(fluctuation)
         let perMinuteImpact = (
           baseImpact * sentimentMultiplier * volatilityMultiplier * 
-          marketCapMultiplier * timeMultiplier * industryVolatility * 1.2
+          marketCapMultiplier * timeMultiplier * industryVolatility * 1.0  // 1.2 -> 1.0으로 감소
         ) + shortTermFluctuation + extraNegativePressure;
         
         // 부정적 뉴스 추가 영향력 승수 적용
@@ -654,8 +654,8 @@ export class MarketScheduler {
         // 부정적 뉴스는 항상 음수 값을 가지도록 보장
         perMinuteImpact = -Math.abs(perMinuteImpact);
         
-        // 하락 영향력 범위 확대 (-0.08 -> -0.12)
-        let clampedImpact = Math.max(perMinuteImpact, -0.12);
+        // 하락 영향력 범위 확대 (-0.12 -> -0.07)
+        let clampedImpact = Math.max(perMinuteImpact, -0.07);
         
         totalPerMinuteImpact += clampedImpact;
       } else {
@@ -666,7 +666,7 @@ export class MarketScheduler {
       }
     }
     
-    // 긍정적/중립적 뉴스 처리 (기존 로직)
+    // 긍정적/중립적 뉴스 처리
     for (const news of nonNegativeNews) {
       const timeElapsed = (now.getTime() - new Date(news.published_at).getTime()) / (60 * 1000);
       const effectiveDuration = this.getEffectiveDuration(news.volatility);
@@ -690,13 +690,13 @@ export class MarketScheduler {
         const sentimentMultiplier = this.calculateSentimentMultiplier(news.sentiment);
         
         // volatility에 따른 영향력 조정
-        let volatilityMultiplier = 1.2;
+        let volatilityMultiplier = 1.0;  // 1.2 -> 1.0 (감소)
         if (news.volatility >= 1.5) {
-          volatilityMultiplier = 1.5;
+          volatilityMultiplier = 1.2;  // 1.5 -> 1.2 (감소)
         }
         
         // 단기 변동성 계산
-        let shortTermFluctuation = (marketSentiment - 0.5) * 0.6;
+        let shortTermFluctuation = (marketSentiment - 0.5) * 0.4;  // 0.6 -> 0.4 (감소)
         
         // sentiment에 따라 단기 변동성 조정
         if (news.sentiment === 'positive' && shortTermFluctuation < 0) {
@@ -706,14 +706,14 @@ export class MarketScheduler {
         // 최종 영향력 계산
         let perMinuteImpact = (
           baseImpact * sentimentMultiplier * volatilityMultiplier * 
-          marketCapMultiplier * timeMultiplier * industryVolatility * 1.2
+          marketCapMultiplier * timeMultiplier * industryVolatility * 1.0  // 1.2 -> 1.0 (감소)
         ) + shortTermFluctuation;
         
         if (news.sentiment === 'positive') {
           perMinuteImpact *= SIMULATION_PARAMS.NEWS.POSITIVE_MULTIPLIER;
         }
         
-        // 최종 영향력 범위 제한
+        // 최종 영향력 범위 제한 (유지)
         let clampedImpact = Math.max(Math.min(perMinuteImpact, 0.05), -0.05);
         
         totalPerMinuteImpact += clampedImpact;
