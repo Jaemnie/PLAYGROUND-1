@@ -76,8 +76,7 @@ const SIMULATION_PARAMS = {
       BASE_CHANCE: 0.15,                // 0.08 -> 0.15 (반전 확률 크게 증가)
       MOMENTUM_MULTIPLIER: 0.08,        // 0.05 -> 0.08 (모멘텀 영향력 증가)
       MAX_CHANCE: 0.75                  // 0.65 -> 0.75 (최대 반전 확률 증가)
-    },
-    DAILY_LIMIT: 0.30,                   
+    },  
     WEIGHTS: {
       RANDOM: 0.25,                     // 0.15 -> 0.25 (랜덤 가중치 증가)
       NEWS: 0.30,                       // 0.22 -> 0.30 (뉴스 영향력 크게 증가)
@@ -806,8 +805,8 @@ export class MarketScheduler {
         
         // 일중 변동률이 큰 경우 반대 방향으로의 조정 압력 증가
         let dailyChangeAdjustment = 0;
-        if (Math.abs(dailyChange) > 0.12) {
-          dailyChangeAdjustment = -dailyChange * 0.12 * (Math.abs(dailyChange) - 0.12);
+        if (Math.abs(dailyChange) > 0.08) {
+          dailyChangeAdjustment = -dailyChange * 0.15 * (Math.abs(dailyChange) - 0.08);
         }
         
         // 변동성 요소들을 결합하여 최종 가격 변화율 계산
@@ -819,15 +818,15 @@ export class MarketScheduler {
         // 일중 변동 조정 적용
         const adjustedChange = baseChange + dailyChangeAdjustment;
         
-        // 최종 변화율 제한 (한 번의 업데이트에서 최대 ±10%)
-        const limitedChange = Math.max(Math.min(adjustedChange, 0.10), -0.10);  // 0.05 -> 0.10 (최대 변동폭 증가)
+        // 최종 변화율 제한 (한 번의 업데이트에서 최대 ±5%)
+        const limitedChange = Math.max(Math.min(adjustedChange, 0.05), -0.05);
         
         let newPrice = basePrice * (1 + limitedChange);
         
         // 일중 최대 변동폭 제한
         if (company.last_closing_price > 0) {
-          const maxDailyPrice = company.last_closing_price * 1.6;
-          const minDailyPrice = company.last_closing_price * 0.4;
+          const maxDailyPrice = company.last_closing_price * 1.5;
+          const minDailyPrice = company.last_closing_price * 0.5;
           newPrice = Math.min(Math.max(newPrice, minDailyPrice), maxDailyPrice);
         }
         
