@@ -71,7 +71,7 @@ const SIMULATION_PARAMS = {
     POSITIVE_MULTIPLIER: 0.25           // 1.0 -> 0.25 (긍정적 뉴스 영향력 승수 감소)
   },
   PRICE: {
-    BASE_RANDOM_CHANGE: 0.008,          // 0.004 -> 0.008 (랜덤 변동성 증가)
+    BASE_RANDOM_CHANGE: 0.025,          // 0.008 -> 0.025 (랜덤 변동성 크게 증가)
     REVERSAL: {
       BASE_CHANCE: 0.15,                // 0.08 -> 0.15 (반전 확률 크게 증가)
       MOMENTUM_MULTIPLIER: 0.08,        // 0.05 -> 0.08 (모멘텀 영향력 증가)
@@ -79,7 +79,7 @@ const SIMULATION_PARAMS = {
     },
     DAILY_LIMIT: 0.30,                   
     WEIGHTS: {
-      RANDOM: 0.15,                     // 0.12 -> 0.15 (랜덤 가중치 감소)
+      RANDOM: 0.25,                     // 0.15 -> 0.25 (랜덤 가중치 증가)
       NEWS: 0.30,                       // 0.22 -> 0.30 (뉴스 영향력 크게 증가)
       INDUSTRY: 0.25,                   // 0.30 -> 0.25 (산업 영향력 감소)
       MOMENTUM: 0.25,                   // 0.30 -> 0.25 (모멘텀 영향력 감소)
@@ -776,18 +776,18 @@ export class MarketScheduler {
     const currentHour = new Date().getHours();
     
     // 가우시안 노이즈 적용
-    const baseRandomChange = (Math.random() - 0.5) * SIMULATION_PARAMS.PRICE.BASE_RANDOM_CHANGE * 1.3;
-    const gaussianNoise = this.randomGaussian(0, 0.005);
+    const baseRandomChange = (Math.random() - 0.5) * SIMULATION_PARAMS.PRICE.BASE_RANDOM_CHANGE * 1.5;
+    const gaussianNoise = this.randomGaussian(0, 0.015);  // 0.005 -> 0.015 (가우시안 노이즈 증가)
     const randomChange = baseRandomChange + gaussianNoise;
     
     // 시간대별 변동성 적용
-    const timeVolatility = this.calculateTimeVolatility(currentHour) * 1.2;
+    const timeVolatility = this.calculateTimeVolatility(currentHour) * 1.5;  // 1.2 -> 1.5 (시간대별 변동성 증가)
     
     // 산업별 변동성 적용
-    const industryVolatility = this.calculateIndustryVolatility(company.industry) * 1.1;
+    const industryVolatility = this.calculateIndustryVolatility(company.industry) * 1.3;  // 1.1 -> 1.3 (산업별 변동성 증가)
     
     // 시가총액 규모별 변동성 적용
-    const marketCapVolatility = this.calculateMarketCapVolatility(company.market_cap) * 1.1;
+    const marketCapVolatility = this.calculateMarketCapVolatility(company.market_cap) * 1.3;  // 1.1 -> 1.3 (시가총액별 변동성 증가)
     
     // 산업 리더 영향력 적용
     return this.calculateIndustryLeaderImpact(company.industry, company.id)
@@ -812,15 +812,15 @@ export class MarketScheduler {
         
         // 변동성 요소들을 결합하여 최종 가격 변화율 계산
         const baseChange = (
-          randomChange * SIMULATION_PARAMS.PRICE.WEIGHTS.RANDOM * 1.5 +
-          industryLeaderImpact * SIMULATION_PARAMS.PRICE.WEIGHTS.INDUSTRY_LEADER * 1.2
-        ) * industryVolatility * timeVolatility * marketCapVolatility * momentumFactor * 1.3;
+          randomChange * SIMULATION_PARAMS.PRICE.WEIGHTS.RANDOM * 2.0 +  // 1.5 -> 2.0 (랜덤 변동성 영향력 증가)
+          industryLeaderImpact * SIMULATION_PARAMS.PRICE.WEIGHTS.INDUSTRY_LEADER * 1.5  // 1.2 -> 1.5 (산업 리더 영향력 증가)
+        ) * industryVolatility * timeVolatility * marketCapVolatility * momentumFactor * 1.5;  // 1.3 -> 1.5 (전체 변동성 증가)
         
         // 일중 변동 조정 적용
         const adjustedChange = baseChange + dailyChangeAdjustment;
         
-        // 최종 변화율 제한 (한 번의 업데이트에서 최대 ±5%)
-        const limitedChange = Math.max(Math.min(adjustedChange, 0.05), -0.05);
+        // 최종 변화율 제한 (한 번의 업데이트에서 최대 ±10%)
+        const limitedChange = Math.max(Math.min(adjustedChange, 0.10), -0.10);  // 0.05 -> 0.10 (최대 변동폭 증가)
         
         let newPrice = basePrice * (1 + limitedChange);
         
