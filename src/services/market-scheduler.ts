@@ -67,11 +67,11 @@ const SIMULATION_PARAMS = {
       MIN: 3,                           // 변동 없음
       MAX: 10                           // 변동 없음
     },
-    NEGATIVE_MULTIPLIER: 0.8,           // 0.5 -> 0.8 (부정적 뉴스 영향력 승수 증가)
-    POSITIVE_MULTIPLIER: 0.4            // 0.25 -> 0.4 (긍정적 뉴스 영향력 승수 증가)
+    NEGATIVE_MULTIPLIER: 0.5,           // 0.8 -> 0.5 (부정적 뉴스 영향력 승수 감소)
+    POSITIVE_MULTIPLIER: 0.25           // 0.4 -> 0.25 (긍정적 뉴스 영향력 승수 감소)
   },
   PRICE: {
-    BASE_RANDOM_CHANGE: 0.015,          // 0.025 -> 0.015 (랜덤 변동성 감소)
+    BASE_RANDOM_CHANGE: 0.015,          // 변동 없음
     REVERSAL: {
       BASE_CHANCE: 0.15,                // 변동 없음
       MOMENTUM_MULTIPLIER: 0.08,        // 변동 없음
@@ -79,7 +79,7 @@ const SIMULATION_PARAMS = {
     },  
     WEIGHTS: {
       RANDOM: 0.25,                     // 변동 없음
-      NEWS: 0.30,                       // 변동 없음
+      NEWS: 0.20,                       // 0.30 -> 0.20 (뉴스 영향력 감소)
       INDUSTRY: 0.25,                   // 변동 없음
       MOMENTUM: 0.25,                   // 변동 없음
       INDUSTRY_LEADER: 0.25             // 변동 없음
@@ -300,43 +300,52 @@ export class MarketScheduler {
     if (movement.consecutiveCount <= 1) return 1.0;
     
     // 모멘텀 강도를 로그 스케일로 계산하여 급격한 증가 방지
-    const logBase = 1.3; // 1.4 -> 1.3 (로그 기반 더 감소, 모멘텀 영향력 더 증가)
+    const logBase = 1.2; // 1.3 -> 1.2 (로그 기반 더 감소, 모멘텀 영향력 더 증가)
     const momentumStrength = Math.min(
       (Math.log(movement.consecutiveCount) / Math.log(logBase)) * 
       Math.abs(movement.lastChange) * 
-      0.45, // 0.35 -> 0.45 (전체적인 영향력 더 증가)
-      0.1  // 0.08 -> 0.1 (최대 영향력 제한 더 증가)
+      0.5, // 0.45 -> 0.5 (전체적인 영향력 더 증가)
+      0.12  // 0.1 -> 0.12 (최대 영향력 제한 더 증가)
     );
     
-    // 5분봉 기준으로 2-3개 봉 이후 반전 확률 크게 증가
-    const baseReversalChance = SIMULATION_PARAMS.PRICE.REVERSAL.BASE_CHANCE * 1.8; // 기본 반전 확률 80% 증가
+    // 반전 확률 계산 - 더 랜덤하게 변경
+    const baseReversalChance = SIMULATION_PARAMS.PRICE.REVERSAL.BASE_CHANCE * 
+      (1.5 + Math.random() * 0.6); // 1.8 -> 1.5~2.1 (랜덤 요소 추가)
+    
+    // 연속 상승/하락 횟수에 따른 반전 확률 계산 - 더 가변적으로
     const reversalChance = Math.min(
       baseReversalChance + 
-      (1 - Math.exp(-movement.consecutiveCount * 0.7)) * // 0.5 -> 0.7 (지수적 증가 더 강화)
-      SIMULATION_PARAMS.PRICE.REVERSAL.MOMENTUM_MULTIPLIER * 1.5, // 모멘텀 승수 50% 증가
-      SIMULATION_PARAMS.PRICE.REVERSAL.MAX_CHANCE * 1.3 // 최대 반전 확률 30% 증가
+      (1 - Math.exp(-movement.consecutiveCount * (0.6 + Math.random() * 0.2))) * // 0.7 -> 0.6~0.8 (랜덤 요소 추가)
+      SIMULATION_PARAMS.PRICE.REVERSAL.MOMENTUM_MULTIPLIER * (1.3 + Math.random() * 0.4), // 1.5 -> 1.3~1.7 (랜덤 요소 추가)
+      SIMULATION_PARAMS.PRICE.REVERSAL.MAX_CHANCE * (1.2 + Math.random() * 0.2) // 1.3 -> 1.2~1.4 (랜덤 요소 추가)
     );
     
-    // 반전 확률에 변동성 추가
-    const volatilityFactor = 1 + (Math.random() * 0.3 - 0.15); // 0.25/0.125 -> 0.3/0.15 (±15% 변동)
+    // 반전 확률에 변동성 추가 - 더 넓은 범위로
+    const volatilityFactor = 1 + (Math.random() * 0.4 - 0.2); // 0.3/0.15 -> 0.4/0.2 (±20% 변동)
     const finalReversalChance = reversalChance * volatilityFactor;
     
-    // 연속 상승/하락 횟수가 많을수록 반전 확률 증가 (5분봉 기준 2-3개 이후 반전 확률 급증)
-    const extraReversalForHighCount = movement.consecutiveCount > 2 ? // 3 -> 2 (더 빨리 반전 확률 증가)
-      Math.min((movement.consecutiveCount - 2) * 0.08, 0.3) : 0; // 0.05/0.2 -> 0.08/0.3 (반전 확률 더 크게 증가)
+    // 연속 상승/하락 횟수가 많을수록 반전 확률 증가 - 더 가변적으로
+    const extraReversalForHighCount = movement.consecutiveCount > 2 ? 
+      Math.min((movement.consecutiveCount - 2) * (0.06 + Math.random() * 0.04), 0.35) : 0; // 0.08/0.3 -> 0.06~0.1/0.35 (랜덤 요소 추가)
     
-    if (Math.random() < (finalReversalChance + extraReversalForHighCount)) {
-      // 반전 시 영향력을 더 강하게 적용 (5분봉 기준 강한 반전)
+    // 반전 확률 계산에 랜덤 요소 추가
+    const randomFactor = Math.random() * 0.15; // 추가 랜덤 요소 (0~15%)
+    
+    if (Math.random() < (finalReversalChance + extraReversalForHighCount + randomFactor)) {
+      // 반전 시 영향력을 더 강하게 적용하되 랜덤성 추가
+      const reversalStrength = 1.4 + Math.random() * 0.3; // 1.5 -> 1.4~1.7 (랜덤 요소 추가)
       return movement.direction === 'up' ? 
-        1 - (momentumStrength * 1.5) : // 1.2 -> 1.5 (반전 시 영향력 더 크게 증가)
-        1 + (momentumStrength * 1.5);  // 1.2 -> 1.5
+        1 - (momentumStrength * reversalStrength) : 
+        1 + (momentumStrength * reversalStrength);
     }
     
-    // 기존 추세 유지 시 영향력을 더 약화 (5분봉 기준 추세 더 약화)
-    const trendDecay = Math.exp(-movement.consecutiveCount * 0.2); // 0.15 -> 0.2 (지속 기간에 따른 감쇠 더 증가)
+    // 기존 추세 유지 시 영향력을 더 약화하되 랜덤성 추가
+    const trendDecay = Math.exp(-movement.consecutiveCount * (0.18 + Math.random() * 0.04)); // 0.2 -> 0.18~0.22 (랜덤 요소 추가)
+    const trendStrength = 0.35 + Math.random() * 0.1; // 0.4 -> 0.35~0.45 (랜덤 요소 추가)
+    
     return movement.direction === 'up' ? 
-      1 + (momentumStrength * 0.4 * trendDecay) : // 0.5 -> 0.4 (추세 유지 시 영향력 더 감소)
-      1 - (momentumStrength * 0.4 * trendDecay);  // 0.5 -> 0.4
+      1 + (momentumStrength * trendStrength * trendDecay) : 
+      1 - (momentumStrength * trendStrength * trendDecay);
   }
 
   private updatePriceMovement(
@@ -348,8 +357,8 @@ export class MarketScheduler {
       lastChange: number
     }
   ) {
-    // 변화가 너무 작으면 중립으로 처리 (5분봉 기준 더 작은 변화도 방향성 있게)
-    const minChangeThreshold = 0.0001; // 0.0002 -> 0.0001 (0.01% 미만은 중립으로 간주)
+    // 변화가 너무 작으면 중립으로 처리 - 임계값에 랜덤성 추가
+    const minChangeThreshold = 0.0001 * (0.8 + Math.random() * 0.4); // 0.0001 -> 0.00008~0.00012 (랜덤 요소 추가)
     const newDirection = 
       Math.abs(change) < minChangeThreshold ? 'neutral' :
       change > 0 ? 'up' : 'down';
@@ -359,24 +368,25 @@ export class MarketScheduler {
       newDirection === previousMovement.direction && newDirection !== 'neutral' ? 
       previousMovement.consecutiveCount + 1 : 1;
     
-    // 5분봉 기준으로 2-3개 봉 이후 반전 확률 크게 증가
-    const baseReversalThreshold = 0.35; // 0.25 -> 0.35 (기본 반전 확률 크게 증가)
-    const countFactor = Math.min(consecutiveCount * 0.12, 0.7); // 0.08/0.6 -> 0.12/0.7 (최대 70%까지 추가)
+    // 반전 임계값에 랜덤성 추가
+    const baseReversalThreshold = 0.3 + Math.random() * 0.1; // 0.35 -> 0.3~0.4 (랜덤 요소 추가)
+    const countFactor = Math.min(consecutiveCount * (0.1 + Math.random() * 0.04), 0.75); // 0.12/0.7 -> 0.1~0.14/0.75 (랜덤 요소 추가)
     const reversalThreshold = baseReversalThreshold + countFactor;
     
-    // 연속 카운트가 높고 랜덤 확률이 반전 임계값을 넘으면 반전 적용
-    if (consecutiveCount > 2 && Math.random() < reversalThreshold) { // 변동 없음
-      // 반전 시 연속 카운트 리셋 및 변화량 증가 (5분봉 기준 더 강한 반전)
+    // 연속 카운트가 높고 랜덤 확률이 반전 임계값을 넘으면 반전 적용 - 더 가변적으로
+    if (consecutiveCount > (Math.random() < 0.3 ? 1 : 2) && Math.random() < reversalThreshold) { // 2 -> 1 또는 2 (랜덤 요소 추가)
+      // 반전 시 연속 카운트 리셋 및 변화량 증가 - 더 가변적으로
       consecutiveCount = 1;
-      change *= -1.2; // -0.8 -> -1.2 (반전 시 반대 방향으로 더 강한 변화)
+      const reversalMultiplier = -1.0 - Math.random() * 0.4; // -1.2 -> -1.0~-1.4 (랜덤 요소 추가)
+      change *= reversalMultiplier;
     }
     
-    // 중립 상태가 지속되면 랜덤하게 방향 결정
+    // 중립 상태가 지속되면 랜덤하게 방향 결정 - 더 가변적으로
     if (newDirection === 'neutral' && previousMovement.direction === 'neutral') {
       // 중립이 지속되면 랜덤 방향으로 약한 움직임 생성
-      if (previousMovement.consecutiveCount >= 1) { // 변동 없음
-        const randomDirection = Math.random() > 0.5 ? 'up' : 'down';
-        const smallChange = (Math.random() * 0.008 + 0.003) * (randomDirection === 'up' ? 1 : -1); // 0.005/0.002 -> 0.008/0.003
+      if (previousMovement.consecutiveCount >= (Math.random() < 0.4 ? 1 : 2)) { // 1 -> 1 또는 2 (랜덤 요소 추가)
+        const randomDirection = Math.random() > (0.45 + Math.random() * 0.1) ? 'up' : 'down'; // 0.5 -> 0.45~0.55 (랜덤 요소 추가)
+        const smallChange = (Math.random() * 0.01 + 0.002) * (randomDirection === 'up' ? 1 : -1); // 0.008/0.003 -> 0.002~0.012 (랜덤 요소 추가)
         
         this.priceMovementCache.set(key, {
           direction: randomDirection,
@@ -510,7 +520,7 @@ export class MarketScheduler {
     const timeMultiplier = this.calculateTimeVolatility(currentHour);
     
     // 시간대별로 감정 영향력 조정 (시간대 변동성이 높을수록 감정 영향력도 강화)
-    const timeAdjustment = (timeMultiplier - 1.0) * 0.3;
+    const timeAdjustment = (timeMultiplier - 1.0) * 0.2; // 0.3 -> 0.2 (시간대별 영향력 조정 감소)
     
     // 랜덤 변동성 추가 (부정적 뉴스는 변동성 감소)
     let randomVariation = 1.0;
@@ -518,56 +528,22 @@ export class MarketScheduler {
     switch (sentiment) {
       case 'positive':
         randomVariation = 1.0 + (Math.random() * 0.3 - 0.15); // 기존 랜덤 변동성 유지
-        return (0.5 + timeAdjustment) * randomVariation;  // 1.3 -> 0.5 (긍정적 영향 감소)
+        return (0.35 + timeAdjustment) * randomVariation;  // 0.5 -> 0.35 (긍정적 영향 감소)
       case 'negative':
         // 부정적 뉴스는 랜덤 변동성 감소 (±5%만 허용)
         randomVariation = 1.0 + (Math.random() * 0.1 - 0.05);
         // 부정적 뉴스는 항상 음수 값을 반환하도록 보장 (절대값 사용)
-        return (-1.0 - timeAdjustment) * Math.abs(randomVariation); // -2.0 -> -1.0 (부정적 영향 감소)
+        return (-0.7 - timeAdjustment) * Math.abs(randomVariation); // -1.0 -> -0.7 (부정적 영향 감소)
       default:
         // 중립적 뉴스는 시간대와 관계없이 약한 랜덤 변동
         randomVariation = 1.0 + (Math.random() * 0.3 - 0.15);
-        return (Math.random() - 0.5) * 0.15 * randomVariation;
+        return (Math.random() - 0.5) * 0.1 * randomVariation; // 0.15 -> 0.1 (중립적 영향 감소)
     }
   }
 
   private getEffectiveDuration(volatility: number): number {
-    // 기본 지속 시간 범위 설정
-    const minDuration = 5;    // 8 -> 15분으로 증가
-    const maxDuration = 30;    // 35 -> 45분으로 증가
-    
-    // volatility 범위 설정
-    const volatilityMin = 1.0; // volatility 최소값
-    const volatilityMax = 3.0; // volatility 최대값
-
-    // volatility 값을 volatilityMin과 volatilityMax 사이로 클램핑
-    const clampedVolatility = Math.min(Math.max(volatility, volatilityMin), volatilityMax);
-    
-    // 0~1 사이의 값으로 정규화
-    const normalized = (clampedVolatility - volatilityMin) / (volatilityMax - volatilityMin);
-    
-    // 시간대별 지속 시간 조정
-    const currentHour = new Date().getHours();
-    let timeMultiplier = 1.0;
-    
-    // 오전과 오후에 따라 지속 시간 조정
-    if (currentHour >= 9 && currentHour < 12) {
-      // 오전에는 뉴스 영향력 지속 시간 감소 (빠른 변동성)
-      timeMultiplier = 0.85; // 변동 없음
-    } else if (currentHour >= 12 && currentHour < 15) {
-      // 점심 시간대에는 뉴스 영향력 지속 시간 증가 (느린 변동성)
-      timeMultiplier = 1.3; // 변동 없음
-    } else if (currentHour >= 21) {
-      // 마감 전에는 뉴스 영향력 지속 시간 감소 (빠른 변동성)
-      timeMultiplier = 0.95; // 변동 없음
-    }
-    
-    // 선형 매핑: normalized가 0이면 minDuration, 1이면 maxDuration
-    // volatility가 높을수록 지속 시간 감소 (반비례 관계)
-    const baseDuration = minDuration + (1 - normalized) * (maxDuration - minDuration);
-    
-    // 시간대 조정 적용 및 반올림
-    return Math.round(baseDuration * timeMultiplier);
+    // 뉴스 영향 지속 시간을 30분으로 고정
+    return 30;
   }
 
   private async calculateCompanyNewsImpact(companyId: string, recentNews: NewsRecord[]): Promise<number> {
@@ -600,7 +576,7 @@ export class MarketScheduler {
 
     // 시간대별 뉴스 영향력 조정 계수
     const hourOfDay = now.getHours();
-    const timeMultiplier = this.calculateTimeVolatility(hourOfDay) * 1.1;
+    const timeMultiplier = this.calculateTimeVolatility(hourOfDay) * 0.9; // 1.1 -> 0.9 (시간대별 영향력 감소)
 
     // 부정적 뉴스와 긍정적 뉴스 분리
     const negativeNews = activeNews.filter(news => news.sentiment === 'negative');
@@ -615,37 +591,34 @@ export class MarketScheduler {
         // 시간 경과에 따른 영향력 감소 (지수 감쇠)
         const decayFactor = Math.exp(-timeElapsed / (effectiveDuration * 0.9));
         
-        // 부정적 뉴스는 시장 심리 팩터를 0.5 이하로 제한 (항상 하락 방향)
-        const marketSentiment = Math.min(0.5, 0.3 + (Math.random() * 0.2));
+        // 시장 심리 팩터 (랜덤 변동성)
+        const marketSentiment = 0.5 + (Math.random() * 0.5 - 0.25);
         
         // 변동성에 따른 임팩트 변화
         const impactVariation = 
           SIMULATION_PARAMS.NEWS.IMPACT_VARIATION_MIN +
           Math.random() * (SIMULATION_PARAMS.NEWS.IMPACT_VARIATION_MAX - SIMULATION_PARAMS.NEWS.IMPACT_VARIATION_MIN);
         
-        // 기본 영향력 계산 - 부정적 뉴스는 항상 음수 값 보장
-        const baseImpact = Math.abs(news.impact) * impactVariation * decayFactor * -1;
+        // 기본 영향력 계산
+        const baseImpact = news.impact * impactVariation * decayFactor;
         
         // 감정에 따른 장기적 추세 방향 결정
-        const sentimentMultiplier = Math.abs(this.calculateSentimentMultiplier(news.sentiment));
+        const sentimentMultiplier = this.calculateSentimentMultiplier(news.sentiment);
         
-        // volatility에 따른 영향력 조정 - volatility가 높을수록 더 강한 영향
-        let volatilityMultiplier = 1.2; // 1.5 -> 1.2 (기본값 감소)
+        // volatility에 따른 영향력 조정
+        let volatilityMultiplier = 1.0;  // 1.2 -> 1.0 (감소)
         if (news.volatility >= 1.5) {
-          volatilityMultiplier = 1.5; // 2.0 -> 1.5 (감소)
+          volatilityMultiplier = 1.2;  // 1.5 -> 1.2 (감소)
         }
         
-        // 단기 변동성 계산 - 부정적 뉴스는 항상 하락 방향으로 설정
-        const shortTermFluctuation = -Math.abs((marketSentiment - 0.5) * 0.5); // 0.8 -> 0.5로 감소
+        // 단기 변동성 계산
+        let shortTermFluctuation = (marketSentiment - 0.5) * 0.25;  // 0.4 -> 0.25 (감소)
         
-        // 추가 하락 압력 적용 (volatility가 높을수록 더 강한 하락)
-        const extraNegativePressure = -0.01 * news.volatility; // -0.02 -> -0.01로 감소
-        
-        // 최종 영향력 계산: 장기적 추세(sentiment) + 단기 변동성(fluctuation)
+        // 최종 영향력 계산
         let perMinuteImpact = (
           baseImpact * sentimentMultiplier * volatilityMultiplier * 
-          marketCapMultiplier * timeMultiplier * industryVolatility * 1.0  // 1.2 -> 1.0으로 감소
-        ) + shortTermFluctuation + extraNegativePressure;
+          marketCapMultiplier * timeMultiplier * industryVolatility * 1.0  // 1.2 -> 1.0 (감소)
+        ) + shortTermFluctuation;
         
         // 부정적 뉴스 추가 영향력 승수 적용
         perMinuteImpact *= SIMULATION_PARAMS.NEWS.NEGATIVE_MULTIPLIER;
@@ -653,8 +626,8 @@ export class MarketScheduler {
         // 부정적 뉴스는 항상 음수 값을 가지도록 보장
         perMinuteImpact = -Math.abs(perMinuteImpact);
         
-        // 하락 영향력 범위 확대 (-0.12 -> -0.07)
-        let clampedImpact = Math.max(perMinuteImpact, -0.07);
+        // 최종 영향력 범위 제한 (유지)
+        let clampedImpact = Math.max(Math.min(perMinuteImpact, 0.03), -0.03); // 0.05/-0.05 -> 0.03/-0.03 (범위 감소)
         
         totalPerMinuteImpact += clampedImpact;
       } else {
@@ -689,18 +662,13 @@ export class MarketScheduler {
         const sentimentMultiplier = this.calculateSentimentMultiplier(news.sentiment);
         
         // volatility에 따른 영향력 조정
-        let volatilityMultiplier = 1.0;  // 1.2 -> 1.0 (감소)
+        let volatilityMultiplier = 0.8;  // 1.0 -> 0.8 (감소)
         if (news.volatility >= 1.5) {
-          volatilityMultiplier = 1.2;  // 1.5 -> 1.2 (감소)
+          volatilityMultiplier = 1.0;  // 1.2 -> 1.0 (감소)
         }
         
         // 단기 변동성 계산
-        let shortTermFluctuation = (marketSentiment - 0.5) * 0.4;  // 0.6 -> 0.4 (감소)
-        
-        // sentiment에 따라 단기 변동성 조정
-        if (news.sentiment === 'positive' && shortTermFluctuation < 0) {
-          shortTermFluctuation *= 0.3;
-        }
+        let shortTermFluctuation = (marketSentiment - 0.5) * 0.25;  // 0.4 -> 0.25 (감소)
         
         // 최종 영향력 계산
         let perMinuteImpact = (
@@ -713,7 +681,7 @@ export class MarketScheduler {
         }
         
         // 최종 영향력 범위 제한 (유지)
-        let clampedImpact = Math.max(Math.min(perMinuteImpact, 0.05), -0.05);
+        let clampedImpact = Math.max(Math.min(perMinuteImpact, 0.03), -0.03); // 0.05/-0.05 -> 0.03/-0.03 (범위 감소)
         
         totalPerMinuteImpact += clampedImpact;
       } else {
@@ -729,14 +697,14 @@ export class MarketScheduler {
     let randomNoise = 0;
     if (negativeNews.length > 0) {
       // 부정적 뉴스가 있으면 노이즈를 하락 방향으로 편향 (-0.008 ~ 0.002)
-      randomNoise = (Math.random() * 0.01 - 0.008);
+      randomNoise = (Math.random() * 0.006 - 0.005); // 0.01/-0.008 -> 0.006/-0.005 (감소)
     } else {
       // 부정적 뉴스가 없으면 기존 노이즈 유지
-      randomNoise = (Math.random() - 0.5) * 0.008;
+      randomNoise = (Math.random() - 0.5) * 0.005; // 0.008 -> 0.005 (감소)
     }
     
     // 뉴스 개수가 많을수록 영향력 분산을 위해 추가 감소 계수 적용
-    const newsCountDampener = Math.max(0.8 - (activeNews.length * 0.05), 0.5);
+    const newsCountDampener = Math.max(0.7 - (activeNews.length * 0.05), 0.4); // 0.8/0.5 -> 0.7/0.4 (감소)
     
     return (totalPerMinuteImpact * SIMULATION_PARAMS.PRICE.WEIGHTS.NEWS * newsCountDampener) + randomNoise;
   }
@@ -774,19 +742,19 @@ export class MarketScheduler {
     const basePrice = company.current_price;
     const currentHour = new Date().getHours();
     
-    // 가우시안 노이즈 적용
-    const baseRandomChange = (Math.random() - 0.5) * SIMULATION_PARAMS.PRICE.BASE_RANDOM_CHANGE * 1.5;
-    const gaussianNoise = this.randomGaussian(0, 0.01);  // 0.015 -> 0.01 (가우시안 노이즈 감소)
+    // 가우시안 노이즈 적용 - 더 가변적으로
+    const baseRandomChange = (Math.random() - 0.5) * SIMULATION_PARAMS.PRICE.BASE_RANDOM_CHANGE * (1.3 + Math.random() * 0.4); // 1.5 -> 1.3~1.7 (랜덤 요소 추가)
+    const gaussianNoise = this.randomGaussian(0, 0.008 + Math.random() * 0.004); // 0.01 -> 0.008~0.012 (랜덤 요소 추가)
     const randomChange = baseRandomChange + gaussianNoise;
     
-    // 시간대별 변동성 적용
-    const timeVolatility = this.calculateTimeVolatility(currentHour) * 1.3;  // 1.5 -> 1.3 (시간대별 변동성 감소)
+    // 시간대별 변동성 적용 - 더 가변적으로
+    const timeVolatility = this.calculateTimeVolatility(currentHour) * (1.2 + Math.random() * 0.2); // 1.3 -> 1.2~1.4 (랜덤 요소 추가)
     
-    // 산업별 변동성 적용
-    const industryVolatility = this.calculateIndustryVolatility(company.industry) * 1.2;  // 1.3 -> 1.2 (산업별 변동성 감소)
+    // 산업별 변동성 적용 - 더 가변적으로
+    const industryVolatility = this.calculateIndustryVolatility(company.industry) * (1.1 + Math.random() * 0.2); // 1.2 -> 1.1~1.3 (랜덤 요소 추가)
     
-    // 시가총액 규모별 변동성 적용
-    const marketCapVolatility = this.calculateMarketCapVolatility(company.market_cap) * 1.2;  // 1.3 -> 1.2 (시가총액별 변동성 감소)
+    // 시가총액 규모별 변동성 적용 - 더 가변적으로
+    const marketCapVolatility = this.calculateMarketCapVolatility(company.market_cap) * (1.1 + Math.random() * 0.2); // 1.2 -> 1.1~1.3 (랜덤 요소 추가)
     
     // 산업 리더 영향력 적용
     return this.calculateIndustryLeaderImpact(company.industry, company.id)
@@ -803,30 +771,37 @@ export class MarketScheduler {
         const dailyChange = company.last_closing_price > 0 ? 
           (company.current_price - company.last_closing_price) / company.last_closing_price : 0;
         
-        // 일중 변동률이 큰 경우 반대 방향으로의 조정 압력 증가
+        // 일중 변동률이 큰 경우 반대 방향으로의 조정 압력 증가 - 더 가변적으로
         let dailyChangeAdjustment = 0;
-        if (Math.abs(dailyChange) > 0.08) {
-          dailyChangeAdjustment = -dailyChange * 0.15 * (Math.abs(dailyChange) - 0.08);
+        const dailyChangeThreshold = 0.07 + Math.random() * 0.02; // 0.08 -> 0.07~0.09 (랜덤 요소 추가)
+        if (Math.abs(dailyChange) > dailyChangeThreshold) {
+          const adjustmentStrength = 0.13 + Math.random() * 0.04; // 0.15 -> 0.13~0.17 (랜덤 요소 추가)
+          dailyChangeAdjustment = -dailyChange * adjustmentStrength * (Math.abs(dailyChange) - dailyChangeThreshold);
         }
         
-        // 변동성 요소들을 결합하여 최종 가격 변화율 계산
+        // 변동성 요소들을 결합하여 최종 가격 변화율 계산 - 더 가변적으로
+        const randomMultiplier = 1.6 + Math.random() * 0.2; // 1.7 -> 1.6~1.8 (랜덤 요소 추가)
+        const leaderMultiplier = 1.4 + Math.random() * 0.2; // 1.5 -> 1.4~1.6 (랜덤 요소 추가)
+        const overallMultiplier = 1.2 + Math.random() * 0.2; // 1.3 -> 1.2~1.4 (랜덤 요소 추가)
+        
         const baseChange = (
-          randomChange * SIMULATION_PARAMS.PRICE.WEIGHTS.RANDOM * 1.7 +  // 2.0 -> 1.7 (랜덤 변동성 영향력 감소)
-          industryLeaderImpact * SIMULATION_PARAMS.PRICE.WEIGHTS.INDUSTRY_LEADER * 1.5  // 변동 없음
-        ) * industryVolatility * timeVolatility * marketCapVolatility * momentumFactor * 1.3;  // 1.5 -> 1.3 (전체 변동성 감소)
+          randomChange * SIMULATION_PARAMS.PRICE.WEIGHTS.RANDOM * randomMultiplier +
+          industryLeaderImpact * SIMULATION_PARAMS.PRICE.WEIGHTS.INDUSTRY_LEADER * leaderMultiplier
+        ) * industryVolatility * timeVolatility * marketCapVolatility * momentumFactor * overallMultiplier;
         
         // 일중 변동 조정 적용
         const adjustedChange = baseChange + dailyChangeAdjustment;
         
-        // 최종 변화율 제한 (한 번의 업데이트에서 최대 ±4%)
-        const limitedChange = Math.max(Math.min(adjustedChange, 0.04), -0.04); // 0.05 -> 0.04 (최대 변동폭 감소)
+        // 최종 변화율 제한 - 더 가변적으로
+        const maxChange = 0.035 + Math.random() * 0.01; // 0.04 -> 0.035~0.045 (랜덤 요소 추가)
+        const limitedChange = Math.max(Math.min(adjustedChange, maxChange), -maxChange);
         
         let newPrice = basePrice * (1 + limitedChange);
         
-        // 일중 최대 변동폭 제한
+        // 일중 최대 변동폭 제한 - 더 가변적으로
         if (company.last_closing_price > 0) {
-          const maxDailyPrice = company.last_closing_price * 1.3; // 1.5 -> 1.3 (일중 최대 상승폭 감소)
-          const minDailyPrice = company.last_closing_price * 0.7; // 0.5 -> 0.7 (일중 최대 하락폭 감소)
+          const maxDailyPrice = company.last_closing_price * (1.25 + Math.random() * 0.1); // 1.3 -> 1.25~1.35 (랜덤 요소 추가)
+          const minDailyPrice = company.last_closing_price * (0.65 + Math.random() * 0.1); // 0.7 -> 0.65~0.75 (랜덤 요소 추가)
           newPrice = Math.min(Math.max(newPrice, minDailyPrice), maxDailyPrice);
         }
         
