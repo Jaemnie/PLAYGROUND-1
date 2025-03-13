@@ -272,7 +272,7 @@ export function BustabitAdminClient({
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {gameStats.map((game) => (
+                        {(gameStats || []).map((game) => (
                           <TableRow key={game.id} className="border-gray-700 hover:bg-black/60">
                             <TableCell className="font-mono text-xs">{game.id.substring(0, 8)}...</TableCell>
                             <TableCell>
@@ -284,7 +284,7 @@ export function BustabitAdminClient({
                             <TableCell className="font-mono text-xs">{game.game_hash.substring(0, 8)}...</TableCell>
                           </TableRow>
                         ))}
-                        {gameStats.length === 0 && (
+                        {(!gameStats || gameStats.length === 0) && (
                           <TableRow className="border-gray-700 hover:bg-black/60">
                             <TableCell colSpan={4} className="text-center">게임 기록이 없습니다.</TableCell>
                           </TableRow>
@@ -314,23 +314,22 @@ export function BustabitAdminClient({
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {betStats && betStats.length > 0 ? (
-                          betStats.map((bet) => (
-                            <TableRow key={bet.id} className="border-gray-700 hover:bg-black/60">
-                              <TableCell>{bet.user?.nickname || bet.user_id?.substring(0, 8) || '알 수 없음'}</TableCell>
-                              <TableCell>{bet.bet_amount?.toLocaleString() || 0} P</TableCell>
-                              <TableCell>
-                                {bet.cashout_multiplier ? 
-                                  <span className="text-green-500">{bet.cashout_multiplier.toFixed(2)}x</span> : 
-                                  <span className="text-red-500">실패</span>
-                                }
-                              </TableCell>
-                              <TableCell className={(bet.profit || 0) > 0 ? 'text-green-500' : 'text-red-500'}>
-                                {(bet.profit || 0) > 0 ? '+' : ''}{(bet.profit || 0).toLocaleString()} P
-                              </TableCell>
-                            </TableRow>
-                          ))
-                        ) : (
+                        {(betStats || []).map((bet) => (
+                          <TableRow key={bet.id} className="border-gray-700 hover:bg-black/60">
+                            <TableCell>{bet.user?.nickname || (bet.user_id && bet.user_id.substring(0, 8)) || '알 수 없음'}</TableCell>
+                            <TableCell>{(bet.bet_amount || 0).toLocaleString()} P</TableCell>
+                            <TableCell>
+                              {bet.cashout_multiplier ? 
+                                <span className="text-green-500">{bet.cashout_multiplier.toFixed(2)}x</span> : 
+                                <span className="text-red-500">실패</span>
+                              }
+                            </TableCell>
+                            <TableCell className={(bet.profit || 0) > 0 ? 'text-green-500' : 'text-red-500'}>
+                              {(bet.profit || 0) > 0 ? '+' : ''}{(bet.profit || 0).toLocaleString()} P
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                        {(!betStats || betStats.length === 0) && (
                           <TableRow className="border-gray-700 hover:bg-black/60">
                             <TableCell colSpan={4} className="text-center">베팅 기록이 없습니다.</TableCell>
                           </TableRow>

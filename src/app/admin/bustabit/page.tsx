@@ -38,13 +38,19 @@ export default async function BustabitAdminPage() {
     redirect('/dashboard')
   }
   
-  // 스케줄러 상태 확인 - API 엔드포인트를 통해 확인
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || ''
-  const schedulerResponse = await fetch(`${baseUrl}/api/bustabit/scheduler`, {
-    cache: 'no-store'
-  })
-  const schedulerData = await schedulerResponse.json()
-  const schedulerStatus = schedulerData.status || 'stopped'
+  // 스케줄러 상태를 데이터베이스에서 직접 조회
+  let schedulerStatus = 'stopped'
+  try {
+    const { data: schedulerData } = await supabase
+      .from('bustabit_scheduler')
+      .select('status')
+      .single()
+    
+    schedulerStatus = schedulerData?.status || 'stopped'
+  } catch (error) {
+    console.error('스케줄러 상태 조회 오류:', error)
+    // 기본값 사용
+  }
   
   // 게임 통계 조회
   const { data: gameStats } = await supabase
