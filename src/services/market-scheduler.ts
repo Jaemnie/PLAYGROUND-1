@@ -67,8 +67,8 @@ const SIMULATION_PARAMS = {
       MIN: 3,                           // 변동 없음
       MAX: 10                           // 변동 없음
     },
-    NEGATIVE_MULTIPLIER: 0.45,          // 0.5 -> 0.45 (부정적 뉴스 영향력 승수 감소)
-    POSITIVE_MULTIPLIER: 0.3            // 0.25 -> 0.3 (긍정적 뉴스 영향력 승수 증가)
+    NEGATIVE_MULTIPLIER: 0.35,          // 0.45 -> 0.35 (부정적 뉴스 영향력 승수 더 감소)
+    POSITIVE_MULTIPLIER: 0.25           // 0.3 -> 0.25 (긍정적 뉴스 영향력 승수 감소)
   },
   PRICE: {
     BASE_RANDOM_CHANGE: 0.015,          // 변동 없음
@@ -215,7 +215,7 @@ export class MarketScheduler {
             
             // 시가총액 업데이트 계산 (발행주식수 기반)
             const newMarketCap = Math.round(finalPrice * company.shares_issued);
-
+            
             const previousMovement = this.priceMovementCache.get(company.id) || {
               direction: 'neutral',
               consecutiveCount: 0,
@@ -520,7 +520,7 @@ export class MarketScheduler {
     const timeMultiplier = this.calculateTimeVolatility(currentHour);
     
     // 시간대별로 감정 영향력 조정 (시간대 변동성이 높을수록 감정 영향력도 강화)
-    const timeAdjustment = (timeMultiplier - 1.0) * 0.2; // 변동 없음
+    const timeAdjustment = (timeMultiplier - 1.0) * 0.15; // 0.2 -> 0.15 (시간대별 영향력 조정 감소)
     
     // 랜덤 변동성 추가 (부정적 뉴스는 변동성 감소)
     let randomVariation = 1.0;
@@ -528,16 +528,16 @@ export class MarketScheduler {
     switch (sentiment) {
       case 'positive':
         randomVariation = 1.0 + (Math.random() * 0.3 - 0.15); // 기존 랜덤 변동성 유지
-        return (0.45 + timeAdjustment) * randomVariation;  // 0.35 -> 0.45 (긍정적 영향 증가)
+        return (0.35 + timeAdjustment) * randomVariation;  // 0.45 -> 0.35 (긍정적 영향 감소)
       case 'negative':
         // 부정적 뉴스는 랜덤 변동성 감소 (±5%만 허용)
         randomVariation = 1.0 + (Math.random() * 0.1 - 0.05);
         // 부정적 뉴스는 항상 음수 값을 반환하도록 보장 (절대값 사용)
-        return (-0.65 - timeAdjustment) * Math.abs(randomVariation); // -0.7 -> -0.65 (부정적 영향 감소)
+        return (-0.55 - timeAdjustment) * Math.abs(randomVariation); // -0.65 -> -0.55 (부정적 영향 더 감소)
       default:
         // 중립적 뉴스는 시간대와 관계없이 약한 랜덤 변동
         randomVariation = 1.0 + (Math.random() * 0.3 - 0.15);
-        return (Math.random() - 0.5) * 0.1 * randomVariation; // 변동 없음
+        return (Math.random() - 0.5) * 0.08 * randomVariation; // 0.1 -> 0.08 (중립적 영향 감소)
     }
   }
 
@@ -628,8 +628,8 @@ export class MarketScheduler {
         
         // 최종 영향력 범위 제한
         // volatility에 따라 기하급수적으로 영향력 증가
-        const volatilityFactor = Math.pow(news.volatility, 1.8);
-        const maxImpactByVolatility = 0.02 * volatilityFactor; // 기본 영향력을 2%로 낮춤
+        const volatilityFactor = Math.pow(news.volatility, 1.6); // 1.8 -> 1.6 (지수 감소로 영향력 감소)
+        const maxImpactByVolatility = 0.015 * volatilityFactor; // 0.02 -> 0.015 (기본 영향력을 1.5%로 더 낮춤)
         let clampedImpact = Math.max(Math.min(perMinuteImpact, maxImpactByVolatility), -maxImpactByVolatility);
         
         totalPerMinuteImpact += clampedImpact;
@@ -695,8 +695,8 @@ export class MarketScheduler {
         
         // 최종 영향력 범위 제한
         // volatility에 따라 기하급수적으로 영향력 증가
-        const volatilityFactor = Math.pow(news.volatility, 1.8);
-        const maxImpactByVolatility = 0.02 * volatilityFactor; // 기본 영향력을 2%로 낮춤
+        const volatilityFactor = Math.pow(news.volatility, 1.6); // 1.8 -> 1.6 (지수 감소로 영향력 감소)
+        const maxImpactByVolatility = 0.015 * volatilityFactor; // 0.02 -> 0.015 (기본 영향력을 1.5%로 더 낮춤)
         let clampedImpact = Math.max(Math.min(perMinuteImpact, maxImpactByVolatility), -maxImpactByVolatility);
         
         totalPerMinuteImpact += clampedImpact;
@@ -722,7 +722,7 @@ export class MarketScheduler {
     }
     
     // 뉴스 개수가 많을수록 영향력 분산을 위해 추가 감소 계수 적용
-    const newsCountDampener = Math.max(0.7 - (activeNews.length * 0.05), 0.4); // 0.8/0.5 -> 0.7/0.4 (감소)
+    const newsCountDampener = Math.max(0.6 - (activeNews.length * 0.05), 0.35); // 0.7/0.4 -> 0.6/0.35 (더 감소)
     
     return (totalPerMinuteImpact * SIMULATION_PARAMS.PRICE.WEIGHTS.NEWS * newsCountDampener) + randomNoise;
   }
@@ -789,7 +789,7 @@ export class MarketScheduler {
       : 1.0;
     
     // 기하급수적 증가를 위해 제곱 사용
-    const volatilityAdjustment = Math.pow(maxVolatilityInNews, 2) / 2;
+    const volatilityAdjustment = Math.pow(maxVolatilityInNews, 1.8) / 2; // 2 -> 1.8 (지수 감소로 영향력 감소)
     
     // 산업 리더 영향력 적용
     return this.calculateIndustryLeaderImpact(company.industry, company.id)
