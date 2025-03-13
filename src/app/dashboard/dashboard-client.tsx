@@ -1,7 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import {
   BarChart3,
   Trophy,
@@ -11,26 +11,45 @@ import {
   Settings,
   ArrowLeft,
   UserCircle,
-  MessageSquare
+  MessageSquare,
+  ClockIcon
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useRouter } from 'next/navigation'
 import { logout } from '@/lib/actions/auth'
 import { User } from '@supabase/supabase-js'
 import { LogoutButton } from '@/components/logout-button'
+import Link from 'next/link'
+import { ChartBarIcon, ChatBubbleLeftRightIcon, UserGroupIcon, CurrencyDollarIcon, ArrowTrendingUpIcon, FireIcon } from '@heroicons/react/24/outline'
 
 interface DashboardClientProps {
   user: User
-  profile: {
-    nickname: string
-    points: number
-    friends: number
-  }
-  isAdmin: boolean  // admin_users 테이블 체크 결과
+  profile: any
+  isAdmin?: boolean
+  friendRequestCount?: number
+  holdings?: any[]
+  news?: any[]
+  messages?: any[]
+  bustabitStats?: any
 }
 
-export function DashboardClient({ user, profile, isAdmin }: DashboardClientProps) {
+export function DashboardClient({ 
+  user, 
+  profile, 
+  isAdmin = false,
+  friendRequestCount = 0,
+  holdings = [],
+  news = [],
+  messages = [],
+  bustabitStats = null
+}: DashboardClientProps) {
   const router = useRouter()
+
+  // 주식 포트폴리오 총 가치 계산
+  const totalStockValue = holdings.reduce((total, holding) => {
+    const company = Array.isArray(holding.company) ? holding.company[0] : holding.company
+    return total + (holding.shares * (company?.current_price || 0))
+  }, 0)
 
   const stats = [
     {
@@ -68,13 +87,27 @@ export function DashboardClient({ user, profile, isAdmin }: DashboardClientProps
       description: '친구들과 대화를 나누세요',
       href: '/dashboard/chat'
     },
+    {
+      title: 'Bustabit',
+      value: '게임 시작',
+      icon: <FireIcon className="h-6 w-6" />,
+      description: '행운의 배팅 게임을 즐겨보세요',
+      href: '/dashboard/bustabit'
+    },
     ...(isAdmin ? [
       {
-        title: '스케줄러 모니터링',
+        title: '관리자 페이지',
         value: '관리자 전용',
         icon: <Settings className="h-6 w-6" />,
-        description: '마켓 스케줄러 상태를 확인하세요',
+        description: '관리자 기능을 사용하세요',
         href: '/admin/guides'
+      },
+      {
+        title: 'Bustabit 관리자 스케줄러',
+        value: 'Bustabit 관리',
+        icon: <ClockIcon className="h-6 w-6" />,
+        description: 'Bustabit 관리 하세요.',
+        href: '/admin/bustabit'
       }
     ] : [])
   ]
