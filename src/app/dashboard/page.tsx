@@ -14,58 +14,68 @@ export default async function DashboardPage() {
       redirect('/login')
     }
     
-    // 프로필 정보 조회
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single()
-    
-    // 관리자 권한 확인
-    const { data: adminUser } = await supabase
-      .from('admin_users')
-      .select('*')
-      .eq('user_id', user.id)
-      .single()
-    
-    const isAdmin = !!adminUser
-    
-    // 친구 요청 수 조회
-    const { count: friendRequestCount } = await supabase
-      .from('friends')
-      .select('*', { count: 'exact', head: true })
-      .eq('friend_id', user.id)
-      .eq('status', 'pending')
-    
-    // 주식 보유 현황 조회
-    const { data: holdings } = await supabase
-      .from('holdings')
-      .select(`
-        id,
-        shares,
-        company:companies(
+    // 모든 쿼리를 병렬로 실행하여 성능 최적화
+    const [
+      profileResult,
+      adminResult,
+      friendResult,
+      holdingsResult,
+      newsResult,
+      messagesResult,
+    ] = await Promise.all([
+      // 프로필 정보 조회
+      supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single(),
+      // 관리자 권한 확인
+      supabase
+        .from('admin_users')
+        .select('*')
+        .eq('user_id', user.id)
+        .single(),
+      // 친구 요청 수 조회
+      supabase
+        .from('friends')
+        .select('*', { count: 'exact', head: true })
+        .eq('friend_id', user.id)
+        .eq('status', 'pending'),
+      // 주식 보유 현황 조회
+      supabase
+        .from('holdings')
+        .select(`
           id,
-          name,
-          ticker,
-          current_price,
-          last_closing_price
-        )
-      `)
-      .eq('user_id', user.id)
-    
-    // 최근 뉴스 조회
-    const { data: news } = await supabase
-      .from('news')
-      .select('*')
-      .order('published_at', { ascending: false })
-      .limit(5)
-    
-    // 최근 채팅 메시지 조회
-    const { data: messages } = await supabase
-      .from('messages')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(5)
+          shares,
+          company:companies(
+            id,
+            name,
+            ticker,
+            current_price,
+            last_closing_price
+          )
+        `)
+        .eq('user_id', user.id),
+      // 최근 뉴스 조회
+      supabase
+        .from('news')
+        .select('*')
+        .order('published_at', { ascending: false })
+        .limit(5),
+      // 최근 채팅 메시지 조회
+      supabase
+        .from('messages')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(5),
+    ])
+
+    const profile = profileResult.data
+    const isAdmin = !!adminResult.data
+    const friendRequestCount = friendResult.count
+    const holdings = holdingsResult.data
+    const news = newsResult.data
+    const messages = messagesResult.data
     
     return (
       <Suspense fallback={<LoadingSpinner />}>

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import dynamic from 'next/dynamic'
 import { MarketOverview } from './components/market-overview'
 import { PortfolioSummary } from './components/portfolio-summary'
 import { StockList } from './components/stock-list'
@@ -9,8 +10,12 @@ import { Card } from '@/components/ui/card'
 import DashboardBackButton from '@/components/DashboardBackButton'
 import { MarketTimer } from './components/market-timer'
 import { useRealtimeStockData } from '@/hooks/useRealtimeStockData'
-import { PortfolioDiversification } from './components/portfolio-diversification'
 import { SectorTrends } from './components/sector-trends'
+
+const PortfolioDiversification = dynamic(
+  () => import('./components/portfolio-diversification').then(mod => mod.PortfolioDiversification),
+  { ssr: false }
+)
 
 interface User {
   id: string;

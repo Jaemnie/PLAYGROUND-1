@@ -3,13 +3,18 @@
 import { Card } from '@/components/ui/card'
 import StockBackButton from '@/components/StockBackButton'
 import { useState } from 'react'
+import dynamic from 'next/dynamic'
 import { QuickTradeModal } from '@/components/ui/quick-trade-modal'
 import HoldingsTable from './components/holdings-table'
-import PerformanceChart from './components/performance-chart'
 import TransactionHistory from './components/transaction-history'
 import PortfolioAnalysis from './components/portfolio-analysis'
 import { useRealtimeStockData } from '@/hooks/useRealtimeStockData'
 import { createClientBrowser } from '@/lib/supabase/client'
+
+const PerformanceChart = dynamic(
+  () => import('./components/performance-chart'),
+  { ssr: false }
+)
 
 interface User {
   id: string;

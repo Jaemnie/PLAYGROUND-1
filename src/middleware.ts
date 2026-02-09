@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { updateSession } from '@/lib/supabase/middleware'
 
-export function middleware(request: NextRequest) {
-  // cron API 경로에 대해서만 처리
+export async function middleware(request: NextRequest) {
+  // cron API 경로에 대해서는 기존 인증 로직 유지
   if (request.nextUrl.pathname.startsWith('/api/cron')) {
     const authHeader = request.headers.get('authorization')
     const upstashSignature = request.headers.get('upstash-signature')
@@ -15,11 +16,16 @@ export function middleware(request: NextRequest) {
         { status: 401 }
       )
     }
+
+    return NextResponse.next()
   }
 
-  return NextResponse.next()
+  // 나머지 모든 경로에 대해 Supabase 세션 갱신
+  return await updateSession(request)
 }
 
 export const config = {
-  matcher: '/api/cron/:path*'
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+  ],
 }

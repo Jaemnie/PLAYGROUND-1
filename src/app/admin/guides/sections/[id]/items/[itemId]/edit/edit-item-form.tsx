@@ -2,13 +2,18 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import dynamic from 'next/dynamic'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardFooter } from '@/components/ui/card'
 import { toast } from 'sonner'
 import { motion } from 'framer-motion'
 import DashboardBackButton from '@/components/DashboardBackButton'
-import { MarkdownEditor } from '@/components/markdown-editor/markdown-editor'
+
+const MarkdownEditor = dynamic(
+  () => import('@/components/markdown-editor/markdown-editor').then(mod => mod.MarkdownEditor),
+  { ssr: false }
+)
 
 interface EditItemFormProps {
   item: {

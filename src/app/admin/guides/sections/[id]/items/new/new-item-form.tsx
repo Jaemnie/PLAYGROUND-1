@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import dynamic from 'next/dynamic'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -10,7 +11,11 @@ import { toast } from 'sonner'
 import { User } from '@supabase/supabase-js'
 import { motion } from 'framer-motion'
 import DashboardBackButton from '@/components/DashboardBackButton'
-import { MarkdownEditor } from '@/components/markdown-editor/markdown-editor'
+
+const MarkdownEditor = dynamic(
+  () => import('@/components/markdown-editor/markdown-editor').then(mod => mod.MarkdownEditor),
+  { ssr: false }
+)
 
 interface NewItemFormProps {
   user: User
