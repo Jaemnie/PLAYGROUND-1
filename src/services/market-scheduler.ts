@@ -94,7 +94,8 @@ interface Profile {
 
 const SIMULATION_PARAMS = {
   NEWS: {
-    NEWS_COUNT_PER_UPDATE: { MIN: 3, MAX: 10 },
+    CHANCE_PER_UPDATE: 0.08,                  // 매 업데이트 8% 확률로 뉴스 발생 (평균 ~12분에 1회)
+    NEWS_COUNT_PER_BATCH: { MIN: 1, MAX: 5 }, // 발생 시 1~5개 뉴스 생성
     IMPACT_VARIATION: { MIN: 0.8, MAX: 1.2 },
     DECAY_MINUTES: 30,
   },
@@ -451,12 +452,13 @@ export class MarketScheduler {
     }
 
     try {
-      // 1. 시장 상태 관리 (섹터 트렌드 회전, 시장 사이클 전환, 이벤트 생성)
+      // 1. 시장 상태 관리 (섹터 트렌드 회전, 시장 사이클 전환, 이벤트/뉴스 생성)
       let marketState = await this.loadMarketState();
       marketState = await this.maybeRotateSectorTrends(marketState);
       marketState = await this.maybeTransitionMarketPhase(marketState);
       await this.saveMarketState(marketState);
       await this.maybeGenerateMarketEvent();
+      await this.maybeGenerateNews();
 
       // 2. 데이터 일괄 조회 (N+1 쿼리 제거)
       const [companiesResult, recentNewsResult, activeEvents] = await Promise.all([
@@ -1002,45 +1004,31 @@ export class MarketScheduler {
 
   // ─── 뉴스 시스템 ──────────────────────────
 
-  public async updateNews(): Promise<void> {
-    console.log('뉴스 업데이트 요청 받음:', new Date().toISOString());
-
-    if (!this.isMarketOpen()) {
-      console.log('장 마감 상태입니다. 뉴스 업데이트를 건너뜁니다.');
+  /**
+   * 확률적 뉴스 생성: 매 updateMarket() 호출 시 8% 확률로 1~5개 뉴스 발생
+   * 평균 ~12분에 1회, 하루(15시간) ~75회 뉴스 발생 기대값
+   */
+  private async maybeGenerateNews(): Promise<void> {
+    if (Math.random() > SIMULATION_PARAMS.NEWS.CHANCE_PER_UPDATE) {
       return;
     }
 
-    try {
-      console.log('뉴스 업데이트 실행 중');
-      await this.generateCompanyNews();
-      console.log('뉴스 업데이트 완료');
-    } catch (error) {
-      console.error('뉴스 업데이트 중 오류 발생:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * 기업 뉴스 생성
-   * - 산업별 필터링된 템플릿에서 선택
-   * - volatility 가중치 기반 확률적 선택 (낮은 volatility가 더 자주 선택됨)
-   */
-  private async generateCompanyNews() {
     try {
       const supabase = await this.ensureConnection();
       const { data: companies, error } = await supabase.from('companies').select('*');
       if (error) throw error;
 
-      const { MIN, MAX } = SIMULATION_PARAMS.NEWS.NEWS_COUNT_PER_UPDATE;
-      const randomNewsCount = Math.floor(Math.random() * (MAX - MIN + 1)) + MIN;
-      const newsCount = Math.min(randomNewsCount, companies?.length || 0);
+      const { MIN, MAX } = SIMULATION_PARAMS.NEWS.NEWS_COUNT_PER_BATCH;
+      const newsCount = Math.min(
+        Math.floor(Math.random() * (MAX - MIN + 1)) + MIN,
+        companies?.length || 0
+      );
 
       if (companies && companies.length > 0) {
         const shuffledCompanies = [...companies].sort(() => Math.random() - 0.5);
 
         for (let i = 0; i < newsCount; i++) {
           const company = shuffledCompanies[i];
-          // 산업별 필터링된 템플릿 사용
           const templates = await this.getNewsTemplatesForIndustry(company.industry);
           if (templates.length === 0) continue;
 
@@ -1052,14 +1040,60 @@ export class MarketScheduler {
             company_id: company.id,
           });
 
-          console.log(`${company.name} 기업 뉴스 발생: ${selectedNews.title}`);
+          console.log(`📰 ${company.name} 뉴스 발생: ${selectedNews.title}`);
         }
 
-        console.log(`총 ${newsCount}개의 뉴스가 생성되었습니다. (산업별 필터링 적용)`);
+        console.log(`뉴스 ${newsCount}개 생성됨 (확률적 발생)`);
       }
     } catch (error) {
-      console.error('기업 뉴스 생성 중 오류:', error);
-      throw new Error('기업 뉴스 생성 실패');
+      // 뉴스 생성 실패가 가격 업데이트를 막지 않도록 에러를 삼킴
+      console.error('뉴스 생성 중 오류 (무시됨):', error);
+    }
+  }
+
+  /**
+   * 수동 뉴스 업데이트 (외부 cron에서 호출 시 사용)
+   */
+  public async updateNews(): Promise<void> {
+    console.log('뉴스 수동 업데이트 요청 받음:', new Date().toISOString());
+
+    if (!this.isMarketOpen()) {
+      console.log('장 마감 상태입니다. 뉴스 업데이트를 건너뜁니다.');
+      return;
+    }
+
+    try {
+      const supabase = await this.ensureConnection();
+      const { data: companies, error } = await supabase.from('companies').select('*');
+      if (error) throw error;
+
+      const newsCount = Math.min(
+        Math.floor(Math.random() * 5) + 3, // 3~7개
+        companies?.length || 0
+      );
+
+      if (companies && companies.length > 0) {
+        const shuffledCompanies = [...companies].sort(() => Math.random() - 0.5);
+
+        for (let i = 0; i < newsCount; i++) {
+          const company = shuffledCompanies[i];
+          const templates = await this.getNewsTemplatesForIndustry(company.industry);
+          if (templates.length === 0) continue;
+
+          const selectedNews = this.selectRandomNews(templates);
+          await this.createNews({
+            ...selectedNews,
+            title: `[${company.name}] ${selectedNews.title}`,
+            content: `${company.name}(${company.ticker}): ${selectedNews.content}`,
+            company_id: company.id,
+          });
+        }
+
+        console.log(`수동 뉴스 ${newsCount}개 생성 완료`);
+      }
+    } catch (error) {
+      console.error('뉴스 업데이트 중 오류 발생:', error);
+      throw error;
     }
   }
 

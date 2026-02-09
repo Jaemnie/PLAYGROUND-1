@@ -1,5 +1,5 @@
 type QueueTask = {
-  type: 'market-update' | 'news-update' | 'market-open' | 'market-close';
+  type: 'market-update' | 'market-open' | 'market-close';
   priority: number;
   timestamp: number;
   dependencies?: string[];
@@ -31,18 +31,6 @@ export class MarketQueue {
 
   async addTask(task: Omit<QueueTask, 'timestamp'>) {
     const timestamp = Date.now();
-    
-    // 30분마다 들어오는 뉴스 업데이트와 마켓 업데이트가 동시에 들어온 경우
-    if (task.type === 'market-update') {
-      const recentNews = this.queue.find(t => 
-        t.type === 'news-update' && 
-        timestamp - t.timestamp < 1000  // 1초 이내에 들어온 뉴스가 있는지 확인
-      );
-      
-      if (recentNews) {
-        task.dependencies = ['news-update'];  // 뉴스 업데이트에 대한 의존성 추가
-      }
-    }
 
     this.queue.push({
       ...task,

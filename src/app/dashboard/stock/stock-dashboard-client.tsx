@@ -10,6 +10,7 @@ import DashboardBackButton from '@/components/DashboardBackButton'
 import { MarketTimer } from './components/market-timer'
 import { useRealtimeStockData } from '@/hooks/useRealtimeStockData'
 import { PortfolioDiversification } from './components/portfolio-diversification'
+import { SectorTrends } from './components/sector-trends'
 
 interface User {
   id: string;
@@ -108,6 +109,11 @@ export function StockDashboardClient({
             <MarketOverview companies={companies} />
           </Card>
         </div>
+
+        {/* 섹터 트렌드 */}
+        <Card className="mt-6 bg-black/40 backdrop-blur-sm border-gray-800 overflow-hidden">
+          <SectorTrends />
+        </Card>
 
         {/* 포트폴리오 다각화 분석 */}
         <Card className="mt-6 bg-black/40 backdrop-blur-sm border-gray-800 overflow-hidden">
