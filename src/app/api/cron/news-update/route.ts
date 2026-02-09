@@ -1,7 +1,6 @@
 import { Receiver } from '@upstash/qstash'
 import { NextResponse } from 'next/server'
 import { MarketScheduler } from '@/services/market-scheduler'
-import { MarketQueue } from '@/services/market-queue'
 
 const receiver = new Receiver({
   currentSigningKey: process.env.QSTASH_CURRENT_SIGNING_KEY!,
@@ -9,10 +8,9 @@ const receiver = new Receiver({
 })
 
 export async function POST(req: Request) {
-  const debugSteps: string[] = []
-
   const signature = req.headers.get('upstash-signature')
   if (!signature) {
+    console.error('[news-update] Missing upstash-signature header')
     return new Response('Unauthorized', { status: 401 })
   }
   
@@ -21,44 +19,25 @@ export async function POST(req: Request) {
   try {
     const isValid = await receiver.verify({ signature, body })
     if (!isValid) {
+      console.error('[news-update] Invalid signature')
       return new Response('Invalid signature', { status: 401 })
     }
-    debugSteps.push('1_signature_ok')
-
+    
     const scheduler = await MarketScheduler.getInstance()
-    debugSteps.push('2_scheduler_ready')
-
-    const now = new Date()
-    const utcHour = now.getUTCHours()
-    const koreaHour = (utcHour + 9) % 24
-    const marketOpen = scheduler.isMarketOpen()
-    debugSteps.push(`3_time_utc${utcHour}_kst${koreaHour}_open${marketOpen}`)
-
-    if (!marketOpen) {
-      return NextResponse.json({ 
-        success: true, skipped: true, reason: 'market_closed', 
-        debug: debugSteps 
-      })
+    
+    if (!scheduler.isMarketOpen()) {
+      console.log('[news-update] 장 운영 시간이 아닙니다.')
+      return NextResponse.json({ success: true, skipped: true, reason: 'market_closed' })
     }
 
-    const queue = MarketQueue.getInstance()
-    debugSteps.push('4_queue_ready')
+    // MarketQueue를 거치지 않고 직접 실행
+    console.log('[news-update] 뉴스 업데이트 직접 실행 시작')
+    await scheduler.updateNews()
+    console.log('[news-update] 뉴스 업데이트 직접 실행 완료')
 
-    await queue.addTask({
-      type: 'news-update',
-      priority: 2,
-      execute: async () => {
-        console.log('[news-update] 뉴스 업데이트 태스크 실행 시작')
-        await scheduler.updateNews()
-        console.log('[news-update] 뉴스 업데이트 태스크 실행 완료')
-      }
-    })
-    debugSteps.push('5_task_completed')
-
-    return NextResponse.json({ success: true, debug: debugSteps })
+    return NextResponse.json({ success: true })
   } catch (error) {
-    debugSteps.push(`ERROR: ${error instanceof Error ? error.message : String(error)}`)
-    console.error('[news-update] News update failed:', error, 'steps:', debugSteps)
-    return NextResponse.json({ error: 'News update failed', debug: debugSteps }, { status: 500 })
+    console.error('[news-update] News update failed:', error)
+    return NextResponse.json({ error: 'News update failed' }, { status: 500 })
   }
 }
