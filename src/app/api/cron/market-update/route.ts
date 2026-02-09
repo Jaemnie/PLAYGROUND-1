@@ -1,34 +1,14 @@
-import { Receiver } from '@upstash/qstash'
 import { NextResponse } from 'next/server'
 import { MarketScheduler } from '@/services/market-scheduler'
 import { MarketQueue } from '@/services/market-queue'
 
-const receiver = new Receiver({
-  currentSigningKey: process.env.QSTASH_CURRENT_SIGNING_KEY!,
-  nextSigningKey: process.env.QSTASH_NEXT_SIGNING_KEY!
-})
-
-export async function POST(req: Request) {
-  const signature = req.headers.get('upstash-signature')
-  
-  if (!signature) {
-    console.error('Missing upstash-signature header')
+export async function GET(req: Request) {
+  const authHeader = req.headers.get('authorization')
+  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return new Response('Unauthorized', { status: 401 })
   }
 
-  const body = await req.text()
-
   try {
-    const isValid = await receiver.verify({
-      signature,
-      body
-    })
-
-    if (!isValid) {
-      console.error('Invalid signature')
-      return new Response('Invalid signature', { status: 401 })
-    }
-
     const scheduler = await MarketScheduler.getInstance()
 
     if (!scheduler.isMarketOpen()) {
@@ -40,7 +20,7 @@ export async function POST(req: Request) {
 
     await queue.addTask({
       type: 'market-update',
-      priority: 1, // 뉴스보다 낮은 우선순위
+      priority: 1,
       execute: async () => {
         console.log('[market-update] 마켓 업데이트 태스크 실행 시작')
         await scheduler.updateMarket()
@@ -53,4 +33,4 @@ export async function POST(req: Request) {
     console.error('[market-update] Market update failed:', error)
     return NextResponse.json({ error: 'Market update failed' }, { status: 500 })
   }
-} 
+}
