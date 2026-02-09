@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { CardHeader, CardContent } from '@/components/ui/card'
-import { NewspaperIcon, ArrowRightIcon } from '@heroicons/react/24/outline'
+import { NewspaperIcon } from '@heroicons/react/24/outline'
 import { Button } from '@/components/ui/button'
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -20,42 +20,18 @@ interface NewsTickerProps {
   }[]
 }
 
-function NewsAlert({ count }: { count: number }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: -10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -10 }}
-      className="absolute -top-10 left-0 right-0 bg-blue-500/20 text-blue-300 px-4 py-2 rounded-md text-sm"
-    >
-      {count > 1 
-        ? `${count}개의 새로운 뉴스가 추가되었습니다!` 
-        : '새로운 뉴스가 추가되었습니다!'}
-    </motion.div>
-  )
-}
-
 export function NewsTicker({ news: initialNews }: NewsTickerProps) {
-  const { newsData, latestUpdate, newItemsCount, resetNewItemsCount } = useRealtimeNews(initialNews)
+  const { newsData, latestUpdate } = useRealtimeNews(initialNews)
   const [currentPage, setCurrentPage] = useState(1)
-  const [showAlert, setShowAlert] = useState(false)
   
-  const itemsPerPage = 1
-  const totalPages = Math.ceil(newsData.length / itemsPerPage)
+  const totalPages = Math.ceil(newsData.length / 1)
   const currentNews = newsData[currentPage - 1]
 
+  // 새 뉴스 도착 시 첫 페이지로 이동
   useEffect(() => {
-    if (latestUpdate) {
-      setCurrentPage(1)
-      setShowAlert(true)
-      setTimeout(() => {
-        setShowAlert(false)
-        resetNewItemsCount()
-      }, 3000)
-    }
-  }, [latestUpdate, resetNewItemsCount])
+    if (latestUpdate) setCurrentPage(1)
+  }, [latestUpdate])
 
-  // 페이지 버튼 생성 함수
   const renderPageButtons = () => {
     const buttons = []
     const maxVisibleButtons = 5
@@ -63,12 +39,9 @@ export function NewsTicker({ news: initialNews }: NewsTickerProps) {
     let endPage = totalPages
     
     if (totalPages > maxVisibleButtons) {
-      // 현재 페이지 주변의 버튼만 표시
       const halfVisible = Math.floor(maxVisibleButtons / 2)
       startPage = Math.max(1, currentPage - halfVisible)
       endPage = Math.min(totalPages, startPage + maxVisibleButtons - 1)
-      
-      // 끝 부분에 도달하면 시작 페이지 조정
       if (endPage === totalPages) {
         startPage = Math.max(1, endPage - maxVisibleButtons + 1)
       }
@@ -118,24 +91,19 @@ export function NewsTicker({ news: initialNews }: NewsTickerProps) {
   return (
     <>
       <CardHeader>
-        <div className="relative flex items-center justify-between">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <NewspaperIcon className="w-5 h-5 text-blue-400" />
             <h2 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent">
               실시간 뉴스
             </h2>
           </div>
-          <div className="flex items-center gap-2">
-            <Link 
-              href="/dashboard/stock/news" 
-              className="px-2 py-1 text-sm font-medium text-blue-400 hover:text-blue-300 border border-blue-500/30 rounded-md hover:bg-blue-500/10 transition-colors"
-            >
-              더보기 →
-            </Link>
-            <AnimatePresence>
-              {showAlert && <NewsAlert count={newItemsCount} />}
-            </AnimatePresence>
-          </div>
+          <Link 
+            href="/dashboard/stock/news" 
+            className="px-2 py-1 text-sm font-medium text-blue-400 hover:text-blue-300 border border-blue-500/30 rounded-md hover:bg-blue-500/10 transition-colors"
+          >
+            더보기 →
+          </Link>
         </div>
       </CardHeader>
       <CardContent>
@@ -146,10 +114,7 @@ export function NewsTicker({ news: initialNews }: NewsTickerProps) {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              transition={{ 
-                duration: 0.6,
-                ease: "easeOut"
-              }}
+              transition={{ duration: 0.6, ease: "easeOut" }}
               className={`absolute inset-0 space-y-3 p-4 rounded-xl ${getImpactStyle(currentNews?.impact || 'neutral')}`}
             >
               <h3 className="font-bold text-gray-100 mb-2 line-clamp-1 text-lg">
