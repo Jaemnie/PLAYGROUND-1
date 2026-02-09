@@ -84,7 +84,7 @@ export function PortfolioDiversification({ portfolio }: PortfolioDiversification
                     ))}
                   </Pie>
                   <Tooltip
-                    formatter={(_: unknown, __: unknown, props: { payload: { sector: string; percentage: number } }) => [
+                    formatter={(value: number | string, name: string, props: any) => [
                       `${props.payload.percentage.toFixed(1)}%`,
                       props.payload.sector,
                     ]}
