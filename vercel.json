@@ -1,8 +1,0 @@
-{
-  "crons": [
-    { "path": "/api/cron/market-update", "schedule": "* * * * *" },
-    { "path": "/api/cron/news-update", "schedule": "*/30 * * * *" },
-    { "path": "/api/cron/market-open", "schedule": "0 0 * * *" },
-    { "path": "/api/cron/market-close", "schedule": "0 15 * * *" }
-  ]
-}
