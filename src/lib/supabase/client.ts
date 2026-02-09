@@ -11,15 +11,7 @@ export const createClientBrowser = () => {
     if (!browserClient) {
       browserClient = createBrowserClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-          cookieOptions: {
-            name: 'sb-cookie',
-            secure: true,
-            sameSite: 'lax',
-            path: '/'
-          }
-        }
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
       )
     }
     return browserClient
