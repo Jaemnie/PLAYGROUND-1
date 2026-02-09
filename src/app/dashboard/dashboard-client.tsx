@@ -12,7 +12,6 @@ import {
   ArrowLeft,
   UserCircle,
   MessageSquare,
-  ClockIcon
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useRouter } from 'next/navigation'
@@ -20,7 +19,7 @@ import { logout } from '@/lib/actions/auth'
 import { User } from '@supabase/supabase-js'
 import { LogoutButton } from '@/components/logout-button'
 import Link from 'next/link'
-import { ChartBarIcon, ChatBubbleLeftRightIcon, UserGroupIcon, CurrencyDollarIcon, ArrowTrendingUpIcon, FireIcon } from '@heroicons/react/24/outline'
+import { ChartBarIcon, ChatBubbleLeftRightIcon, UserGroupIcon, CurrencyDollarIcon, ArrowTrendingUpIcon } from '@heroicons/react/24/outline'
 
 interface DashboardClientProps {
   user: User
@@ -30,7 +29,6 @@ interface DashboardClientProps {
   holdings?: any[]
   news?: any[]
   messages?: any[]
-  bustabitStats?: any
 }
 
 export function DashboardClient({ 
@@ -41,7 +39,6 @@ export function DashboardClient({
   holdings = [],
   news = [],
   messages = [],
-  bustabitStats = null
 }: DashboardClientProps) {
   const router = useRouter()
 
@@ -87,13 +84,6 @@ export function DashboardClient({
       description: '친구들과 대화를 나누세요',
       href: '/dashboard/chat'
     },
-    {
-      title: 'Bustabit',
-      value: '게임 시작',
-      icon: <FireIcon className="h-6 w-6" />,
-      description: '행운의 배팅 게임을 즐겨보세요',
-      href: '/dashboard/bustabit'
-    },
     ...(isAdmin ? [
       {
         title: '관리자 페이지',
@@ -102,13 +92,6 @@ export function DashboardClient({
         description: '관리자 기능을 사용하세요',
         href: '/admin/guides'
       },
-      {
-        title: 'Bustabit 관리자 스케줄러',
-        value: 'Bustabit 관리',
-        icon: <ClockIcon className="h-6 w-6" />,
-        description: 'Bustabit 관리 하세요.',
-        href: '/admin/bustabit'
-      }
     ] : [])
   ]
 

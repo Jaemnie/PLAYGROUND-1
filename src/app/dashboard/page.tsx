@@ -67,13 +67,6 @@ export default async function DashboardPage() {
       .order('created_at', { ascending: false })
       .limit(5)
     
-    // Bustabit 게임 통계 조회
-    const { data: bustabitStats } = await supabase
-      .from('bustabit_stats')
-      .select('*')
-      .eq('user_id', user.id)
-      .single()
-    
     return (
       <Suspense fallback={<LoadingSpinner />}>
         <DashboardClient 
@@ -84,7 +77,6 @@ export default async function DashboardPage() {
           holdings={holdings || []}
           news={news || []}
           messages={messages || []}
-          bustabitStats={bustabitStats || null}
         />
       </Suspense>
     )
