@@ -95,7 +95,6 @@ interface Profile {
 const SIMULATION_PARAMS = {
   NEWS: {
     CHANCE_PER_UPDATE: 0.08,                  // 매 업데이트 8% 확률로 뉴스 발생 (평균 ~12분에 1회)
-    NEWS_COUNT_PER_BATCH: { MIN: 1, MAX: 5 }, // 발생 시 1~5개 뉴스 생성
     IMPACT_VARIATION: { MIN: 0.8, MAX: 1.2 },
     DECAY_MINUTES: 30,
   },
@@ -458,7 +457,7 @@ export class MarketScheduler {
       marketState = await this.maybeTransitionMarketPhase(marketState);
       await this.saveMarketState(marketState);
       await this.maybeGenerateMarketEvent();
-      await this.maybeGenerateNews();
+      await this.maybeGenerateNews(marketState);
 
       // 2. 데이터 일괄 조회 (N+1 쿼리 제거)
       const [companiesResult, recentNewsResult, activeEvents] = await Promise.all([
@@ -1005,10 +1004,13 @@ export class MarketScheduler {
   // ─── 뉴스 시스템 ──────────────────────────
 
   /**
-   * 확률적 뉴스 생성: 매 updateMarket() 호출 시 8% 확률로 1~5개 뉴스 발생
-   * 평균 ~12분에 1회, 하루(15시간) ~75회 뉴스 발생 기대값
+   * 확률적 뉴스 생성: 매 updateMarket() 호출 시 8% 확률로 뉴스 1개 발생
+   * 평균 ~12분에 1건, 하루(15시간) ~75건 뉴스 기대값
+   *
+   * 섹터 트렌드 편향: 강세 섹터는 ~65% 긍정 뉴스, 약세 섹터는 ~65% 부정 뉴스
+   * 나머지 ~35%는 랜덤으로 반대 감정/중립 뉴스가 나와 예측 불가능성 유지
    */
-  private async maybeGenerateNews(): Promise<void> {
+  private async maybeGenerateNews(marketState: MarketState): Promise<void> {
     if (Math.random() > SIMULATION_PARAMS.NEWS.CHANCE_PER_UPDATE) {
       return;
     }
@@ -1018,37 +1020,79 @@ export class MarketScheduler {
       const { data: companies, error } = await supabase.from('companies').select('*');
       if (error) throw error;
 
-      const { MIN, MAX } = SIMULATION_PARAMS.NEWS.NEWS_COUNT_PER_BATCH;
-      const newsCount = Math.min(
-        Math.floor(Math.random() * (MAX - MIN + 1)) + MIN,
-        companies?.length || 0
-      );
-
       if (companies && companies.length > 0) {
-        const shuffledCompanies = [...companies].sort(() => Math.random() - 0.5);
+        // 랜덤 회사 1개 선택
+        const company = companies[Math.floor(Math.random() * companies.length)];
+        const templates = await this.getNewsTemplatesForIndustry(company.industry);
+        if (templates.length === 0) return;
 
-        for (let i = 0; i < newsCount; i++) {
-          const company = shuffledCompanies[i];
-          const templates = await this.getNewsTemplatesForIndustry(company.industry);
-          if (templates.length === 0) continue;
+        // 섹터 트렌드 + 시장 사이클 기반으로 선호 감정 결정
+        const sectorStrength = marketState.sector_trends[company.industry] || 0;
+        const cycleBias = marketState.market_phase === 'bull' ? 0.1 :
+                          marketState.market_phase === 'bear' ? -0.1 : 0;
+        // -1.0 ~ 1.0 범위의 감정 편향 점수
+        const sentimentBias = Math.max(-1, Math.min(1, sectorStrength + cycleBias));
 
-          const selectedNews = this.selectRandomNews(templates);
-          await this.createNews({
-            ...selectedNews,
-            title: `[${company.name}] ${selectedNews.title}`,
-            content: `${company.name}(${company.ticker}): ${selectedNews.content}`,
-            company_id: company.id,
-          });
+        const selectedNews = this.selectBiasedNews(templates, sentimentBias);
+        await this.createNews({
+          ...selectedNews,
+          title: `[${company.name}] ${selectedNews.title}`,
+          content: `${company.name}(${company.ticker}): ${selectedNews.content}`,
+          company_id: company.id,
+        });
 
-          console.log(`📰 ${company.name} 뉴스 발생: ${selectedNews.title}`);
-        }
-
-        console.log(`뉴스 ${newsCount}개 생성됨 (확률적 발생)`);
+        console.log(`📰 ${company.name} 뉴스 발생: ${selectedNews.title} (편향: ${sentimentBias > 0 ? '+' : ''}${(sentimentBias * 100).toFixed(0)}%)`);
       }
     } catch (error) {
-      // 뉴스 생성 실패가 가격 업데이트를 막지 않도록 에러를 삼킴
       console.error('뉴스 생성 중 오류 (무시됨):', error);
     }
+  }
+
+  /**
+   * 섹터 트렌드 편향이 적용된 뉴스 선택
+   *
+   * sentimentBias > 0: 긍정 뉴스 선택 확률 증가
+   * sentimentBias < 0: 부정 뉴스 선택 확률 증가
+   * sentimentBias = 0: 기존 volatility 가중치만 적용 (편향 없음)
+   *
+   * 편향 강도: |bias| * 0.35 만큼 선호 감정에 가중치 부여 (최대 ~65% 편향)
+   */
+  private selectBiasedNews(templates: NewsTemplate[], sentimentBias: number): NewsTemplate {
+    const biasStrength = Math.abs(sentimentBias) * 0.35;
+    const preferredSentiment = sentimentBias > 0 ? 'positive' : 'negative';
+
+    const weights = templates.map((t) => {
+      const vol = t.volatility ?? 1.0;
+      let weight = Math.pow(1 / vol, 2.0); // 기존 volatility 가중치
+
+      // 편향 적용: 선호 감정이면 가중치 증가, 반대면 감소
+      if (Math.abs(sentimentBias) > 0.1) { // 약한 트렌드는 편향 안 줌
+        if (t.sentiment === preferredSentiment) {
+          weight *= (1 + biasStrength * 3); // 선호 감정: 최대 ~2.05배
+        } else if (t.sentiment !== 'neutral') {
+          weight *= (1 - biasStrength);      // 반대 감정: 최대 ~0.65배
+        }
+        // neutral은 가중치 변동 없음
+      }
+
+      return Math.max(weight, 0.01); // 최소 가중치 보장 (완전 제거 방지)
+    });
+
+    const totalWeight = weights.reduce((sum, w) => sum + w, 0);
+    const random = Math.random() * totalWeight;
+
+    let cumulative = 0;
+    for (let i = 0; i < templates.length; i++) {
+      cumulative += weights[i];
+      if (random <= cumulative) {
+        const template = templates[i];
+        const variation = 0.8 + Math.random() * 0.4;
+        return { ...template, impact: template.impact * variation };
+      }
+    }
+
+    const last = templates[templates.length - 1];
+    return { ...last, impact: last.impact * (0.8 + Math.random() * 0.4) };
   }
 
   /**
