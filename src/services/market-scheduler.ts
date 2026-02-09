@@ -223,8 +223,9 @@ export class MarketScheduler {
 
   static async getInstance(): Promise<MarketScheduler> {
     if (!MarketScheduler.instance) {
-      MarketScheduler.instance = new MarketScheduler();
-      await MarketScheduler.instance.initialize();
+      const instance = new MarketScheduler();
+      await instance.initialize();
+      MarketScheduler.instance = instance; // 초기화 성공 후에만 캐시
     }
     return MarketScheduler.instance;
   }

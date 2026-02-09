@@ -65,6 +65,7 @@ export class MarketQueue {
     if (this.isProcessing || this.queue.length === 0) return;
 
     this.isProcessing = true;
+    const errors: Error[] = [];
 
     try {
       while (this.queue.length > 0) {
@@ -85,20 +86,33 @@ export class MarketQueue {
           }
         }
 
-        await task.execute();
-        this.completedTasks.add(task.type);  // 완료된 태스크 기록
-        this.queue.shift();
+        try {
+          await task.execute();
+          this.completedTasks.add(task.type);
+          
+          // 30초 후 완료 기록 제거 (다음 주기를 위해)
+          setTimeout(() => {
+            this.completedTasks.delete(task.type);
+          }, 30000);
+        } catch (taskError) {
+          console.error(`Task ${task.type} failed:`, taskError);
+          errors.push(taskError instanceof Error ? taskError : new Error(String(taskError)));
+        }
         
-        // 30초 후 완료 기록 제거 (다음 주기를 위해)
-        setTimeout(() => {
-          this.completedTasks.delete(task.type);
-        }, 30000);
+        // 성공/실패 관계없이 태스크를 큐에서 제거
+        this.queue.shift();
       }
     } catch (error) {
       console.error('Queue processing error:', error);
+      errors.push(error instanceof Error ? error : new Error(String(error)));
     } finally {
       this.isProcessing = false;
       this.processingPromise = null;
+    }
+
+    // 에러가 있었으면 호출자에게 전파
+    if (errors.length > 0) {
+      throw errors[0];
     }
   }
 } 

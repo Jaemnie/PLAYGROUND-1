@@ -29,24 +29,28 @@ export async function POST(req: Request) {
       return new Response('Invalid signature', { status: 401 })
     }
 
-    const queue = MarketQueue.getInstance()
     const scheduler = await MarketScheduler.getInstance()
+
+    if (!scheduler.isMarketOpen()) {
+      console.log('[market-update] 장 운영 시간이 아닙니다.')
+      return NextResponse.json({ success: true, skipped: true, reason: 'market_closed' })
+    }
+
+    const queue = MarketQueue.getInstance()
 
     await queue.addTask({
       type: 'market-update',
       priority: 1, // 뉴스보다 낮은 우선순위
       execute: async () => {
-        if (!scheduler.isMarketOpen()) {
-          console.log('장 운영 시간이 아닙니다. 요청을 거부합니다.')
-          return
-        }
+        console.log('[market-update] 마켓 업데이트 태스크 실행 시작')
         await scheduler.updateMarket()
+        console.log('[market-update] 마켓 업데이트 태스크 실행 완료')
       }
     })
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Market update failed:', error)
+    console.error('[market-update] Market update failed:', error)
     return NextResponse.json({ error: 'Market update failed' }, { status: 500 })
   }
 } 
