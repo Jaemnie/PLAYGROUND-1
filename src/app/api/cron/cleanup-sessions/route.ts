@@ -1,6 +1,7 @@
 import { Receiver } from '@upstash/qstash'
 import { NextResponse } from 'next/server'
 import redis from '@/lib/redis'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 const receiver = new Receiver({
   currentSigningKey: process.env.QSTASH_CURRENT_SIGNING_KEY!,
@@ -32,11 +33,15 @@ export async function POST(req: Request) {
     }
 
     // 만료된 세션 정리 로직
-    const result = await cleanupExpiredSessions()
+    const sessionResult = await cleanupExpiredSessions()
+    
+    // 한 달 이상 된 시세 변동 데이터 정리
+    const priceResult = await cleanupOldPriceUpdates()
     
     return NextResponse.json({ 
       success: true,
-      ...result
+      sessions: sessionResult,
+      priceUpdates: priceResult
     })
   } catch (error) {
     console.error('세션 정리 실패:', error)
@@ -185,4 +190,43 @@ async function expireSession(sessionId: string) {
     console.error('세션 만료 처리 오류:', error)
     throw error
   }
-} 
+}
+
+/**
+ * 한 달 이상 된 주식 시세 변동 데이터를 삭제하는 함수
+ */
+async function cleanupOldPriceUpdates() {
+  try {
+    const supabase = createAdminClient()
+    
+    // 한 달 전 날짜 계산
+    const oneMonthAgo = new Date()
+    oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1)
+    const cutoffDate = oneMonthAgo.toISOString()
+    
+    const { count, error } = await supabase
+      .from('price_updates')
+      .delete({ count: 'exact' })
+      .lt('created_at', cutoffDate)
+    
+    if (error) {
+      console.error('시세 변동 데이터 정리 오류:', error)
+      throw error
+    }
+    
+    const deletedCount = count ?? 0
+    console.log(`${deletedCount}개의 오래된 시세 변동 데이터가 삭제되었습니다. (기준: ${cutoffDate})`)
+    
+    return {
+      deletedCount,
+      cutoffDate,
+      message: `${deletedCount}개의 한 달 이상 된 시세 변동 데이터가 삭제되었습니다.`
+    }
+  } catch (error) {
+    console.error('시세 변동 데이터 정리 중 오류 발생:', error)
+    return {
+      deletedCount: 0,
+      error: '시세 변동 데이터 정리 실패'
+    }
+  }
+}
