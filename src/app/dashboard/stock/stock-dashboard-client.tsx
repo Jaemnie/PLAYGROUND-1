@@ -110,15 +110,15 @@ export function StockDashboardClient({
           </Card>
         </div>
 
-        {/* 섹터 트렌드 */}
-        <Card className="mt-6 bg-black/40 backdrop-blur-sm border-gray-800 overflow-hidden">
-          <SectorTrends />
-        </Card>
-
-        {/* 포트폴리오 다각화 분석 */}
-        <Card className="mt-6 bg-black/40 backdrop-blur-sm border-gray-800 overflow-hidden">
-          <PortfolioDiversification portfolio={portfolio} />
-        </Card>
+        {/* 섹터 트렌드 + 포트폴리오 다각화 (나란히 배치) */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+          <Card className="bg-black/40 backdrop-blur-sm border-gray-800 overflow-hidden">
+            <SectorTrends />
+          </Card>
+          <Card className="bg-black/40 backdrop-blur-sm border-gray-800 overflow-hidden">
+            <PortfolioDiversification portfolio={portfolio} />
+          </Card>
+        </div>
         
         {/* 뉴스 티커 */}
         <Card className="mt-6 bg-black/40 backdrop-blur-sm border-gray-800 overflow-hidden">
