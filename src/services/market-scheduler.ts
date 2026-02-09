@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { PortfolioTracker } from '@/services/portfolio-tracker'
 import type { PostgrestResponse, PostgrestSingleResponse } from '@supabase/supabase-js'
 import { getDbTimeXMinutesAgo } from '@/lib/timeUtils'
@@ -143,7 +143,7 @@ export class MarketScheduler {
 
   private async initialize() {
     if (!this.supabase) {
-      this.supabase = await createClient();
+      this.supabase = createAdminClient();
     }
     
     // 초기화 시 템플릿 캐시 로드

@@ -1,11 +1,11 @@
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { SupabaseClient } from '@supabase/supabase-js'
 
 export class PortfolioTracker {
   private supabase!: SupabaseClient;
 
   async initialize() {
-    this.supabase = await createClient();
+    this.supabase = createAdminClient();
   }
 
   async recordPerformance(userId: string) {
