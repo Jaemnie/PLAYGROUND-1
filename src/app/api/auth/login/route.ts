@@ -36,7 +36,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: errorMsg }, { status: 400 })
     }
 
-    return NextResponse.json({ success: true, redirect: '/main' })
+    return NextResponse.json({ success: true, redirect: '/dashboard' })
   } catch (err) {
     console.error('[API LOGIN ERROR]', err)
     return NextResponse.json(

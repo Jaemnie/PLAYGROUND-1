@@ -1,30 +1,21 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import {
   BarChart3,
   Trophy,
   Users2,
-  ShoppingBag,
-  LogOut,
-  Settings,
-  ArrowLeft,
   UserCircle,
   MessageSquare,
 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import { useRouter } from 'next/navigation'
-import { logout } from '@/lib/actions/auth'
 import { User } from '@supabase/supabase-js'
 import { LogoutButton } from '@/components/logout-button'
-import Link from 'next/link'
-import { ChartBarIcon, ChatBubbleLeftRightIcon, UserGroupIcon, CurrencyDollarIcon, ArrowTrendingUpIcon } from '@heroicons/react/24/outline'
 
 interface DashboardClientProps {
   user: User
   profile: any
-  isAdmin?: boolean
   friendRequestCount?: number
   holdings?: any[]
   news?: any[]
@@ -34,7 +25,6 @@ interface DashboardClientProps {
 export function DashboardClient({ 
   user, 
   profile, 
-  isAdmin = false,
   friendRequestCount = 0,
   holdings = [],
   news = [],
@@ -83,37 +73,11 @@ export function DashboardClient({
       icon: <MessageSquare className="h-6 w-6" />,
       description: '친구들과 대화를 나누세요',
       href: '/dashboard/chat'
-    },
-    ...(isAdmin ? [
-      {
-        title: '관리자 페이지',
-        value: '관리자 전용',
-        icon: <Settings className="h-6 w-6" />,
-        description: '관리자 기능을 사용하세요',
-        href: '/admin/guides'
-      },
-    ] : [])
+    }
   ]
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="fixed top-4 left-4 z-50">
-        <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.3 }}
-        >
-          <Button
-            type="button"
-            onClick={() => router.push('/main')}
-            variant="ghost"
-            className="relative bg-zinc-900/60 backdrop-blur-sm border border-zinc-800/50 hover:bg-zinc-800/70 flex items-center gap-2"
-          >
-            <ArrowLeft className="h-[1.2rem] w-[1.2rem] text-zinc-200" />
-            <span className="text-zinc-200">메인으로</span>
-          </Button>
-        </motion.div>
-      </div>
       <div className="fixed top-4 right-4 z-50">
         <LogoutButton />
       </div>

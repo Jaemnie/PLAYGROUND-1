@@ -17,7 +17,6 @@ export default async function DashboardPage() {
     // 모든 쿼리를 병렬로 실행하여 성능 최적화
     const [
       profileResult,
-      adminResult,
       friendResult,
       holdingsResult,
       newsResult,
@@ -28,12 +27,6 @@ export default async function DashboardPage() {
         .from('profiles')
         .select('*')
         .eq('id', user.id)
-        .single(),
-      // 관리자 권한 확인
-      supabase
-        .from('admin_users')
-        .select('*')
-        .eq('user_id', user.id)
         .single(),
       // 친구 요청 수 조회
       supabase
@@ -71,7 +64,6 @@ export default async function DashboardPage() {
     ])
 
     const profile = profileResult.data
-    const isAdmin = !!adminResult.data
     const friendRequestCount = friendResult.count
     const holdings = holdingsResult.data
     const news = newsResult.data
@@ -82,7 +74,6 @@ export default async function DashboardPage() {
         <DashboardClient 
           user={user}
           profile={profile}
-          isAdmin={isAdmin}
           friendRequestCount={friendRequestCount || 0}
           holdings={holdings || []}
           news={news || []}

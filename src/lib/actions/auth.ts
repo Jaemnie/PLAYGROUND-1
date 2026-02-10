@@ -19,7 +19,7 @@ export async function login(formData: FormData) {
   }
 
   revalidatePath('/', 'layout')
-  return redirect('/main')
+  return redirect('/dashboard')
 }
 
 export async function signup(formData: FormData) {
@@ -52,26 +52,3 @@ export async function logout() {
   revalidatePath('/', 'layout')
   return redirect('/login')
 } 
-
-export async function adminguide() {
-  const supabase = await createClient()
-  
-  const { data: { user }, error: userError } = await supabase.auth.getUser()
-  
-  if (userError || !user) {
-    return redirect('/login')
-  }
-  
-  const { data: adminUser, error: adminError } = await supabase
-    .from('admin_users')
-    .select()
-    .eq('user_id', user.id)
-    .single()
-  
-  if (adminError || !adminUser) {
-    return redirect('/main')
-  }
-
-  revalidatePath('/', 'layout')
-  return redirect('/admin/guides')
-}
