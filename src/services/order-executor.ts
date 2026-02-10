@@ -1,5 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { SupabaseClient } from '@supabase/supabase-js'
+import { AchievementChecker } from '@/services/achievement-checker'
+import { MissionChecker } from '@/services/mission-checker'
 
 interface PendingOrder {
   id: string
@@ -124,6 +126,18 @@ export class OrderExecutor {
     try {
       const totalAmount = executionPrice * order.shares
 
+      // 매도 시 수익 여부 확인 (트랜잭션 INSERT 전)
+      let isProfitSell = false
+      if (order.order_type === 'sell') {
+        const { data: holding } = await this.supabase
+          .from('holdings')
+          .select('average_cost')
+          .eq('user_id', order.user_id)
+          .eq('company_id', order.company_id)
+          .maybeSingle()
+        isProfitSell = !!(holding?.average_cost && executionPrice > holding.average_cost)
+      }
+
       // 1. 트랜잭션 기록
       const { error: txError } = await this.supabase
         .from('transactions')
@@ -173,6 +187,15 @@ export class OrderExecutor {
         })
         .eq('id', order.id)
 
+      // 5. 업적·미션 진행도 갱신
+      await this.notifyTradeComplete(
+        order.user_id,
+        order.order_type as 'buy' | 'sell',
+        totalAmount,
+        executionPrice,
+        isProfitSell
+      )
+
       console.log(`[OrderExecutor] 주문 체결: ${order.id} (${order.order_type} ${order.shares}주 @ ${executionPrice})`)
 
     } catch (error) {
@@ -217,6 +240,31 @@ export class OrderExecutor {
    * 매수: 포인트 환불
    * 매도: 주식 환원
    */
+  /** 조건 주문 체결 후 업적·미션 진행도 갱신 */
+  private async notifyTradeComplete(
+    userId: string,
+    orderType: 'buy' | 'sell',
+    totalAmount: number,
+    executionPrice: number,
+    isProfitSell: boolean
+  ) {
+    try {
+      const achievementChecker = new AchievementChecker()
+      await achievementChecker.checkAchievements(userId)
+
+      const missionChecker = new MissionChecker()
+      await missionChecker.updateMissionProgress(userId, 'trade', 1, totalAmount)
+      if (orderType === 'buy') {
+        await missionChecker.updateMissionProgress(userId, 'buy', 1)
+      }
+      if (orderType === 'sell' && isProfitSell) {
+        await missionChecker.updateMissionProgress(userId, 'profit_sell', 1)
+      }
+    } catch (err) {
+      console.error('[OrderExecutor] 업적/미션 갱신 실패:', err)
+    }
+  }
+
   async refundEscrow(order: PendingOrder) {
     if (!this.supabase) await this.initialize()
 

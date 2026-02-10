@@ -5,6 +5,7 @@ import { CardHeader, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { createClientBrowser } from '@/lib/supabase/client'
+import { notifyTradeComplete } from '@/lib/notify-trade'
 import { toast } from 'sonner'
 
 interface User {
@@ -22,6 +23,7 @@ interface Company {
 
 interface Holding {
   shares: number;
+  average_cost?: number;
 }
 
 interface TradingFormProps {
@@ -134,6 +136,13 @@ export function TradingForm({
         })
       
       if (transactionError) throw transactionError
+      
+      // 업적·미션 진행도 갱신 (DB 트리거로 user_stats 반영 후)
+      const isProfitSell =
+        type === 'sell' &&
+        holding?.average_cost != null &&
+        company.current_price > holding.average_cost
+      await notifyTradeComplete(type, totalAmount, isProfitSell)
       
       onTradeComplete(type)
       setShares('')

@@ -136,8 +136,9 @@ export class MissionChecker {
 
   /**
    * 미션 진행도 갱신 (거래 후 호출)
+   * @param tradeAmount - 거래 금액 (weekly_volume 미션용, 선택)
    */
-  async updateMissionProgress(userId: string, eventType: string, value: number = 1) {
+  async updateMissionProgress(userId: string, eventType: string, value: number = 1, tradeAmount?: number) {
     await this.ensureInitialized()
 
     // 활성 미션 조회
@@ -160,7 +161,12 @@ export class MissionChecker {
       const matches = this.doesEventMatch(condType, eventType)
       if (!matches) continue
 
-      const newProgress = Math.min(mission.progress + value, mission.max_progress)
+      // weekly_volume은 거래 금액만큼 진행도에 반영
+      const progressDelta = condType === 'weekly_volume' && tradeAmount != null
+        ? Math.min(tradeAmount, mission.max_progress - mission.progress)
+        : value
+
+      const newProgress = Math.min(mission.progress + progressDelta, mission.max_progress)
       const isCompleted = newProgress >= mission.max_progress
 
       await this.supabase

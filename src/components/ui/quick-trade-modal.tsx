@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { Button } from './button'
 import { Input } from './input'
 import { createClientBrowser } from '@/lib/supabase/client'
+import { notifyTradeComplete } from '@/lib/notify-trade'
 import { toast } from 'sonner'
 import { TradeAlert } from './trade-alert'
 import { X } from 'lucide-react'
@@ -171,6 +172,13 @@ export function QuickTradeModal({
         })
 
       if (transactionError) throw transactionError
+
+      // 업적·미션 진행도 갱신
+      const isProfitSell =
+        type === 'sell' &&
+        holding?.average_cost != null &&
+        company.current_price > holding.average_cost
+      await notifyTradeComplete(type, totalAmount, isProfitSell)
 
       onTradeComplete(type)
       setShowAlert(true)
