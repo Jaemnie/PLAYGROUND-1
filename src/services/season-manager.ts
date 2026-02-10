@@ -256,6 +256,19 @@ export class SeasonManager {
       }
     }
 
+    // 모든 기존 유저 자동 참여
+    const { data: allProfiles } = await this.supabase.from('profiles').select('id')
+    if (allProfiles && allProfiles.length > 0) {
+      const initialPoints = Number(newSeason.initial_points) || 10000000
+      const rows = allProfiles.map((p) => ({
+        season_id: newSeason.id,
+        user_id: p.id,
+        season_points: initialPoints,
+      }))
+      const { error } = await this.supabase.from('season_participants').insert(rows)
+      if (!error) console.log(`[SeasonManager] ${allProfiles.length}명 자동 참여 등록`)
+    }
+
     console.log(`[SeasonManager] 시즌 ${nextNumber} 시작: ${theme.name} (${startsAt.toISOString()} ~ ${endsAt.toISOString()})`)
   }
 

@@ -3,7 +3,6 @@
 import { motion } from 'framer-motion'
 import {
   BarChart3,
-  Trophy,
   Users2,
   UserCircle,
   MessageSquare,
@@ -94,27 +93,6 @@ export function DashboardClient({
               </div>
             </motion.div>
 
-            {/* 리더보드 - 1x1 */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              onClick={() => router.push('/dashboard/stock/leaderboard')}
-              className="cursor-pointer group"
-            >
-              <div className="h-full rounded-2xl border border-gray-800/50 bg-black/40 backdrop-blur-sm p-6 transition-all duration-300 group-hover:border-gray-700/60 group-hover:bg-black/60 group-hover:scale-[1.02]">
-                <div className="flex flex-col justify-between h-full">
-                  <div className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                    <Trophy className="h-5 w-5 text-amber-400" />
-                  </div>
-                  <div className="mt-4">
-                    <h3 className="text-lg font-semibold text-gray-100">리더보드</h3>
-                    <p className="text-xs text-gray-500 mt-1">랭킹 및 업적을 확인하세요</p>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-
             {/* 내 프로필 - 1x1 */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -164,11 +142,11 @@ export function DashboardClient({
               </div>
             </motion.div>
 
-            {/* 시즌 - 1x1 */}
+            {/* 시즌 & 랭킹 - 1x1 */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.12 }}
+              transition={{ delay: 0.1 }}
               onClick={() => router.push('/dashboard/season')}
               className="cursor-pointer group"
             >
@@ -178,8 +156,8 @@ export function DashboardClient({
                     <Swords className="h-5 w-5 text-cyan-400" />
                   </div>
                   <div className="mt-4">
-                    <h3 className="text-lg font-semibold text-gray-100">시즌</h3>
-                    <p className="text-xs text-gray-500 mt-1">시즌 경쟁에 참여하세요</p>
+                    <h3 className="text-lg font-semibold text-gray-100">시즌 & 랭킹</h3>
+                    <p className="text-xs text-gray-500 mt-1">시즌 경쟁, 랭킹, 배틀패스</p>
                   </div>
                 </div>
               </div>
