@@ -1,7 +1,9 @@
 'use client'
 
 import { Card } from '@/components/ui/card'
-import StockBackButton from '@/components/StockBackButton'
+import { Button } from '@/components/ui/button'
+import { ArrowLeftIcon } from '@heroicons/react/24/outline'
+import { useRouter } from 'next/navigation'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { motion } from 'framer-motion'
 
@@ -18,6 +20,8 @@ interface LeaderboardClientProps {
 }
 
 export function LeaderboardClient({ users }: LeaderboardClientProps) {
+  const router = useRouter()
+
   // 숫자를 정수로 변환하여 표시하는 함수
   const formatNumber = (num: number) => {
     return Math.round(num).toLocaleString()
@@ -26,7 +30,20 @@ export function LeaderboardClient({ users }: LeaderboardClientProps) {
   return (
     <div className="min-h-screen bg-background">
       <div className="fixed top-4 left-4 z-50">
-        <StockBackButton />
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <Button
+            type="button"
+            className="relative bg-zinc-900/60 backdrop-blur-sm border border-zinc-800/50 hover:bg-zinc-800/70 flex items-center gap-2"
+            onClick={() => router.push('/dashboard')}
+          >
+            <ArrowLeftIcon className="h-[1.2rem] w-[1.2rem] text-zinc-200" />
+            <span className="text-zinc-200">대시보드</span>
+          </Button>
+        </motion.div>
       </div>
 
       {/* 컴팩트 헤더 */}
