@@ -7,6 +7,7 @@ import dynamic from 'next/dynamic'
 import { QuickTradeModal } from '@/components/ui/quick-trade-modal'
 import HoldingsTable from './components/holdings-table'
 import TransactionHistory from './components/transaction-history'
+import PendingOrders from './components/pending-orders'
 import { useRealtimeStockData } from '@/hooks/useRealtimeStockData'
 import { createClientBrowser } from '@/lib/supabase/client'
 
@@ -158,6 +159,12 @@ export function PortfolioClient({ user, portfolio: initialPortfolio, transaction
                   setShowTradeModal(true)
                 }}
               />
+            </Card>
+          </div>
+
+          <div className="mt-4">
+            <Card className="rounded-2xl bg-black/40 backdrop-blur-sm border border-gray-800/50">
+              <PendingOrders userId={user.id} onOrderChange={refreshData} />
             </Card>
           </div>
 

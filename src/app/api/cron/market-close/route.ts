@@ -2,6 +2,7 @@ import { Receiver } from '@upstash/qstash'
 import { NextResponse } from 'next/server'
 import { MarketScheduler } from '@/services/market-scheduler'
 import { MarketQueue } from '@/services/market-queue'
+import { OrderExecutor } from '@/services/order-executor'
 
 const receiver = new Receiver({
   currentSigningKey: process.env.QSTASH_CURRENT_SIGNING_KEY!,
@@ -37,6 +38,16 @@ export async function POST(req: Request) {
       execute: async () => {
         console.log('[market-close] 장 마감 처리 실행')
         await scheduler.setClosingPrices()
+        
+        // 만료된 조건 주문 정리 + 에스크로 환불
+        try {
+          const orderExecutor = new OrderExecutor()
+          await orderExecutor.expireOrders()
+          console.log('[market-close] 만료 조건 주문 정리 완료')
+        } catch (orderError) {
+          console.error('[market-close] 만료 주문 처리 중 오류:', orderError)
+        }
+        
         console.log('[market-close] 장 마감 처리 완료')
       }
     })

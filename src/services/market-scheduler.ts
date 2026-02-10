@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { PortfolioTracker } from '@/services/portfolio-tracker'
+import { OrderExecutor } from '@/services/order-executor'
 import type { PostgrestResponse, PostgrestSingleResponse } from '@supabase/supabase-js'
 import { getDbTimeXMinutesAgo } from '@/lib/timeUtils'
 import { SupabaseClient } from '@supabase/supabase-js'
@@ -575,7 +576,20 @@ export class MarketScheduler {
 
       console.log('시장 업데이트 완료');
 
-      // 6. 포트폴리오 성과 기록
+      // 6. 조건 주문 (예약 매수/매도) 체결 처리
+      try {
+        const updatedCompanies = updates.filter(Boolean).map((u) => ({
+          id: u!.company_id,
+          current_price: u!.new_price,
+        }));
+        const orderExecutor = new OrderExecutor();
+        await orderExecutor.processOrders(updatedCompanies);
+        console.log('조건 주문 처리 완료');
+      } catch (orderError) {
+        console.error('조건 주문 처리 중 오류 (무시):', orderError);
+      }
+
+      // 7. 포트폴리오 성과 기록
       const { data: users } = await this.supabase.from('profiles').select('id');
       if (users && users.length > 0) {
         const portfolioTracker = new PortfolioTracker();
