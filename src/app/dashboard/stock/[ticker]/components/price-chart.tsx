@@ -168,19 +168,19 @@ export function PriceChart({ company, timeframe = '5M', onTimeframeChange }: Pri
         const raw = data.candleData as CandleDataPoint[]
 
         if (isLineMode(timeframe)) {
-          // 라인 차트: close 값만 사용
+          // 라인 차트: close 값만 사용 (time은 UTC Unix timestamp 그대로 유지, 포맷터에서 KST 변환)
           const lineData = raw
             .map(d => ({
-              time: (d.time + KST_OFFSET_SEC) as number,
+              time: d.time as number,
               value: d.close,
             }))
             .sort((a, b) => a.time - b.time)
           seriesRef.current.setData(lineData as any)
         } else {
-          // 캔들스틱 차트
+          // 캔들스틱 차트 (time은 UTC Unix timestamp 그대로 유지, 포맷터에서 KST 변환)
           const candleData = raw
             .map(d => ({
-              time: (d.time + KST_OFFSET_SEC) as number,
+              time: d.time as number,
               open: d.open,
               high: d.high,
               low: d.low,
