@@ -21,15 +21,15 @@ export function TradeAlert({ isOpen, type, onClose }: TradeAlertProps) {
             className="fixed inset-0 bg-black/70 z-[100]"
             onClick={onClose}
           />
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            transition={{ type: "spring", duration: 0.5 }}
-            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 
-                       bg-gray-900 rounded-2xl p-8 shadow-2xl z-[101] w-[90%] max-w-[360px]
-                       border border-gray-800"
-          >
+          <div className="fixed inset-0 z-[101] flex items-center justify-center pointer-events-none">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ type: "spring", duration: 0.5 }}
+              className="bg-gray-900 rounded-2xl p-8 shadow-2xl w-[90%] max-w-[360px]
+                         border border-gray-800 pointer-events-auto"
+            >
             <div className="flex flex-col items-center gap-5">
               <motion.div
                 initial={{ scale: 0 }}
@@ -61,7 +61,8 @@ export function TradeAlert({ isOpen, type, onClose }: TradeAlertProps) {
                 </p>
               </motion.div>
             </div>
-          </motion.div>
+            </motion.div>
+          </div>
         </div>
       )}
     </AnimatePresence>
