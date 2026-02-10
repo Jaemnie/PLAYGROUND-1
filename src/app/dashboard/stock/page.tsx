@@ -20,10 +20,10 @@ export default async function StockDashboardPage() {
       name: user.user_metadata?.full_name || user.email || ''
     }
 
-    // 현재 활성 시즌 (테마별 기업/뉴스 필터링용)
+    // 현재 활성 시즌 (테마별 기업/뉴스 필터링용 + UI 표시용)
     const { data: activeSeason } = await supabase
       .from('seasons')
-      .select('theme_id')
+      .select('season_number, ends_at, theme_id, theme:season_themes(name, theme_code)')
       .eq('status', 'active')
       .single()
 
@@ -91,6 +91,7 @@ export default async function StockDashboardPage() {
           initialNews={newsResult.data || []}
           points={profileResult.data?.points || 0}
           themeCompanyIds={themeCompanyIds}
+          activeSeason={activeSeason ? { season_number: activeSeason.season_number, ends_at: activeSeason.ends_at, theme: activeSeason.theme } : null}
         />
       </Suspense>
     )

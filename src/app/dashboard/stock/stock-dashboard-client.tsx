@@ -49,6 +49,12 @@ interface News {
   related_company_id?: string;
 }
 
+interface ActiveSeason {
+  season_number: number;
+  ends_at: string | null;
+  theme: { name: string; theme_code?: string } | null;
+}
+
 interface StockDashboardClientProps {
   user: User;
   initialPortfolio: PortfolioItem[];
@@ -56,6 +62,7 @@ interface StockDashboardClientProps {
   initialNews: News[];
   points: number;
   themeCompanyIds?: string[];
+  activeSeason?: ActiveSeason | null;
 }
 
 export function StockDashboardClient({
@@ -63,7 +70,8 @@ export function StockDashboardClient({
   initialCompanies,
   initialNews,
   points,
-  themeCompanyIds = []
+  themeCompanyIds = [],
+  activeSeason = null
 }: StockDashboardClientProps) {
   const [companies, setCompanies] = useState(initialCompanies)
   const [portfolio, setPortfolio] = useState(initialPortfolio)
@@ -109,6 +117,17 @@ export function StockDashboardClient({
           <h1 className="text-2xl font-bold text-gray-100">
             주식 시뮬레이션
           </h1>
+          {activeSeason && (
+            <p className="mt-2 text-sm text-gray-400">
+              시즌 {activeSeason.season_number}
+              {activeSeason.theme?.name && (
+                <span className="text-gray-500"> · {activeSeason.theme.name}</span>
+              )}
+              {activeSeason.ends_at && (
+                <span className="text-gray-500"> · 종료 {new Date(activeSeason.ends_at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+              )}
+            </p>
+          )}
         </div>
       </section>
 
