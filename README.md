@@ -1,132 +1,424 @@
+<div align="center">
+
 # STACKS 📈
 
+### 가상 주식 시뮬레이션 게임 플랫폼
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Next.js](https://img.shields.io/badge/Next.js-15-black?logo=next.js)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript)](https://www.typescriptlang.org/)
+[![Supabase](https://img.shields.io/badge/Supabase-Powered-3ECF8E?logo=supabase)](https://supabase.com/)
 
-> **STACKS**는 주식 시뮬레이션에 특화된 웹 기반 게임 플랫폼입니다.  
-> 가상의 주식 시장에서 투자 감각을 시험하고, 다른 사용자들과 실시간으로 경쟁하세요.
+**실시간 가격 변동 · 조건부 주문 · 포트폴리오 분석 · 리더보드 · 실시간 채팅**
 
----
+[데모 보기](#데모) · [시작하기](#-빠른-시작) · [기여하기](#-기여-가이드) · [이슈 제보](https://github.com/Jaemnie/PLAYGROUND-1/issues)
 
-## 🚀 소개
-
-**STACKS**는 실제 주식 거래를 모방한 시뮬레이션 게임으로,  
-가상 자금을 활용해 포트폴리오를 구성하고, 시장 변동에 대응하며 투자 역량을 키울 수 있는  
-주식 시뮬레이션 플랫폼입니다.  
-**STACKS에서 당신만의 투자 전략을 세워보세요.**
+</div>
 
 ---
 
-## 주요 기능
+## 📋 목차
 
-### 📈 주식 시뮬레이션
-- **실시간 주가 모니터링**: 글로벌 주식시장을 실시간으로 확인
-- **포트폴리오 관리 및 성과 분석**: 투자 성과를 직관적으로 분석
-- **실시간 뉴스 피드**: 시장 변동에 영향을 주는 최신 뉴스 제공
-- **투자 성과 트래킹**: 당신의 투자 여정을 체계적으로 기록
-
-### 🎯 대시보드 시스템
-- **개인화 대시보드**: 사용자 맞춤형 인터페이스로 중요한 정보를 한눈에
-- **포인트 시스템**: 주식 시뮬레이션을 통해 포인트 획득
-- **친구 관리**: 친구들과 실시간으로 소통하며 경쟁
-- **리더보드**: 전체 사용자 랭킹 확인
-
-### 📚 가이드 시스템
-- **섹션별 구조화된 가이드**: 초보자도 쉽게 따라할 수 있는 단계별 가이드
-- **마크다운 기반 콘텐츠**: 누구나 이해하기 쉬운 문서화
-- **실시간 업데이트**: 최신 정보를 항상 제공
+- [소개](#-소개)
+- [주요 기능](#-주요-기능)
+- [기술 스택](#-기술-스택)
+- [시스템 아키텍처](#-시스템-아키텍처)
+- [빠른 시작](#-빠른-시작)
+- [환경 변수 설정](#-환경-변수-설정)
+- [프로젝트 구조](#-프로젝트-구조)
+- [데이터베이스 스키마](#-데이터베이스-스키마)
+- [API 라우트](#-api-라우트)
+- [기여 가이드](#-기여-가이드)
+- [라이선스](#-라이선스)
 
 ---
 
-## 스크린샷
+## 🎯 소개
 
-> **스크린샷**: 서비스 런칭 시, 당신의 눈을 사로잡을 최신 인터페이스를 만나보세요!  
-> *(현재 준비 중)*
+**STACKS**는 실제 주식 거래를 모방한 웹 기반 시뮬레이션 게임 플랫폼입니다.
+
+가상 포인트를 활용해 주식을 매수/매도하고, 자체 개발한 마켓 스케줄러가 실시간으로 가격을 변동시킵니다. 뉴스 이벤트, 섹터 트렌드, 시장 상태(Market Phase) 등이 복합적으로 가격에 영향을 미치며, 사용자는 이를 분석하여 자신만의 투자 전략을 세울 수 있습니다.
+
+### 이런 분들에게 추천합니다
+
+- 주식 투자를 시작하기 전에 **시뮬레이션으로 연습**하고 싶은 분
+- **실시간 데이터 처리**와 **금융 시스템 설계**에 관심 있는 개발자
+- Next.js + Supabase 기반의 **풀스택 프로젝트 레퍼런스**를 찾는 분
 
 ---
 
-## 기술 스택
+## ✨ 주요 기능
 
-![Next.js](https://img.shields.io/badge/Next.js-000000?style=for-the-badge&logo=next.js&logoColor=white)
+### 📈 주식 시뮬레이션 엔진
+
+| 기능 | 설명 |
+|------|------|
+| **실시간 가격 변동** | 자체 Market Scheduler가 뉴스, 섹터 트렌드, 시장 이벤트를 기반으로 주가를 실시간 갱신 |
+| **조건부 주문** | 지정가 매수(price_below), 지정가 매도(price_above), 수익률 매도(profit_rate) 지원 |
+| **에스크로 시스템** | 미체결 주문의 포인트/주식을 에스크로로 관리하여 안전한 거래 보장 |
+| **시장 개장/폐장** | Cron 기반 시장 스케줄 관리 (개장가/종가 설정, 미체결 주문 자동 만료) |
+
+### 📊 포트폴리오 & 분석
+
+| 기능 | 설명 |
+|------|------|
+| **보유 종목 관리** | 보유 주식, 평균 단가, 수익률 실시간 조회 |
+| **포트폴리오 성과 추적** | 총 자산, 수익률, 포트폴리오 가치 변동 히스토리 기록 |
+| **섹터 분산 분석** | 업종별 포트폴리오 비중 시각화 |
+| **거래 내역** | 전체 매수/매도 기록 조회 |
+
+### 🏆 소셜 & 경쟁
+
+| 기능 | 설명 |
+|------|------|
+| **리더보드** | 전체 사용자 수익률/자산 랭킹 |
+| **친구 시스템** | 친구 추가, 요청 수락/거절, 실시간 알림 |
+| **실시간 채팅** | 채팅방 생성 및 실시간 메시지 (Supabase Realtime) |
+
+### 📰 뉴스 & 정보
+
+| 기능 | 설명 |
+|------|------|
+| **자동 뉴스 생성** | Market Scheduler가 시장 상황에 맞는 뉴스를 자동 생성 |
+| **뉴스 임팩트** | 긍정/부정/중립 뉴스가 관련 종목 가격에 실제 영향 |
+| **실시간 뉴스 피드** | 새 뉴스 발생 시 실시간 알림 |
+
+---
+
+## 🛠 기술 스택
+
+### Frontend
+
+![Next.js](https://img.shields.io/badge/Next.js_15-000000?style=for-the-badge&logo=next.js&logoColor=white)
+![React](https://img.shields.io/badge/React_19-61DAFB?style=for-the-badge&logo=react&logoColor=black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)
+
+| 라이브러리 | 용도 |
+|-------------|------|
+| [Zustand](https://zustand-demo.pmnd.rs/) | 클라이언트 상태 관리 (주가 스토어) |
+| [Framer Motion](https://www.framer.com/motion/) | UI 애니메이션 |
+| [Recharts](https://recharts.org/) / [ApexCharts](https://apexcharts.com/) | 차트 시각화 |
+| [Lightweight Charts](https://tradingview.github.io/lightweight-charts/) | 캔들스틱 차트 |
+| [shadcn/ui](https://ui.shadcn.com/) | UI 컴포넌트 |
+| [Lucide React](https://lucide.dev/) | 아이콘 |
+
+### Backend & Infrastructure
+
 ![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)
-![Redis](https://img.shields.io/badge/Redis-DC382D?style=for-the-badge&logo=redis&logoColor=white)
+![Redis](https://img.shields.io/badge/Upstash_Redis-DC382D?style=for-the-badge&logo=redis&logoColor=white)
+![Vercel](https://img.shields.io/badge/Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)
+
+| 서비스 | 용도 |
+|---------|------|
+| [Supabase Auth](https://supabase.com/docs/guides/auth) | 사용자 인증 (SSR) |
+| [Supabase PostgreSQL](https://supabase.com/docs/guides/database) | 데이터베이스 |
+| [Supabase Realtime](https://supabase.com/docs/guides/realtime) | 실시간 구독 (가격, 뉴스, 채팅, 친구) |
+| [Upstash Redis](https://upstash.com/) | 세션 캐싱 |
+| [Upstash QStash](https://upstash.com/docs/qstash) | Cron 스케줄링 (시장 개장/갱신/폐장) |
 
 ---
 
-## 시스템 아키텍처
+## 🏗 시스템 아키텍처
 
-- **인증 시스템**: [Supabase Auth](https://supabase.com/docs/guides/auth)
-- **데이터베이스**: [Supabase PostgreSQL](https://supabase.com/docs/guides/database)
-- **실시간 처리**: [Supabase Realtime](https://supabase.com/docs/guides/realtime)
-- **스케줄러**: 자체 개발 마켓 스케줄러
-- **캐싱 레이어**: [Redis (Upstash)](https://upstash.com/)
-
----
-
-## 시작하기
-
-### 1️⃣ 저장소 클론
-```bash
-git clone [repository-url]
+```
+┌─────────────────────────────────────────────────────────┐
+│                      Client (Browser)                    │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌─────────┐ │
+│  │ Stock UI │  │Portfolio │  │  Chat UI │  │ Friends │ │
+│  └────┬─────┘  └────┬─────┘  └────┬─────┘  └────┬────┘ │
+│       │              │              │              │      │
+│  ┌────┴──────────────┴──────────────┴──────────────┴───┐ │
+│  │              Zustand Store + React Hooks             │ │
+│  │     (useRealtimeStockData, useRealtimeChat, ...)    │ │
+│  └─────────────────────┬───────────────────────────────┘ │
+└────────────────────────┼─────────────────────────────────┘
+                         │
+              ┌──────────┴──────────┐
+              │   Next.js API Routes │
+              │   (App Router)       │
+              └──────────┬──────────┘
+                         │
+        ┌────────────────┼────────────────┐
+        │                │                │
+  ┌─────┴──────┐  ┌─────┴──────┐  ┌─────┴──────┐
+  │  Supabase  │  │   Upstash  │  │   QStash   │
+  │  (DB/Auth/ │  │   Redis    │  │   (Cron)   │
+  │  Realtime) │  │  (Cache)   │  │            │
+  └────────────┘  └────────────┘  └────────────┘
+                                        │
+                              ┌─────────┴─────────┐
+                              │  Market Scheduler  │
+                              │  ┌───────────────┐ │
+                              │  │ Price Engine   │ │
+                              │  │ News Generator │ │
+                              │  │ Order Executor │ │
+                              │  │ Portfolio Track│ │
+                              │  └───────────────┘ │
+                              └────────────────────┘
 ```
 
-### 2️⃣ 의존성 설치
+---
+
+## 🚀 빠른 시작
+
+### 사전 요구사항
+
+- **Node.js** 18.17 이상
+- **npm** 또는 **yarn** 또는 **pnpm**
+- **Supabase** 프로젝트 ([무료 생성](https://supabase.com/dashboard))
+- **Upstash** 계정 ([무료 생성](https://console.upstash.com/)) — Redis + QStash
+
+### 1단계: 저장소 클론
+
+```bash
+git clone https://github.com/Jaemnie/PLAYGROUND-1.git
+cd PLAYGROUND-1
+```
+
+### 2단계: 의존성 설치
+
 ```bash
 npm install
 ```
 
-### 3️⃣ 환경 변수 설정
+### 3단계: 환경 변수 설정
+
 ```bash
 cp .env.example .env.local
 ```
 
-### 4️⃣ 개발 서버 실행
+`.env.local` 파일을 열고 각 서비스의 키를 입력합니다. 자세한 내용은 [환경 변수 설정](#-환경-변수-설정) 섹션을 참고하세요.
+
+### 4단계: Supabase 데이터베이스 설정
+
+Supabase 대시보드에서 필요한 테이블을 생성합니다. [데이터베이스 스키마](#-데이터베이스-스키마) 섹션을 참고하세요.
+
+### 5단계: 개발 서버 실행
+
 ```bash
 npm run dev
 ```
 
-브라우저에서 [http://localhost:3000](http://localhost:3000)를 열어 결과를 확인하세요.
-
-## 환경 변수 설정
-```
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-NEXT_PUBLIC_APP_URL=your_app_url
-```
-
-## 코드 구조
-
-```
-📦src
- ┣ 📂app
- ┃ ┣ 📂dashboard
- ┃ ┗ 📂api
- ┣ 📂components
- ┣ 📂lib
- ┣ 📂services
- ┣ 📂hooks
- ┗ 📂types
-```
-
-## 기여 방법
-
-1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the Branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-## 라이선스
-
-이 프로젝트는 MIT 라이선스 하에 있습니다. 자세한 내용은 [LICENSE](LICENSE) 파일을 참고하세요.
-
-## 연락처
-
-프로젝트 관리자 - [ZENMA](https://github.com/Jaemnie)
+브라우저에서 [http://localhost:3000](http://localhost:3000)을 열어 확인하세요.
 
 ---
 
-## 문의
+## 🔑 환경 변수 설정
 
-질문이나 문의 사항이 있으면, [issues](https://github.com/yourusername/stacks/issues) 섹션에 남겨주세요.
+프로젝트 루트의 `.env.example`을 `.env.local`로 복사한 후 아래 값들을 입력합니다.
+
+| 변수 | 필수 | 설명 | 발급처 |
+|------|:----:|------|--------|
+| `NEXT_PUBLIC_SUPABASE_URL` | ✅ | Supabase 프로젝트 URL | [Supabase Dashboard](https://supabase.com/dashboard) → Settings → API |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | ✅ | Supabase 공개 키 (anon key) | 동일 |
+| `SUPABASE_SERVICE_ROLE_KEY` | ✅ | Supabase 서비스 롤 키 (서버 전용) | 동일 |
+| `NEXT_PUBLIC_APP_URL` | ✅ | 앱 URL (로컬: `http://localhost:3000`) | 직접 설정 |
+| `UPSTASH_REDIS_HOST` | ⬜ | Upstash Redis 호스트 | [Upstash Console](https://console.upstash.com/) |
+| `UPSTASH_REDIS_PASSWORD` | ⬜ | Upstash Redis 비밀번호 | 동일 |
+| `QSTASH_CURRENT_SIGNING_KEY` | ⬜ | QStash 현재 서명 키 | [Upstash QStash](https://console.upstash.com/qstash) |
+| `QSTASH_NEXT_SIGNING_KEY` | ⬜ | QStash 다음 서명 키 | 동일 |
+
+> **참고**: Upstash 관련 변수가 없어도 앱은 동작하지만, 세션 캐싱과 Cron 기반 시장 스케줄링 기능이 비활성화됩니다.
+
+---
+
+## 📁 프로젝트 구조
+
+```
+📦 PLAYGROUND-1
+├── 📂 src
+│   ├── 📂 app                    # Next.js App Router
+│   │   ├── 📂 api                # API 라우트
+│   │   │   ├── 📂 auth           # 인증 (로그인/로그아웃/회원가입)
+│   │   │   ├── 📂 cron           # Cron 작업 (시장 개장/갱신/폐장/세션정리)
+│   │   │   ├── 📂 stock          # 주식 관련 API (주문, 포트폴리오, 가격 등)
+│   │   │   └── ...
+│   │   ├── 📂 dashboard          # 대시보드 페이지
+│   │   │   ├── 📂 stock          # 주식 시뮬레이션 (종목 목록, 상세, 포트폴리오, 리더보드)
+│   │   │   ├── 📂 chat           # 실시간 채팅
+│   │   │   ├── 📂 friends        # 친구 관리
+│   │   │   └── 📂 profile        # 프로필
+│   │   ├── 📂 login              # 로그인 페이지
+│   │   ├── 📂 signup             # 회원가입 페이지
+│   │   └── 📂 changelog          # 변경 이력
+│   ├── 📂 components             # 재사용 UI 컴포넌트
+│   │   └── 📂 ui                 # shadcn/ui 기반 컴포넌트
+│   ├── 📂 hooks                  # 커스텀 훅
+│   │   ├── useRealtimeStockData  # 실시간 주가 구독
+│   │   ├── useRealtimeChat       # 실시간 채팅
+│   │   ├── useRealtimeNews       # 실시간 뉴스 구독
+│   │   ├── useRealtimeFriends    # 실시간 친구 상태
+│   │   └── ...
+│   ├── 📂 lib                    # 유틸리티 & 설정
+│   │   ├── 📂 supabase           # Supabase 클라이언트 (browser/server/middleware/admin)
+│   │   ├── redis.ts              # Upstash Redis 클라이언트
+│   │   └── ...
+│   ├── 📂 services               # 비즈니스 로직
+│   │   ├── market-scheduler.ts   # 🔥 시장 시뮬레이션 엔진 (가격 변동, 뉴스 생성, 이벤트)
+│   │   ├── order-executor.ts     # 조건부 주문 체결 엔진
+│   │   ├── portfolio-tracker.ts  # 포트폴리오 성과 기록
+│   │   └── market-queue.ts       # 시장 작업 큐 (우선순위 기반)
+│   ├── 📂 stores                 # Zustand 상태 관리
+│   │   └── stockStore.ts         # 주가 스토어
+│   └── 📂 types                  # TypeScript 타입 정의
+├── .env.example                  # 환경 변수 템플릿
+├── next.config.ts                # Next.js 설정
+├── tailwind.config.ts            # Tailwind CSS 설정
+├── tsconfig.json                 # TypeScript 설정
+└── package.json
+```
+
+---
+
+## 🗄 데이터베이스 스키마
+
+STACKS는 Supabase (PostgreSQL)를 사용합니다. 주요 테이블 구조는 다음과 같습니다:
+
+### 핵심 테이블
+
+| 테이블 | 설명 |
+|--------|------|
+| `profiles` | 사용자 프로필 (닉네임, 포인트, 가입일) |
+| `companies` | 상장 기업 정보 (티커, 이름, 현재가, 시가총액, 업종 등) |
+| `holdings` | 사용자 보유 종목 (보유 수량, 평균 단가) |
+| `transactions` | 거래 내역 (매수/매도 기록) |
+| `pending_orders` | 미체결 조건부 주문 (에스크로 포함) |
+
+### 시장 시뮬레이션
+
+| 테이블 | 설명 |
+|--------|------|
+| `market_state` | 시장 상태 (개장/폐장, 섹터 트렌드) |
+| `market_events` | 시장 이벤트 (영향 업종, 임팩트) |
+| `news` | 자동 생성 뉴스 (긍정/부정/중립, 관련 기업) |
+| `news_templates` | 뉴스 생성 템플릿 |
+| `price_updates` | 가격 변동 히스토리 |
+
+### 소셜 & 분석
+
+| 테이블 | 설명 |
+|--------|------|
+| `portfolio_performance` | 포트폴리오 성과 스냅샷 |
+| `friends` | 친구 관계 (요청/수락 상태) |
+| `chat_rooms` | 채팅방 |
+| `chat_participants` | 채팅방 참여자 |
+| `messages` | 채팅 메시지 |
+
+> **참고**: 테이블 생성 SQL은 Supabase 대시보드의 SQL Editor에서 실행할 수 있습니다. 상세 마이그레이션 스크립트는 추후 제공 예정입니다.
+
+---
+
+## 🌐 API 라우트
+
+### 인증
+
+| 메서드 | 경로 | 설명 |
+|--------|------|------|
+| POST | `/api/auth/login` | 로그인 |
+| POST | `/api/auth/logout` | 로그아웃 |
+| POST | `/api/auth/signup` | 회원가입 |
+
+### 주식 거래
+
+| 메서드 | 경로 | 설명 |
+|--------|------|------|
+| GET | `/api/stock/prices` | 전체 종목 가격 조회 |
+| GET | `/api/stock/market/[ticker]` | 개별 종목 가격 조회 |
+| POST | `/api/stock/batch` | 다중 종목 가격 일괄 조회 |
+| GET/POST | `/api/stock/orders` | 주문 조회/생성 |
+| GET/DELETE | `/api/stock/pending-orders/[id]` | 미체결 주문 관리 |
+
+### 포트폴리오
+
+| 메서드 | 경로 | 설명 |
+|--------|------|------|
+| GET | `/api/stock/portfolio` | 보유 종목 조회 |
+| GET | `/api/stock/portfolio/performance` | 포트폴리오 성과 조회 |
+| GET | `/api/stock/portfolio/analysis` | 포트폴리오 분석 |
+| GET | `/api/stock/transactions` | 거래 내역 조회 |
+
+### 시장 데이터
+
+| 메서드 | 경로 | 설명 |
+|--------|------|------|
+| GET | `/api/stock/market-info` | 시장 상태 정보 |
+| GET | `/api/stock/price-history` | 가격 변동 히스토리 |
+| GET | `/api/stock/price-updates` | 최근 가격 갱신 |
+
+### Cron (내부용)
+
+| 경로 | 설명 |
+|------|------|
+| `/api/cron/market-open` | 시장 개장 처리 |
+| `/api/cron/market-update` | 시장 가격 갱신 |
+| `/api/cron/market-close` | 시장 폐장 처리 |
+| `/api/cron/cleanup-sessions` | 만료 세션 및 오래된 데이터 정리 |
+
+---
+
+## 🤝 기여 가이드
+
+STACKS에 기여해 주셔서 감사합니다! 모든 형태의 기여를 환영합니다.
+
+### 기여 방법
+
+1. **Fork** — 이 저장소를 Fork 합니다.
+2. **Branch** — 기능 브랜치를 생성합니다.
+   ```bash
+   git checkout -b feature/amazing-feature
+   ```
+3. **Commit** — 변경사항을 커밋합니다.
+   ```bash
+   git commit -m "feat: 새로운 기능 추가"
+   ```
+4. **Push** — 브랜치에 Push 합니다.
+   ```bash
+   git push origin feature/amazing-feature
+   ```
+5. **Pull Request** — PR을 생성합니다.
+
+### 커밋 컨벤션
+
+| 접두사 | 용도 |
+|--------|------|
+| `feat:` | 새로운 기능 |
+| `fix:` | 버그 수정 |
+| `docs:` | 문서 변경 |
+| `style:` | 코드 포맷팅 (기능 변경 없음) |
+| `refactor:` | 리팩토링 |
+| `test:` | 테스트 추가/수정 |
+| `chore:` | 빌드, 설정 등 기타 변경 |
+
+### 이슈 & 토론
+
+- 🐛 **버그 제보**: [이슈 생성](https://github.com/Jaemnie/PLAYGROUND-1/issues/new)
+- 💡 **기능 제안**: [이슈 생성](https://github.com/Jaemnie/PLAYGROUND-1/issues/new)
+- ❓ **질문**: [이슈 섹션](https://github.com/Jaemnie/PLAYGROUND-1/issues)에서 질문해 주세요.
+
+---
+
+## 📄 라이선스
+
+이 프로젝트는 [MIT License](LICENSE) 하에 배포됩니다.
+
+자유롭게 사용, 수정, 배포할 수 있습니다. 자세한 내용은 [LICENSE](LICENSE) 파일을 참고하세요.
+
+---
+
+## 👤 메인테이너
+
+| | 정보 |
+|---|---|
+| **GitHub** | [@Jaemnie](https://github.com/Jaemnie) |
+| **프로젝트** | [STACKS](https://github.com/Jaemnie/PLAYGROUND-1) |
+
+---
+
+<div align="center">
+
+**STACKS**와 함께 투자 감각을 키워보세요! ⭐
+
+이 프로젝트가 도움이 되었다면 Star를 눌러주세요.
+
+</div>
