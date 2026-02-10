@@ -37,16 +37,8 @@ interface SeasonLeaderboardEntry {
   user_id: string
   season_points: number
   nickname: string
-}
-
-interface GlobalLeaderboardEntry {
-  id: string
-  nickname: string
-  points: number
-  stock_value: number
-  total_capital: number
-  tier: string
-  division: number
+  tier?: string
+  division?: number
 }
 
 interface PassReward {
@@ -59,24 +51,19 @@ interface SeasonClientProps {
   season: Season | null
   participation: Participation | null
   seasonLeaderboard: SeasonLeaderboardEntry[]
-  globalLeaderboard: GlobalLeaderboardEntry[]
   pastSeasons: Season[]
   passRewards: PassReward[]
   userId: string
 }
 
-type LeaderboardTab = 'season' | 'global'
-
 export function SeasonClient({
   season,
   participation,
   seasonLeaderboard,
-  globalLeaderboard,
   pastSeasons,
   passRewards,
   userId,
 }: SeasonClientProps) {
-  const [leaderboardTab, setLeaderboardTab] = useState<LeaderboardTab>('season')
   const router = useRouter()
   const [timeLeft, setTimeLeft] = useState('')
 
@@ -126,16 +113,16 @@ export function SeasonClient({
         <section className="px-4 pb-12">
           <div className="container mx-auto max-w-5xl">
             <Card className="rounded-2xl bg-black/40 backdrop-blur-sm border border-gray-800/50 p-6">
-              <h2 className="text-lg font-semibold text-gray-100 mb-4">전체 랭킹</h2>
-              {globalLeaderboard.length === 0 ? (
+              <h2 className="text-lg font-semibold text-gray-100 mb-4">랭킹</h2>
+              {seasonLeaderboard.length === 0 ? (
                 <p className="text-sm text-gray-500 text-center py-8">랭킹 데이터가 없습니다</p>
               ) : (
                 <div className="space-y-2">
-                  {globalLeaderboard.map((entry, index) => (
+                  {seasonLeaderboard.map((entry, index) => (
                     <div
-                      key={entry.id}
+                      key={entry.user_id}
                       className={`flex items-center justify-between p-3 rounded-xl ${
-                        entry.id === userId ? 'bg-white/5 border border-white/10' : ''
+                        entry.user_id === userId ? 'bg-white/5 border border-white/10' : ''
                       }`}
                     >
                       <div className="flex items-center gap-3">
@@ -145,13 +132,13 @@ export function SeasonClient({
                           {index + 1}
                         </span>
                         <span className="text-sm text-gray-200">{entry.nickname}</span>
-                        <TierBadge tier={entry.tier} division={entry.division} size="sm" />
-                        {entry.id === userId && (
+                        {entry.tier && <TierBadge tier={entry.tier} division={entry.division} size="sm" />}
+                        {entry.user_id === userId && (
                           <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/10 text-gray-400">나</span>
                         )}
                       </div>
                       <span className="text-sm font-mono text-gray-300">
-                        {Math.round(entry.total_capital).toLocaleString()}P
+                        {Math.round(entry.season_points).toLocaleString()}P
                       </span>
                     </div>
                   ))}
@@ -273,108 +260,47 @@ export function SeasonClient({
         </section>
       )}
 
-      {/* 랭킹 (시즌 / 전체 탭) */}
+      {/* 시즌 랭킹 */}
       <section className="px-4 pb-4">
         <div className="container mx-auto max-w-5xl">
           <Card className="rounded-2xl bg-black/40 backdrop-blur-sm border border-gray-800/50 p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <Trophy className="w-5 h-5" style={{ color: themeColor }} />
-                <h2 className="text-lg font-semibold text-gray-100">랭킹</h2>
-              </div>
-              <div className="flex gap-1">
-                <button
-                  type="button"
-                  onClick={() => setLeaderboardTab('season')}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                    leaderboardTab === 'season'
-                      ? 'bg-violet-600 text-white'
-                      : 'bg-zinc-800/60 text-gray-400 hover:text-gray-200'
-                  }`}
-                >
-                  시즌 랭킹
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setLeaderboardTab('global')}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                    leaderboardTab === 'global'
-                      ? 'bg-violet-600 text-white'
-                      : 'bg-zinc-800/60 text-gray-400 hover:text-gray-200'
-                  }`}
-                >
-                  전체 랭킹
-                </button>
-              </div>
+            <div className="flex items-center gap-2 mb-4">
+              <Trophy className="w-5 h-5" style={{ color: themeColor }} />
+              <h2 className="text-lg font-semibold text-gray-100">시즌 랭킹</h2>
             </div>
 
-            {leaderboardTab === 'season' ? (
-              seasonLeaderboard.length === 0 ? (
-                <p className="text-sm text-gray-500 text-center py-8">아직 참가자가 없습니다</p>
-              ) : (
-                <div className="space-y-2">
-                  {seasonLeaderboard.map((entry, index) => (
-                    <motion.div
-                      key={entry.user_id}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.05 }}
-                      className={`flex items-center justify-between p-3 rounded-xl ${
-                        entry.user_id === userId ? 'bg-white/5 border border-white/10' : ''
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className={`w-8 text-center font-bold ${
-                          index === 0 ? 'text-yellow-400' : index === 1 ? 'text-gray-300' : index === 2 ? 'text-amber-600' : 'text-gray-500'
-                        }`}>
-                          {index + 1}
-                        </span>
-                        <span className="text-sm text-gray-200">{entry.nickname}</span>
-                        {entry.user_id === userId && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/10 text-gray-400">나</span>
-                        )}
-                      </div>
-                      <span className="text-sm font-mono text-gray-300">
-                        {Math.round(entry.season_points).toLocaleString()}P
-                      </span>
-                    </motion.div>
-                  ))}
-                </div>
-              )
+            {seasonLeaderboard.length === 0 ? (
+              <p className="text-sm text-gray-500 text-center py-8">아직 참가자가 없습니다</p>
             ) : (
-              globalLeaderboard.length === 0 ? (
-                <p className="text-sm text-gray-500 text-center py-8">랭킹 데이터가 없습니다</p>
-              ) : (
-                <div className="space-y-2">
-                  {globalLeaderboard.map((entry, index) => (
-                    <motion.div
-                      key={entry.id}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: Math.min(index * 0.05, 0.5) }}
-                      className={`flex items-center justify-between p-3 rounded-xl ${
-                        entry.id === userId ? 'bg-white/5 border border-white/10' : ''
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className={`w-8 text-center font-bold ${
-                          index === 0 ? 'text-yellow-400' : index === 1 ? 'text-gray-300' : index === 2 ? 'text-amber-600' : 'text-gray-500'
-                        }`}>
-                          {index + 1}
-                        </span>
-                        <span className="text-sm text-gray-200">{entry.nickname}</span>
-                        <TierBadge tier={entry.tier} division={entry.division} size="sm" />
-                        {entry.id === userId && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/10 text-gray-400">나</span>
-                        )}
-                      </div>
-                      <span className="text-sm font-mono text-gray-300">
-                        {Math.round(entry.total_capital).toLocaleString()}P
+              <div className="space-y-2">
+                {seasonLeaderboard.map((entry, index) => (
+                  <motion.div
+                    key={entry.user_id}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    className={`flex items-center justify-between p-3 rounded-xl ${
+                      entry.user_id === userId ? 'bg-white/5 border border-white/10' : ''
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className={`w-8 text-center font-bold ${
+                        index === 0 ? 'text-yellow-400' : index === 1 ? 'text-gray-300' : index === 2 ? 'text-amber-600' : 'text-gray-500'
+                      }`}>
+                        {index + 1}
                       </span>
-                    </motion.div>
-                  ))}
-                </div>
-              )
+                      <span className="text-sm text-gray-200">{entry.nickname}</span>
+                      {entry.tier && <TierBadge tier={entry.tier} division={entry.division} size="sm" />}
+                      {entry.user_id === userId && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/10 text-gray-400">나</span>
+                      )}
+                    </div>
+                    <span className="text-sm font-mono text-gray-300">
+                      {Math.round(entry.season_points).toLocaleString()}P
+                    </span>
+                  </motion.div>
+                ))}
+              </div>
             )}
           </Card>
         </div>

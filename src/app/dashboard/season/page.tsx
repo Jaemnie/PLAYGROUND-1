@@ -48,52 +48,18 @@ export default async function SeasonPage() {
     }
   }
 
-  // 시즌 리더보드 (상위 20명)
-  let seasonLeaderboard: { user_id: string; season_points: number; nickname: string }[] = []
-  if (season) {
-    const { data: participants } = await supabase
-      .from('season_participants')
-      .select('user_id, season_points')
-      .eq('season_id', season.id)
-      .order('season_points', { ascending: false })
-      .limit(20)
-
-    if (participants) {
-      const userIds = participants.map(p => p.user_id)
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, nickname')
-        .in('id', userIds)
-
-      const profileMap = new Map<string, string>()
-      if (profiles) {
-        for (const p of profiles) {
-          profileMap.set(p.id, p.nickname || '이름 없음')
-        }
-      }
-
-      seasonLeaderboard = participants.map(p => ({
-        user_id: p.user_id,
-        season_points: p.season_points,
-        nickname: profileMap.get(p.user_id) || '이름 없음',
-      }))
-    }
-  }
-
-  // 전체 랭킹 (포인트 + 주식 자산)
+  // 시즌 랭킹: 실시간 계산 (포인트 + 주식 자산)
   const { data: holdings } = await supabase
     .from('holdings')
     .select('user_id, shares, company:companies(current_price)')
 
   const userStockValues = new Map<string, number>()
-  const userIds = new Set<string>()
   if (holdings) {
     for (const h of holdings as Holding[]) {
       const company = h.company
       const price = Array.isArray(company) ? company[0]?.current_price : company?.current_price
       const stockValue = (h.shares || 0) * (price || 0)
       userStockValues.set(h.user_id, (userStockValues.get(h.user_id) || 0) + stockValue)
-      userIds.add(h.user_id)
     }
   }
 
@@ -107,20 +73,19 @@ export default async function SeasonPage() {
     }
   }
 
-  const globalLeaderboard = (allProfiles || []).map(p => {
+  // 실시간 총 자산 기준 시즌 랭킹
+  const seasonLeaderboardLive = (allProfiles || []).map(p => {
     const stockValue = userStockValues.get(p.id) || 0
     const totalCapital = (p.points || 0) + stockValue
     const rank = rankMap.get(p.id)
     return {
-      id: p.id,
+      user_id: p.id,
       nickname: p.nickname || '이름 없음',
-      points: p.points || 0,
-      stock_value: stockValue,
-      total_capital: totalCapital,
+      season_points: totalCapital,
       tier: rank?.tier || 'bronze',
       division: rank?.division || 3,
     }
-  }).sort((a, b) => b.total_capital - a.total_capital)
+  }).sort((a, b) => b.season_points - a.season_points)
 
   // 과거 시즌 기록
   const { data: pastSeasons } = await supabase
@@ -141,13 +106,18 @@ export default async function SeasonPage() {
     passRewards = data || []
   }
 
+  // 현재 유저 실시간 총 자산 (참여 현황 표시용)
+  const myEntry = seasonLeaderboardLive.find((e) => e.user_id === user.id)
+  const participationWithLivePoints = participation && myEntry
+    ? { ...participation, season_points: myEntry.season_points }
+    : participation
+
   return (
     <Suspense fallback={<LoadingSpinner />}>
       <SeasonClient
         season={season}
-        participation={participation}
-        seasonLeaderboard={seasonLeaderboard}
-        globalLeaderboard={globalLeaderboard}
+        participation={participationWithLivePoints}
+        seasonLeaderboard={seasonLeaderboardLive}
         pastSeasons={pastSeasons || []}
         passRewards={passRewards}
         userId={user.id}
