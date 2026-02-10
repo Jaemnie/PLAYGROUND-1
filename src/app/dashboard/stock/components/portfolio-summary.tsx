@@ -11,15 +11,17 @@ import { motion, AnimatePresence } from 'framer-motion'
 interface PortfolioSummaryProps {
   portfolio: any[]
   points: number
+  themeCompanyIds?: string[]
 }
 
-export function PortfolioSummary({ portfolio: initialPortfolio, points }: PortfolioSummaryProps) {
+export function PortfolioSummary({ portfolio: initialPortfolio, points, themeCompanyIds = [] }: PortfolioSummaryProps) {
   const router = useRouter()
   const [totalValue, setTotalValue] = useState(0)
   const [totalGain, setTotalGain] = useState(0)
   const [gainPercentage, setGainPercentage] = useState(0)
 
-  const companyIds = initialPortfolio.map(h => h.company.id)
+  const allIds = initialPortfolio.map(h => h.company.id)
+  const companyIds = themeCompanyIds.length > 0 ? allIds.filter(id => themeCompanyIds.includes(id)) : allIds
   const { stockData } = useRealtimeStockData(companyIds)
   
   const portfolio = initialPortfolio.map(holding => ({

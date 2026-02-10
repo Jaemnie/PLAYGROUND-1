@@ -52,9 +52,10 @@ interface PortfolioClientProps {
   portfolio: PortfolioItem[];
   transactions: Transaction[];
   points: number;
+  themeCompanyIds?: string[];
 }
 
-export function PortfolioClient({ user, portfolio: initialPortfolio, transactions: initialTransactions, points: initialPoints }: PortfolioClientProps) {
+export function PortfolioClient({ user, portfolio: initialPortfolio, transactions: initialTransactions, points: initialPoints, themeCompanyIds = [] }: PortfolioClientProps) {
   const [portfolio, setPortfolio] = useState(initialPortfolio)
   const [transactions, setTransactions] = useState(initialTransactions)
   const [points, setPoints] = useState(initialPoints)
@@ -62,8 +63,8 @@ export function PortfolioClient({ user, portfolio: initialPortfolio, transaction
   const [showTradeModal, setShowTradeModal] = useState(false)
   const [lockedShares, setLockedShares] = useState<LockedSharesMap>(new Map())
 
-  // 실시간 주식 데이터 구독
-  const companyIds = portfolio.map(h => h.company.id)
+  const allIds = portfolio.map(h => h.company.id)
+  const companyIds = themeCompanyIds.length > 0 ? allIds.filter(id => themeCompanyIds.includes(id)) : allIds
   const { stockData } = useRealtimeStockData(companyIds)
   
   // 포트폴리오 데이터 실시간 업데이트

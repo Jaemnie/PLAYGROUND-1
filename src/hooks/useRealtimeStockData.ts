@@ -18,8 +18,8 @@ export function useRealtimeStockData(companyIds: string[]) {
     // 초기 데이터 로드
     const loadInitialData = async () => {
       try {
-        // API를 통해 데이터 가져오기
-        const response = await fetch(`/api/stock/batch?tickers=${companyIds.join(',')}`)
+        // ids 파라미터로 시즌 기업만 조회 (batch API가 theme_id로 필터링)
+        const response = await fetch(`/api/stock/batch?ids=${companyIds.join(',')}`)
         const data = await response.json()
         
         if (data.companies) {

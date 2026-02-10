@@ -55,19 +55,24 @@ interface StockDashboardClientProps {
   initialCompanies: Company[];
   initialNews: News[];
   points: number;
+  themeCompanyIds?: string[];
 }
 
 export function StockDashboardClient({
   initialPortfolio,
   initialCompanies,
   initialNews,
-  points
+  points,
+  themeCompanyIds = []
 }: StockDashboardClientProps) {
   const [companies, setCompanies] = useState(initialCompanies)
   const [portfolio, setPortfolio] = useState(initialPortfolio)
-  
-  // 모든 회사의 ID를 추출하여 실시간 데이터 구독
-  const companyIds = [...initialCompanies.map(c => c.id), ...initialPortfolio.map(h => h.company.id)]
+
+  // 현재 시즌 테마 기업만 구독 (리퀘스트 절감)
+  const allCompanyIds = [...initialCompanies.map(c => c.id), ...initialPortfolio.map(h => h.company.id)]
+  const companyIds = themeCompanyIds.length > 0
+    ? allCompanyIds.filter((id) => themeCompanyIds.includes(id))
+    : allCompanyIds
   const { stockData } = useRealtimeStockData(companyIds)
   
   // 실시간 데이터로 companies와 portfolio 상태 업데이트 (함수형 업데이트 사용)
@@ -113,7 +118,7 @@ export function StockDashboardClient({
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
             {/* 포트폴리오 요약 (1행, 왼쪽 넓게) */}
             <Card className="lg:col-span-8 rounded-2xl bg-black/40 backdrop-blur-sm border border-gray-800/50 overflow-hidden">
-              <PortfolioSummary portfolio={portfolio} points={points} />
+              <PortfolioSummary portfolio={portfolio} points={points} themeCompanyIds={themeCompanyIds} />
             </Card>
 
             {/* 마켓 타이머 + 섹터 트렌드 (1~2행 관통, 오른쪽 사이드바) */}

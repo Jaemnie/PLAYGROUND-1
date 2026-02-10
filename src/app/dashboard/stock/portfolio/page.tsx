@@ -17,6 +17,16 @@ export default async function PortfolioPage() {
     username: user.user_metadata?.username || user.email || '',
   }
 
+  const { data: activeSeason } = await supabase
+    .from('seasons')
+    .select('theme_id')
+    .eq('status', 'active')
+    .single()
+  const themeId = activeSeason?.theme_id ?? null
+  const themeCompanyIds = themeId
+    ? (await supabase.from('companies').select('id').eq('theme_id', themeId)).data?.map((c) => c.id) ?? []
+    : []
+
   // 모든 쿼리를 병렬로 실행하여 성능 최적화
   const [holdingsResult, transactionsResult, profileResult] = await Promise.all([
     // 보유 주식 데이터 조회 (회사 조인 결과는 배열로 반환될 수 있음)
@@ -84,6 +94,7 @@ export default async function PortfolioPage() {
         portfolio={portfolio}
         transactions={transactions}
         points={profileResult.data?.points || 0}
+        themeCompanyIds={themeCompanyIds}
       />
     </Suspense>
   )

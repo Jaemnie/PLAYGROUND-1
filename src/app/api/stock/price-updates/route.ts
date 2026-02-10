@@ -26,6 +26,18 @@ export async function POST() {
   const supabase = await createClient()
   
   try {
+    // 현재 활성 시즌 테마 ID 조회
+    const { data: activeSeason } = await supabase
+      .from('seasons')
+      .select('theme_id')
+      .eq('status', 'active')
+      .single()
+
+    const themeId = activeSeason?.theme_id ?? null
+    if (!themeId) {
+      return NextResponse.json({ success: true, skipped: true, reason: 'no_active_season' })
+    }
+
     // 1. 최근 거래 데이터 조회
     const { data: transactions } = await supabase
       .from('transactions')
@@ -38,10 +50,11 @@ export async function POST() {
       .select('*')
       .lte('effective_at', new Date().toISOString())
       
-    // 3. 각 기업별 주가 업데이트
+    // 3. 각 기업별 주가 업데이트 (현재 시즌 테마 기업만)
     const { data: companies } = await supabase
       .from('companies')
-      .select('id, current_price')
+      .select('id, current_price, ticker')
+      .eq('theme_id', themeId)
     
     const updates = await Promise.all(
       (companies || []).map(async (company) => {
@@ -56,21 +69,23 @@ export async function POST() {
         );
 
         return {
-          id: crypto.randomUUID(), // UUID 생성
+          id: crypto.randomUUID(),
           company_id: company.id,
-          old_price: Number(company.current_price), // numeric 타입으로 변환
-          new_price: Number(newPrice), // numeric 타입으로 변환
+          ticker: company.ticker, // 캐시 무효화용 (price_updates 테이블에는 insert 안 함)
+          old_price: Number(company.current_price),
+          new_price: Number(newPrice),
           change_percentage: Number(((newPrice - company.current_price) / company.current_price) * 100),
           update_reason: 'Regular update',
-          created_at: new Date().toISOString() // timestamptz 필드 추가
+          created_at: new Date().toISOString()
         };
       })
     );
 
-    // 배치 처리로 변경
+    // 배치 처리로 변경 (price_updates 테이블에는 ticker 제외)
+    const insertPayload = updates.map(({ ticker, ...rest }) => rest)
     const { error: insertError } = await supabase
       .from('price_updates')
-      .insert(updates);
+      .insert(insertPayload);
 
     if (insertError) {
       console.error('Price updates insert error:', insertError);
@@ -92,11 +107,13 @@ export async function POST() {
       return NextResponse.json({ error: updateError.message }, { status: 500 });
     }
 
-    // 캐시 무효화
+    // 캐시 무효화 (Redis 키는 ticker 기준)
     await Promise.all(
-      companyUpdates.map(async (update) => {
-        const key = `stock:${update.id}`;
-        await redis.del(key);
+      updates.map(async (update) => {
+        if (update.ticker) {
+          const key = `stock:${update.ticker}`;
+          await redis.del(key);
+        }
       })
     );
     

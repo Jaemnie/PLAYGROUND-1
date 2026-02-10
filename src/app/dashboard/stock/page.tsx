@@ -90,6 +90,7 @@ export default async function StockDashboardPage() {
           initialCompanies={companiesResult.data || []}
           initialNews={newsResult.data || []}
           points={profileResult.data?.points || 0}
+          themeCompanyIds={themeCompanyIds}
         />
       </Suspense>
     )
