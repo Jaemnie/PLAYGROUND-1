@@ -69,6 +69,7 @@ export default function PendingOrders({ userId, onOrderChange }: PendingOrdersPr
   const [filter, setFilter] = useState<'all' | 'pending'>('pending')
 
   const fetchOrders = useCallback(async () => {
+    setIsLoading(true)
     try {
       const statusParam = filter === 'pending' ? '&status=pending' : ''
       const res = await fetch(`/api/stock/pending-orders?user_id=${userId}${statusParam}`)
@@ -142,8 +143,9 @@ export default function PendingOrders({ userId, onOrderChange }: PendingOrdersPr
       </CardHeader>
       <CardContent>
         {isLoading ? (
-          <div className="flex justify-center py-8">
-            <div className="w-6 h-6 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
+          <div className="flex flex-col items-center justify-center py-10 gap-3">
+            <div className="w-7 h-7 border-2 border-violet-500/30 border-t-violet-500 rounded-full animate-spin" />
+            <span className="text-xs text-gray-500">주문 내역을 불러오는 중...</span>
           </div>
         ) : orders.length === 0 ? (
           <div className="text-center py-8">

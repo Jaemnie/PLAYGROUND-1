@@ -81,12 +81,12 @@ export default function HoldingsTable({ portfolio, user, points, lockedShares, o
                     </div>
                   </div>
                   <Button
-                    variant="ghost"
+                    variant="outline"
                     size="sm"
                     onClick={() => onTradeClick(holding)}
-                    className="h-7 px-2 text-xs text-gray-400 hover:text-blue-400 hover:bg-blue-500/10 shrink-0 ml-2"
+                    className="h-7 px-3 text-xs font-medium text-blue-400 border-blue-500/30 bg-blue-500/[0.08] hover:bg-blue-500/20 hover:border-blue-400/50 hover:text-blue-300 active:scale-95 transition-all shrink-0 ml-2 rounded-lg"
                   >
-                    <ArrowRightLeft className="w-3 h-3 mr-1" />
+                    <ArrowRightLeft className="w-3.5 h-3.5 mr-1" />
                     거래
                   </Button>
                 </div>

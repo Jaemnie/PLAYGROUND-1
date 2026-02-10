@@ -7,6 +7,7 @@ import { Input } from './input'
 import { createClientBrowser } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { TradeAlert } from './trade-alert'
+import { X } from 'lucide-react'
 
 interface QuickTradeModalProps {
   isOpen: boolean
@@ -25,19 +26,6 @@ const isMarketOpen = () => {
 
 type ConditionType = 'price_below' | 'price_above' | 'profit_rate'
 type ExpiresIn = 0 | 3 | 7
-
-const CONDITION_LABELS: Record<string, Record<ConditionType, string>> = {
-  buy: {
-    price_below: '가격 이하 도달 시 매수',
-    price_above: '',
-    profit_rate: '',
-  },
-  sell: {
-    price_below: '',
-    price_above: '가격 이상 도달 시 매도',
-    profit_rate: '수익률 도달 시 매도',
-  },
-}
 
 const EXPIRES_LABELS: Record<ExpiresIn, string> = {
   0: '당일',
@@ -255,26 +243,59 @@ export function QuickTradeModal({
             />
             <div className="fixed inset-0 z-[101] flex items-center justify-center pointer-events-none">
               <motion.div
-                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                initial={{ opacity: 0, scale: 0.95, y: 16 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                transition={{ type: "spring", duration: 0.5 }}
-                className="bg-gray-900 rounded-2xl p-6 shadow-2xl w-[90%] 
-                           max-w-[420px] border border-gray-800 backdrop-blur-xl pointer-events-auto"
+                exit={{ opacity: 0, scale: 0.95, y: 16 }}
+                transition={{ type: "spring", duration: 0.45, bounce: 0.15 }}
+                className="bg-gray-900 rounded-2xl shadow-2xl w-[92%] max-w-[400px] 
+                           border border-gray-800 backdrop-blur-xl pointer-events-auto"
               >
-                <div className="space-y-4">
-                  {/* 헤더 */}
-                  <div className="flex justify-between items-center">
-                    <h2 className="text-xl font-bold text-white">
-                      {mode === 'instant' ? '퀵 트레이딩' : '조건 주문'}
-                    </h2>
-                    <div className="text-sm text-gray-400">
-                      {company.name} ({company.ticker})
+                <div className="px-5 pt-5 pb-5 space-y-3">
+                  {/* 종목명 + 닫기 */}
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h2 className="text-lg font-bold text-white leading-tight">{company.name}</h2>
+                      <span className="text-xs text-gray-500">{company.ticker}</span>
+                    </div>
+                    <button
+                      onClick={onClose}
+                      className="p-1.5 -mr-1.5 -mt-1 rounded-lg text-gray-500 hover:text-gray-300 hover:bg-gray-800/60 transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  {/* 컴팩트 정보 바 */}
+                  <div className="flex items-center rounded-lg bg-gray-800/30 py-2.5 px-1">
+                    <div className="flex flex-col items-center flex-1">
+                      <span className="text-[10px] text-gray-500 mb-0.5">현재가</span>
+                      <span className="text-[13px] font-semibold text-white tabular-nums">
+                        {Math.floor(company.current_price).toLocaleString()}
+                        <span className="text-[10px] text-gray-500 font-normal ml-0.5">원</span>
+                      </span>
+                    </div>
+                    <div className="w-px h-7 bg-gray-700/40" />
+                    <div className="flex flex-col items-center flex-1">
+                      <span className="text-[10px] text-gray-500 mb-0.5">보유</span>
+                      <span className="text-[13px] font-semibold text-white tabular-nums">
+                        {(holding?.shares || 0).toLocaleString()}
+                        <span className="text-[10px] text-gray-500 font-normal ml-0.5">주</span>
+                      </span>
+                    </div>
+                    <div className="w-px h-7 bg-gray-700/40" />
+                    <div className="flex flex-col items-center flex-1">
+                      <span className="text-[10px] text-gray-500 mb-0.5">포인트</span>
+                      <span className="text-[13px] font-semibold text-white tabular-nums">
+                        {points.toLocaleString()}
+                        <span className="text-[10px] text-gray-500 font-normal ml-0.5">P</span>
+                      </span>
                     </div>
                   </div>
 
-                  {/* 모드 전환: 즉시 거래 / 조건 주문 */}
-                  <div className="flex gap-1 p-1 bg-gray-800/60 rounded-lg">
+                  <div className="h-px bg-gray-800/60" />
+
+                  {/* 모드 탭 */}
+                  <div className="flex gap-1 p-1 bg-gray-800/50 rounded-lg">
                     <button
                       className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${
                         mode === 'instant'
@@ -297,7 +318,7 @@ export function QuickTradeModal({
                     </button>
                   </div>
 
-                  {/* 매수 / 매도 선택 */}
+                  {/* 매수 / 매도 */}
                   <div className="flex gap-2">
                     <Button
                       variant={type === 'buy' ? 'default' : 'outline'}
@@ -321,79 +342,98 @@ export function QuickTradeModal({
                     </Button>
                   </div>
 
-                  {/* ===== 조건 주문 모드 ===== */}
-                  {mode === 'conditional' && (
-                    <>
-                      {/* 조건 유형 선택 */}
-                      <div>
-                        <p className="text-sm text-gray-400 mb-2">조건 유형</p>
-                        <div className="flex flex-col gap-1.5">
+                  {/* ─── 조건 주문 설정 카드 (애니메이션) ─── */}
+                  <AnimatePresence initial={false}>
+                    {mode === 'conditional' && (
+                      <motion.div
+                        key="conditional-section"
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+                        className="overflow-hidden"
+                      >
+                        <div className="p-3.5 rounded-xl bg-violet-500/[0.06] border border-violet-500/10 space-y-3">
+                          {/* 조건 유형 */}
                           {type === 'buy' ? (
-                            <button
-                              className="w-full py-2 px-3 rounded-lg text-sm text-left bg-violet-600/20 border border-violet-500/50 text-violet-300"
-                            >
-                              가격 이하 도달 시 매수
-                            </button>
+                            <div className="inline-flex items-center px-2.5 py-1 rounded-md bg-violet-600/15 border border-violet-500/20">
+                              <span className="text-xs font-medium text-violet-300">가격 이하 도달 시 매수</span>
+                            </div>
                           ) : (
-                            <>
+                            <div className="flex gap-1.5">
                               <button
-                                className={`w-full py-2 px-3 rounded-lg text-sm text-left transition-all ${
+                                className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-medium transition-all ${
                                   conditionType === 'price_above'
-                                    ? 'bg-violet-600/20 border border-violet-500/50 text-violet-300'
-                                    : 'bg-gray-800/60 border border-gray-700/50 text-gray-400 hover:text-gray-300'
+                                    ? 'bg-violet-600/20 border border-violet-500/40 text-violet-300'
+                                    : 'bg-gray-800/60 border border-gray-700/40 text-gray-500 hover:text-gray-300'
                                 }`}
                                 onClick={() => setConditionType('price_above')}
                               >
-                                가격 이상 도달 시 매도
+                                목표가 매도
                               </button>
                               <button
-                                className={`w-full py-2 px-3 rounded-lg text-sm text-left transition-all ${
+                                className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-medium transition-all ${
                                   conditionType === 'profit_rate'
-                                    ? 'bg-violet-600/20 border border-violet-500/50 text-violet-300'
-                                    : 'bg-gray-800/60 border border-gray-700/50 text-gray-400 hover:text-gray-300'
+                                    ? 'bg-violet-600/20 border border-violet-500/40 text-violet-300'
+                                    : 'bg-gray-800/60 border border-gray-700/40 text-gray-500 hover:text-gray-300'
                                 }`}
                                 onClick={() => setConditionType('profit_rate')}
                               >
-                                수익률 도달 시 매도
+                                수익률 매도
                               </button>
-                            </>
+                            </div>
                           )}
-                        </div>
-                      </div>
 
-                      {/* 목표값 입력 */}
-                      <div>
-                        <p className="text-sm text-gray-400 mb-2">
-                          {conditionType === 'profit_rate' ? '목표 수익률 (%)' : '목표 가격'}
-                        </p>
-                        <div className="relative">
-                          <Input
-                            type="number"
-                            min="0"
-                            step={conditionType === 'profit_rate' ? '0.1' : '1'}
-                            value={targetValue}
-                            onChange={(e) => { setTargetValue(e.target.value); setShares('') }}
-                            className="bg-black/30 border-gray-700 text-white placeholder-gray-500
-                                     focus:border-violet-500 focus:ring-1 focus:ring-violet-500 pr-10"
-                            placeholder={conditionType === 'profit_rate' ? '예: 5' : `현재가: ${Math.floor(company.current_price).toLocaleString()}`}
-                          />
-                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-500">
-                            {conditionType === 'profit_rate' ? '%' : '원'}
-                          </span>
-                        </div>
-                        {conditionType !== 'profit_rate' && (
-                          <p className="mt-1 text-xs text-gray-500">
-                            현재가: {Math.floor(company.current_price).toLocaleString()}원
-                            {condTargetPrice > 0 && (
-                              <span className={condTargetPrice < company.current_price ? ' text-blue-400' : ' text-red-400'}>
-                                {' '}({((condTargetPrice - company.current_price) / company.current_price * 100).toFixed(1)}%)
+                          {/* 목표값 입력 */}
+                          <div>
+                            <div className="relative">
+                              <Input
+                                type="number"
+                                min="0"
+                                step={conditionType === 'profit_rate' ? '0.1' : '1'}
+                                value={targetValue}
+                                onChange={(e) => { setTargetValue(e.target.value); setShares('') }}
+                                className="bg-black/20 border-gray-700/50 text-white placeholder-gray-600
+                                         focus:border-violet-500 focus:ring-1 focus:ring-violet-500 pr-10 h-9 text-sm"
+                                placeholder={conditionType === 'profit_rate' ? '목표 수익률' : '목표 가격'}
+                              />
+                              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500">
+                                {conditionType === 'profit_rate' ? '%' : '원'}
                               </span>
+                            </div>
+                            {conditionType !== 'profit_rate' && condTargetPrice > 0 && (
+                              <p className="mt-1 text-[11px] text-gray-500">
+                                현재가 대비
+                                <span className={condTargetPrice < company.current_price ? ' text-blue-400' : ' text-red-400'}>
+                                  {' '}{((condTargetPrice - company.current_price) / company.current_price * 100).toFixed(1)}%
+                                </span>
+                              </p>
                             )}
-                          </p>
-                        )}
-                      </div>
-                    </>
-                  )}
+                          </div>
+
+                          {/* 유효기간 - 인라인 */}
+                          <div className="flex items-center justify-between pt-0.5">
+                            <span className="text-xs text-gray-500">유효기간</span>
+                            <div className="flex gap-0.5 p-0.5 bg-gray-800/40 rounded-md">
+                              {([0, 3, 7] as ExpiresIn[]).map((days) => (
+                                <button
+                                  key={days}
+                                  className={`px-2.5 py-1 rounded text-xs font-medium transition-all ${
+                                    expiresIn === days
+                                      ? 'bg-violet-600/30 text-violet-300 shadow-sm'
+                                      : 'text-gray-500 hover:text-gray-300'
+                                  }`}
+                                  onClick={() => setExpiresIn(days)}
+                                >
+                                  {EXPIRES_LABELS[days]}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
 
                   {/* 수량 입력 */}
                   <div>
@@ -408,7 +448,7 @@ export function QuickTradeModal({
                         ].map(({ label, pct }) => (
                           <button
                             key={label}
-                            className="h-7 px-2 text-xs rounded-md border border-gray-700 text-gray-400 hover:text-white hover:border-gray-500 transition-colors"
+                            className="h-6 px-2 text-[11px] rounded-md border border-gray-700/50 text-gray-500 hover:text-white hover:border-gray-500 transition-colors"
                             onClick={() => setSharesPercent(pct)}
                           >
                             {label}
@@ -426,55 +466,19 @@ export function QuickTradeModal({
                                focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                       placeholder="거래할 수량을 입력하세요"
                     />
-                    <p className="mt-1 text-xs text-gray-400">
+                    <p className="mt-1 text-xs text-gray-500">
                       {type === 'buy'
                         ? mode === 'conditional'
-                          ? `최대 매수 가능: ${condMaxBuyShares.toLocaleString()}주 (목표가 기준)`
-                          : `최대 매수 가능: ${maxBuyShares.toLocaleString()}주`
-                        : `보유 중: ${(holding?.shares || 0).toLocaleString()}주`}
+                          ? `최대 ${condMaxBuyShares.toLocaleString()}주 (목표가 기준)`
+                          : `최대 ${maxBuyShares.toLocaleString()}주`
+                        : `보유 ${(holding?.shares || 0).toLocaleString()}주`}
                     </p>
                   </div>
 
-                  {/* 조건 주문: 유효기간 */}
-                  {mode === 'conditional' && (
-                    <div>
-                      <p className="text-sm text-gray-400 mb-2">유효기간</p>
-                      <div className="flex gap-2">
-                        {([0, 3, 7] as ExpiresIn[]).map((days) => (
-                          <button
-                            key={days}
-                            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
-                              expiresIn === days
-                                ? 'bg-violet-600/20 border border-violet-500/50 text-violet-300'
-                                : 'bg-gray-800/60 border border-gray-700/50 text-gray-400 hover:text-gray-300'
-                            }`}
-                            onClick={() => setExpiresIn(days)}
-                          >
-                            {EXPIRES_LABELS[days]}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* 거래 금액 / 에스크로 금액 */}
-                  <div>
-                    <p className="text-sm text-gray-400 mb-2">
-                      {mode === 'conditional' ? (type === 'buy' ? '에스크로 금액 (잠김)' : '잠김 주식') : '총 거래금액'}
-                    </p>
-                    <p className="text-xl font-bold text-white">
-                      {mode === 'conditional'
-                        ? type === 'buy'
-                          ? `${Math.floor(condEscrowAmount).toLocaleString()}원`
-                          : `${Number(shares || 0).toLocaleString()}주`
-                        : `${Math.floor(totalAmount).toLocaleString()}원`}
-                    </p>
-                  </div>
-
-                  {/* 실행 버튼 */}
+                  {/* ─── 실행 버튼 ─── */}
                   {mode === 'instant' ? (
                     <Button
-                      className={`w-full ${
+                      className={`w-full h-12 text-sm font-semibold rounded-xl transition-all active:scale-[0.98] ${
                         type === 'buy' 
                           ? 'bg-blue-500 hover:bg-blue-600'
                           : 'bg-red-500 hover:bg-red-600'
@@ -482,21 +486,53 @@ export function QuickTradeModal({
                       disabled={(type === 'buy' ? !canBuy : !canSell) || isLoading || !isMarketOpen()}
                       onClick={handleTrade}
                     >
-                      {!isMarketOpen() ? '장 마감' : isLoading ? '처리 중...' : type === 'buy' ? '매수하기' : '매도하기'}
+                      {!isMarketOpen() ? (
+                        <span className="text-white/70">장 마감</span>
+                      ) : isLoading ? (
+                        '처리 중...'
+                      ) : (
+                        <span className="flex items-center justify-center gap-2">
+                          <span>{type === 'buy' ? '매수하기' : '매도하기'}</span>
+                          {Number(shares) > 0 && (
+                            <>
+                              <span className="w-px h-4 bg-white/20" />
+                              <span className="font-normal opacity-90">
+                                {Math.floor(totalAmount).toLocaleString()}원
+                              </span>
+                            </>
+                          )}
+                        </span>
+                      )}
                     </Button>
                   ) : (
                     <Button
-                      className="w-full bg-violet-600 hover:bg-violet-700"
+                      className="w-full h-12 text-sm font-semibold rounded-xl bg-violet-600 hover:bg-violet-700 transition-all active:scale-[0.98]"
                       disabled={!condCanSubmit || isLoading}
                       onClick={handleConditionalOrder}
                     >
-                      {isLoading ? '등록 중...' : '조건 주문 등록'}
+                      {isLoading ? '등록 중...' : (
+                        <span className="flex items-center justify-center gap-2">
+                          <span>조건 주문 등록</span>
+                          {type === 'buy' && condEscrowAmount > 0 && (
+                            <>
+                              <span className="w-px h-4 bg-white/20" />
+                              <span className="font-normal opacity-90">
+                                {Math.floor(condEscrowAmount).toLocaleString()}원
+                              </span>
+                            </>
+                          )}
+                          {type === 'sell' && Number(shares) > 0 && (
+                            <>
+                              <span className="w-px h-4 bg-white/20" />
+                              <span className="font-normal opacity-90">
+                                {Number(shares).toLocaleString()}주
+                              </span>
+                            </>
+                          )}
+                        </span>
+                      )}
                     </Button>
                   )}
-
-                  <p className="text-sm text-gray-400">
-                    보유 포인트: {points.toLocaleString()}P
-                  </p>
                 </div>
               </motion.div>
             </div>
