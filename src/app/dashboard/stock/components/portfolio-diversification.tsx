@@ -15,7 +15,7 @@ const COLORS = [
   '#EC4899', '#6366F1', '#14B8A6',
 ]
 
-const ALL_SECTORS = ['IT', '전자', '제조', '건설', '식품'] as const
+const ALL_SECTORS = ['테크', '반도체', '바이오', '엔터', '에너지', '금융', '패션', '푸드', '로봇', '건설', '모빌리티', '우주'] as const
 
 function getScoreTip(score: number, missingSectors: string[]): string {
   if (missingSectors.length === 5) return '주식을 매수하여 포트폴리오를 구성해 보세요.'

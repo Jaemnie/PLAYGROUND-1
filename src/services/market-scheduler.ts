@@ -8,7 +8,7 @@ import { SupabaseClient } from '@supabase/supabase-js'
 // 타입 정의
 // ========================================
 
-type Industry = '전자' | 'IT' | '제조' | '건설' | '식품';
+type Industry = '테크' | '반도체' | '바이오' | '엔터' | '에너지' | '금융' | '패션' | '푸드' | '로봇' | '건설' | '모빌리티' | '우주';
 type MarketPhase = 'bull' | 'neutral' | 'bear';
 
 interface Company {
@@ -114,11 +114,18 @@ const SIMULATION_PARAMS = {
     },
   },
   INDUSTRY_VOLATILITY: {
-    'IT': 1.4,
-    '전자': 1.3,
-    '제조': 1.2,
-    '건설': 1.1,
-    '식품': 1.0,
+    '우주': 1.6,      // 최고 변동성 (미래 산업, 불확실성 큼)
+    '바이오': 1.5,     // 임상 결과에 따라 급등락
+    '반도체': 1.4,     // 사이클 산업
+    '테크': 1.35,      // 성장주 변동성
+    '로봇': 1.3,       // 신기술 기대감
+    '엔터': 1.25,      // 흥행 여부에 따라 변동
+    '모빌리티': 1.2,   // 전기차/자율주행 기대
+    '에너지': 1.15,    // 정책·원자재 영향
+    '패션': 1.1,       // 트렌드 민감
+    '건설': 1.05,      // 안정적 산업
+    '푸드': 1.0,       // 가장 안정적
+    '금융': 0.95,      // 최저 변동성 (규제 산업)
   } as Record<string, number>,
   MARKET_CAP_VOLATILITY: [
     { threshold: 200_000_000_000, multiplier: 0.7 },   // 2000억+ 대기업
@@ -176,23 +183,29 @@ const MARKET_EVENT_TEMPLATES: Array<{
 }> = [
   // 긍정적 이벤트
   { title: '중앙은행 기준금리 인하', description: '중앙은행이 경기 부양을 위해 기준금리를 인하했습니다.', sentiment: 'positive', impact: 0.8, affected_industries: [], duration_minutes: 120 },
-  { title: '정부 경기 부양책 발표', description: '정부가 대규모 경기 부양 정책을 발표했습니다.', sentiment: 'positive', impact: 0.7, affected_industries: ['건설', 'IT'], duration_minutes: 180 },
-  { title: '수출 실적 호조 발표', description: '이번 달 수출이 전년 대비 크게 증가했습니다.', sentiment: 'positive', impact: 0.5, affected_industries: ['전자', '제조'], duration_minutes: 120 },
-  { title: 'IT 투자 열풍 확산', description: '글로벌 IT 투자가 급증하고 있습니다.', sentiment: 'positive', impact: 0.6, affected_industries: ['IT', '전자'], duration_minutes: 150 },
-  { title: '소비자 신뢰지수 상승', description: '소비자 신뢰지수가 예상을 크게 웃돌았습니다.', sentiment: 'positive', impact: 0.4, affected_industries: ['식품', '전자'], duration_minutes: 90 },
+  { title: '정부 경기 부양책 발표', description: '정부가 대규모 경기 부양 정책을 발표했습니다.', sentiment: 'positive', impact: 0.7, affected_industries: ['건설', '테크'], duration_minutes: 180 },
+  { title: '반도체 슈퍼사이클 진입', description: 'AI 수요 폭증으로 반도체 슈퍼사이클에 진입했다는 분석입니다.', sentiment: 'positive', impact: 0.8, affected_industries: ['반도체', '테크'], duration_minutes: 150 },
+  { title: '글로벌 AI 투자 러시', description: '전 세계적으로 AI 관련 투자가 급증하고 있습니다.', sentiment: 'positive', impact: 0.6, affected_industries: ['테크', '반도체', '로봇'], duration_minutes: 150 },
+  { title: '소비자 신뢰지수 상승', description: '소비자 신뢰지수가 예상을 크게 웃돌았습니다.', sentiment: 'positive', impact: 0.4, affected_industries: ['푸드', '패션', '엔터'], duration_minutes: 90 },
   { title: '외국인 투자자 순매수 확대', description: '외국인 투자자들이 대규모 순매수에 나섰습니다.', sentiment: 'positive', impact: 0.6, affected_industries: [], duration_minutes: 120 },
+  { title: '우주산업 육성법 통과', description: '우주산업 육성을 위한 특별법이 국회를 통과했습니다.', sentiment: 'positive', impact: 0.7, affected_industries: ['우주', '모빌리티'], duration_minutes: 150 },
+  { title: '친환경 에너지 대규모 투자', description: '정부와 민간이 친환경 에너지에 대규모 투자를 발표했습니다.', sentiment: 'positive', impact: 0.6, affected_industries: ['에너지', '건설'], duration_minutes: 120 },
 
   // 부정적 이벤트
   { title: '중앙은행 기준금리 인상', description: '인플레이션 억제를 위해 기준금리가 인상되었습니다.', sentiment: 'negative', impact: 0.8, affected_industries: [], duration_minutes: 120 },
   { title: '글로벌 경기 침체 우려', description: '주요국 경제 지표 악화로 경기 침체가 우려됩니다.', sentiment: 'negative', impact: 0.7, affected_industries: [], duration_minutes: 180 },
-  { title: '무역 분쟁 격화', description: '주요 교역국 간 무역 분쟁이 심화되고 있습니다.', sentiment: 'negative', impact: 0.6, affected_industries: ['전자', '제조'], duration_minutes: 150 },
-  { title: '국제 원자재 가격 급등', description: '국제 원자재 가격이 급등하여 생산 비용 증가가 우려됩니다.', sentiment: 'negative', impact: 0.5, affected_industries: ['제조', '건설', '식품'], duration_minutes: 120 },
-  { title: '소비 심리 위축', description: '소비자 심리가 크게 위축되어 내수 시장이 침체되고 있습니다.', sentiment: 'negative', impact: 0.4, affected_industries: ['식품', '전자'], duration_minutes: 90 },
+  { title: '무역 분쟁 격화', description: '주요 교역국 간 무역 분쟁이 심화되고 있습니다.', sentiment: 'negative', impact: 0.6, affected_industries: ['반도체', '모빌리티'], duration_minutes: 150 },
+  { title: '국제 원자재 가격 급등', description: '국제 원자재 가격이 급등하여 생산 비용 증가가 우려됩니다.', sentiment: 'negative', impact: 0.5, affected_industries: ['건설', '푸드', '에너지'], duration_minutes: 120 },
+  { title: '소비 심리 위축', description: '소비자 심리가 크게 위축되어 내수 시장이 침체되고 있습니다.', sentiment: 'negative', impact: 0.4, affected_industries: ['푸드', '패션', '엔터'], duration_minutes: 90 },
   { title: '외국인 투자자 대규모 매도', description: '외국인 투자자들이 대규모 매도에 나서 시장이 흔들리고 있습니다.', sentiment: 'negative', impact: 0.6, affected_industries: [], duration_minutes: 120 },
+  { title: 'AI 규제 강화 움직임', description: '각국 정부가 AI 기술에 대한 규제를 대폭 강화할 움직임입니다.', sentiment: 'negative', impact: 0.5, affected_industries: ['테크', '로봇', '반도체'], duration_minutes: 120 },
+  { title: '글로벌 공급망 혼란', description: '주요 물류 거점에서 공급망 혼란이 발생했습니다.', sentiment: 'negative', impact: 0.5, affected_industries: ['반도체', '모빌리티', '패션'], duration_minutes: 120 },
 
-  // 중립적 이벤트 (방향성 불확실)
+  // 중립적 이벤트
   { title: '대규모 규제 개편 예고', description: '정부가 산업 전반에 걸친 규제 개편을 예고했습니다.', sentiment: 'neutral', impact: 0.3, affected_industries: [], duration_minutes: 120 },
   { title: '주요 경제 지표 발표 대기', description: '이번 주 주요 경제 지표 발표가 예정되어 시장이 관망세입니다.', sentiment: 'neutral', impact: 0.2, affected_industries: [], duration_minutes: 60 },
+  { title: '금융 규제 샌드박스 확대', description: '핀테크 혁신을 위한 규제 샌드박스가 확대됩니다.', sentiment: 'neutral', impact: 0.3, affected_industries: ['금융', '테크'], duration_minutes: 90 },
+  { title: '로봇세 도입 논의', description: '로봇 활용에 대한 세금 부과가 논의되고 있습니다.', sentiment: 'neutral', impact: 0.3, affected_industries: ['로봇', '테크'], duration_minutes: 90 },
 ];
 
 // ========================================
@@ -200,14 +213,21 @@ const MARKET_EVENT_TEMPLATES: Array<{
 // ========================================
 
 const SECTOR_TREND_REASONS: Record<Industry, string[]> = {
-  'IT': ['AI 투자 열풍', '클라우드 수요 급증', 'IT 보안 강화 움직임', '디지털 전환 가속', 'IT 규제 논의 확산'],
-  '전자': ['반도체 수요 급증', '가전 판매 호조', '디스플레이 가격 회복', '전자부품 수급 불안', '스마트기기 시장 확대'],
-  '제조': ['제조업 경기 회복', '공장 자동화 투자 확대', '원자재 수급 안정', '글로벌 공급망 재편', '제조업 수주 증가'],
-  '건설': ['부동산 시장 활성화', '인프라 투자 확대', '건설 원가 상승 우려', '도시 개발 프로젝트 증가', '건설업 수주 호조'],
-  '식품': ['식품 안전 이슈 부각', '건강식품 수요 증가', '식자재 가격 변동', '외식 산업 회복', '식품 수출 확대'],
+  '테크': ['AI 투자 열풍', '클라우드 수요 급증', 'SaaS 성장 가속', '디지털 전환 확산', '빅테크 규제 논의'],
+  '반도체': ['AI 칩 수요 폭발', '파운드리 수주 확대', '메모리 가격 반등', '공급 과잉 우려', '차세대 공정 경쟁'],
+  '바이오': ['신약 승인 기대', '유전자 치료 돌파구', '임상 실패 우려', '글로벌 제약사 M&A', '디지털 헬스케어 성장'],
+  '엔터': ['대작 게임 흥행', '콘텐츠 투자 확대', 'K-콘텐츠 글로벌 인기', '구독자 이탈 우려', '메타버스 콘텐츠 기대'],
+  '에너지': ['신재생 에너지 정책', '배터리 기술 돌파', '유가 변동 영향', '탄소중립 투자 확대', '에너지 보조금 변동'],
+  '금융': ['금리 인하 기대', '핀테크 혁신 가속', '가계 부채 우려', '디지털 뱅킹 성장', '규제 환경 변화'],
+  '패션': ['럭셔리 소비 회복', '지속가능 패션 트렌드', '시즌 판매 호조', '소비 심리 위축', '온라인 패션 성장'],
+  '푸드': ['건강식품 트렌드', '외식 경기 회복', '식자재 가격 변동', '푸드테크 투자 확대', '글로벌 프랜차이즈 확장'],
+  '로봇': ['자동화 수요 급증', 'AI 로봇 기술 발전', '인건비 상승 효과', '로봇 윤리 논의', '서비스 로봇 시장 확대'],
+  '건설': ['부동산 시장 회복', '인프라 투자 확대', '건설 원가 상승', '스마트시티 프로젝트', '해외 건설 수주 증가'],
+  '모빌리티': ['자율주행 기술 진전', '전기차 보급 확대', 'UAM 시대 개막', '충전 인프라 투자', '물류 자동화 가속'],
+  '우주': ['민간 우주 시대 개막', '위성 인터넷 사업 확대', '우주 관광 기대', '로켓 기술 혁신', '국가 우주 예산 확대'],
 };
 
-const ALL_INDUSTRIES: Industry[] = ['IT', '전자', '제조', '건설', '식품'];
+const ALL_INDUSTRIES: Industry[] = ['테크', '반도체', '바이오', '엔터', '에너지', '금융', '패션', '푸드', '로봇', '건설', '모빌리티', '우주'];
 
 // ========================================
 // MarketScheduler 클래스

@@ -11,7 +11,7 @@ interface SectorTrendsData {
   sectorTrends: Record<string, TrendDirection>
 }
 
-const INDUSTRY_ORDER = ['IT', '전자', '제조', '건설', '식품'] as const
+const INDUSTRY_ORDER = ['테크', '반도체', '바이오', '엔터', '에너지', '금융', '패션', '푸드', '로봇', '건설', '모빌리티', '우주'] as const
 
 function getTrendInfo(direction: TrendDirection): {
   label: string
