@@ -4,8 +4,15 @@ import redis from '@/lib/redis';
 // 세션 만료 시 접속자 수 감소 API
 export async function POST(request: Request) {
   try {
-    const { sessionId } = await request.json();
-    
+    let body: { sessionId?: string } = {};
+    try {
+      body = await request.json();
+    } catch {
+      // 빈 body 또는 잘못된 JSON (beforeunload 시 요청 취소로 인한 truncated body 등)
+    }
+
+    const { sessionId } = body;
+
     if (!sessionId) {
       return NextResponse.json(
         { error: '세션 ID가 필요합니다.', success: false },

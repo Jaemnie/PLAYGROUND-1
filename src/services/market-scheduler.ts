@@ -213,7 +213,9 @@ const MARKET_EVENT_TEMPLATES: Array<{
 // 섹터 트렌드 사유 (UI 표시용)
 // ========================================
 
-const SECTOR_TREND_REASONS: Record<Industry, string[]> = {
+const GENERIC_SECTOR_REASONS = ['시장 변동', '수요 변화', '공급 변화', '계절성 요인', '글로벌 이슈'];
+
+const SECTOR_TREND_REASONS: Record<string, string[]> = {
   '테크': ['AI 투자 열풍', '클라우드 수요 급증', 'SaaS 성장 가속', '디지털 전환 확산', '빅테크 규제 논의'],
   '반도체': ['AI 칩 수요 폭발', '파운드리 수주 확대', '메모리 가격 반등', '공급 과잉 우려', '차세대 공정 경쟁'],
   '바이오': ['신약 승인 기대', '유전자 치료 돌파구', '임상 실패 우려', '글로벌 제약사 M&A', '디지털 헬스케어 성장'],
@@ -336,10 +338,28 @@ export class MarketScheduler {
       return state;
     }
 
+    // 현재 시즌 테마 산업만 트렌드 회전
+    const { data: activeSeason } = await this.supabase
+      .from('seasons')
+      .select('theme_id')
+      .eq('status', 'active')
+      .single();
+
+    let industries: string[] = ALL_INDUSTRIES as string[];
+    if (activeSeason?.theme_id) {
+      const { data: themeCompanies } = await this.supabase
+        .from('companies')
+        .select('industry')
+        .eq('theme_id', activeSeason.theme_id);
+      industries = themeCompanies?.length
+        ? [...new Set(themeCompanies.map((c) => c.industry as string))]
+        : industries;
+    }
+
     console.log('섹터 트렌드 회전 실행');
     const newTrends: Record<string, number> = {};
 
-    for (const industry of ALL_INDUSTRIES) {
+    for (const industry of industries) {
       const previousStrength = state.sector_trends[industry] || 0;
       // 새로운 목표 강도 (-1.0 ~ 1.0)
       const targetStrength = (Math.random() - 0.5) * 2;
@@ -349,7 +369,7 @@ export class MarketScheduler {
 
       const trend = newTrends[industry];
       const direction = trend > 0.3 ? '강세' : trend < -0.3 ? '약세' : '보합';
-      const reasons = SECTOR_TREND_REASONS[industry];
+      const reasons = SECTOR_TREND_REASONS[industry] || GENERIC_SECTOR_REASONS;
       const reason = reasons[Math.floor(Math.random() * reasons.length)];
       console.log(`  ${industry}: ${direction} (${(trend * 100).toFixed(1)}%) - ${reason}`);
     }
@@ -418,9 +438,35 @@ export class MarketScheduler {
       return;
     }
 
-    // 랜덤 이벤트 템플릿 선택
-    const template = MARKET_EVENT_TEMPLATES[
-      Math.floor(Math.random() * MARKET_EVENT_TEMPLATES.length)
+    // 현재 시즌 테마 산업 조회
+    const { data: activeSeason } = await this.supabase
+      .from('seasons')
+      .select('theme_id')
+      .eq('status', 'active')
+      .single();
+
+    let themeIndustrySet = new Set<string>();
+    if (activeSeason?.theme_id) {
+      const { data: themeCompanies } = await this.supabase
+        .from('companies')
+        .select('industry')
+        .eq('theme_id', activeSeason.theme_id);
+      themeIndustrySet = new Set(
+        (themeCompanies ?? []).map((c) => c.industry as string)
+      );
+    }
+
+    // 시즌에 맞는 이벤트 템플릿만 선택 (affected_industries 빈 배열이거나 테마 산업과 겹치는 것)
+    const eligibleTemplates = MARKET_EVENT_TEMPLATES.filter((t) => {
+      if (t.affected_industries.length === 0) return true;
+      if (themeIndustrySet.size === 0) return true;
+      return t.affected_industries.some((ind) => themeIndustrySet.has(ind));
+    });
+
+    if (eligibleTemplates.length === 0) return;
+
+    const template = eligibleTemplates[
+      Math.floor(Math.random() * eligibleTemplates.length)
     ];
     const impactVariation = 0.8 + Math.random() * 0.4; // ±20% 변동
 

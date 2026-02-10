@@ -223,6 +223,39 @@ export class SeasonManager {
     // 시장 이벤트 비활성화
     await this.supabase.from('market_events').update({ is_active: false }).eq('is_active', true)
 
+    // market_state sector_trends를 현재 테마 산업으로 초기화
+    const { data: themeIndustries } = await this.supabase
+      .from('companies')
+      .select('industry')
+      .eq('theme_id', theme.id)
+
+    if (themeIndustries && themeIndustries.length > 0) {
+      const industries = [...new Set(themeIndustries.map((c) => c.industry as string))]
+      const sectorTrends: Record<string, number> = {}
+      for (const ind of industries) {
+        sectorTrends[ind] = (Math.random() - 0.5) * 2 * 0.3 // -0.3 ~ 0.3 초기값
+      }
+
+      const { data: marketState } = await this.supabase
+        .from('market_state')
+        .select('id')
+        .limit(1)
+        .single()
+
+      if (marketState?.id) {
+        await this.supabase
+          .from('market_state')
+          .update({
+            sector_trends: sectorTrends,
+            sector_trends_updated_at: new Date().toISOString(),
+            market_phase: 'neutral',
+            phase_started_at: new Date().toISOString(),
+          })
+          .eq('id', marketState.id)
+        console.log(`[SeasonManager] market_state sector_trends 초기화: ${industries.join(', ')}`)
+      }
+    }
+
     console.log(`[SeasonManager] 시즌 ${nextNumber} 시작: ${theme.name} (${startsAt.toISOString()} ~ ${endsAt.toISOString()})`)
   }
 

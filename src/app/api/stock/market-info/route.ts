@@ -22,6 +22,19 @@ export async function GET() {
   try {
     const supabase = await createClient()
 
+    // 현재 시즌 테마 산업 (필터링용)
+    const { data: activeSeason } = await supabase
+      .from('seasons')
+      .select('theme_id')
+      .eq('status', 'active')
+      .single()
+
+    const themeIndustries = activeSeason?.theme_id
+      ? (await supabase.from('companies').select('industry').eq('theme_id', activeSeason.theme_id))
+          .data?.map((c) => c.industry as string) ?? []
+      : []
+    const themeIndustrySet = new Set(themeIndustries)
+
     const [marketStateResult, eventsResult] = await Promise.all([
       supabase
         .from('market_state')
@@ -35,14 +48,29 @@ export async function GET() {
     ])
 
     const marketState = marketStateResult.data
-    const activeEvents = (eventsResult.data || []).filter((event) => {
+    let activeEvents = (eventsResult.data || []).filter((event) => {
       const elapsed = (Date.now() - new Date(event.effective_at).getTime()) / (60 * 1000)
       return elapsed <= event.duration_minutes
     })
 
-    // 섹터 트렌드를 3단계로 양자화하여 정확한 수치 비노출
+    // 현재 시즌 테마에 맞게 이벤트 필터링 (affected_industries 빈 배열이거나 테마 산업과 겹치는 이벤트만)
+    if (themeIndustrySet.size > 0) {
+      activeEvents = activeEvents.filter((event) => {
+        const affected = (event.affected_industries || []) as string[]
+        if (affected.length === 0) return true
+        return affected.some((ind) => themeIndustrySet.has(ind))
+      })
+    }
+
+    // 섹터 트렌드를 3단계로 양자화, 현재 시즌 테마 산업만 반환
     const rawTrends = (marketState?.sector_trends || {}) as Record<string, number>
-    const quantizedTrends = quantizeSectorTrends(rawTrends)
+    const filteredRawTrends =
+      themeIndustrySet.size > 0
+        ? Object.fromEntries(
+            Object.entries(rawTrends).filter(([k]) => themeIndustrySet.has(k))
+          )
+        : rawTrends
+    const quantizedTrends = quantizeSectorTrends(filteredRawTrends)
 
     return NextResponse.json({
       marketPhase: marketState?.market_phase || 'neutral',
