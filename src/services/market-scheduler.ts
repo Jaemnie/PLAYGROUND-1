@@ -100,8 +100,9 @@ const SIMULATION_PARAMS = {
   },
   PRICE: {
     BASE_VOLATILITY: 0.012,        // 기본 1.2% 변동성
-    MAX_CHANGE_PER_UPDATE: 0.03,   // 업데이트당 최대 3%
-    DAILY_MAX_CHANGE: 0.15,        // 일중 최대 15%
+    MAX_CHANGE_PER_UPDATE: 0.01,   // 업데이트당 최대 1% (현실적 수준)
+    DAILY_PRESSURE_START: 0.18,    // 일중 18%부터 부드러운 압력 시작
+    DAILY_PRESSURE_STRENGTH: 0.35, // 압력 강도 (부드러움)
     WEIGHTS: {                     // 합계 = 1.0 (정규화됨)
       BASE_NOISE: 0.15,
       NEWS: 0.25,
@@ -135,13 +136,18 @@ const SIMULATION_PARAMS = {
     { start: 21, end: 24, multiplier: 1.15 },  // 마감 러시
   ],
   MOMENTUM: {
-    MAX_CONSECUTIVE_BEFORE_REVERSAL: 7,   // 7연속 이상 강제 반전
-    REVERSAL_BASE_CHANCE: 0.10,           // 기본 반전 확률 10%
-    REVERSAL_INCREMENT: 0.12,             // 연속횟수당 12% 증가
+    MAX_CONSECUTIVE_BEFORE_REVERSAL: 12,  // 12연속 이상 강제 반전 (기존 7)
+    REVERSAL_BASE_CHANCE: 0.05,           // 기본 반전 확률 5% (기존 10%)
+    REVERSAL_INCREMENT: 0.06,             // 연속횟수당 6% 증가 (기존 12%)
   },
   SECTOR_TREND: {
-    ROTATION_INTERVAL_MINUTES: 240,       // 4시간마다 섹터 트렌드 변경 가능
-    MAX_STRENGTH: 0.05,                   // 섹터 트렌드 최대 ±5%
+    ROTATION_INTERVAL_MINUTES: 90,        // 90분마다 섹터 트렌드 변경 (기존 240분)
+    MAX_STRENGTH: 0.04,                   // 섹터 트렌드 최대 ±4% (기존 5%)
+  },
+  BLACK_SWAN: {
+    CHANCE_PER_UPDATE: 0.0015,            // 업데이트당 0.15% 확률 (하루 종목당 ~1.35회)
+    MIN_MAGNITUDE: 0.02,                  // 최소 ±2%
+    MAX_MAGNITUDE: 0.05,                  // 최대 ±5%
   },
   MARKET_CYCLE: {
     PHASE_MIN_MINUTES: 480,               // 최소 8시간 지속
@@ -301,7 +307,11 @@ export class MarketScheduler {
     const lastUpdate = new Date(state.sector_trends_updated_at).getTime();
     const elapsedMinutes = (now - lastUpdate) / (60 * 1000);
 
-    if (elapsedMinutes < SIMULATION_PARAMS.SECTOR_TREND.ROTATION_INTERVAL_MINUTES) {
+    // ±30분 랜덤 지터로 정확한 교체 시점 예측 불가능하게
+    const jitter = (Math.random() - 0.5) * 60;
+    const effectiveInterval = SIMULATION_PARAMS.SECTOR_TREND.ROTATION_INTERVAL_MINUTES + jitter;
+
+    if (elapsedMinutes < effectiveInterval) {
       return state;
     }
 
@@ -312,8 +322,8 @@ export class MarketScheduler {
       const previousStrength = state.sector_trends[industry] || 0;
       // 새로운 목표 강도 (-1.0 ~ 1.0)
       const targetStrength = (Math.random() - 0.5) * 2;
-      // 이전 값에서 목표로 70% 이동 (점진적 변화)
-      newTrends[industry] = previousStrength * 0.3 + targetStrength * 0.7;
+      // 이전 값에서 목표로 50% 이동 (더 점진적 변화, 신호 읽기 어렵게)
+      newTrends[industry] = previousStrength * 0.5 + targetStrength * 0.5;
       newTrends[industry] = Math.max(-1.0, Math.min(1.0, newTrends[industry]));
 
       const trend = newTrends[industry];
@@ -621,15 +631,25 @@ export class MarketScheduler {
     const maxChange = SIMULATION_PARAMS.PRICE.MAX_CHANGE_PER_UPDATE * industryVol;
     let clampedChange = Math.max(Math.min(scaledChange, maxChange), -maxChange);
 
-    // 일중 변동폭 조정 압력 (전일 종가 대비 과도한 변동 억제)
+    // 블랙스완 이벤트: 극히 드물게 캡을 무시하는 극단 변동
+    const { CHANCE_PER_UPDATE, MIN_MAGNITUDE, MAX_MAGNITUDE } = SIMULATION_PARAMS.BLACK_SWAN;
+    if (Math.random() < CHANCE_PER_UPDATE) {
+      const magnitude = MIN_MAGNITUDE + Math.random() * (MAX_MAGNITUDE - MIN_MAGNITUDE);
+      const direction = Math.random() < 0.5 ? 1 : -1;
+      clampedChange = direction * magnitude; // 캡 무시, 블랙스완이 변동 전체를 대체
+      console.log(`⚡ 블랙스완! ${company.name}: ${(direction * magnitude * 100).toFixed(1)}%`);
+    }
+
+    // 일중 변동폭 부드러운 압력 (18%부터 시작, 0.35 강도)
     if (company.last_closing_price > 0) {
       const projectedPrice = company.current_price * (1 + clampedChange);
       const projectedDailyChange =
         (projectedPrice - company.last_closing_price) / company.last_closing_price;
-      const dailyLimit = SIMULATION_PARAMS.PRICE.DAILY_MAX_CHANGE;
+      const pressureStart = SIMULATION_PARAMS.PRICE.DAILY_PRESSURE_START;
+      const pressureStrength = SIMULATION_PARAMS.PRICE.DAILY_PRESSURE_STRENGTH;
 
-      if (Math.abs(projectedDailyChange) > dailyLimit * 0.7) {
-        const pressure = (Math.abs(projectedDailyChange) - dailyLimit * 0.7) * 0.5;
+      if (Math.abs(projectedDailyChange) > pressureStart) {
+        const pressure = (Math.abs(projectedDailyChange) - pressureStart) * pressureStrength;
         clampedChange -= Math.sign(projectedDailyChange) * pressure;
       }
     }
@@ -687,10 +707,10 @@ export class MarketScheduler {
       // 감정에 따른 방향 및 크기
       switch (news.sentiment) {
         case 'positive':
-          impact = Math.abs(impact) * 0.04;   // 최대 ~4% 상승
+          impact = Math.abs(impact) * 0.05;   // 최대 ~5% 상승 (기존 4%)
           break;
         case 'negative':
-          impact = -Math.abs(impact) * 0.05;  // 최대 ~5% 하락 (공포 효과)
+          impact = -Math.abs(impact) * 0.06;  // 최대 ~6% 하락 (기존 5%)
           break;
         default: // neutral
           impact = impact * 0.01 * (Math.random() - 0.5);
@@ -702,7 +722,7 @@ export class MarketScheduler {
 
     // 뉴스 다수일 때 루트 스케일링
     const dampener = companyNews.length > 1 ? 1 / Math.sqrt(companyNews.length) : 1;
-    return Math.max(Math.min(totalImpact * dampener, 0.06), -0.06);
+    return Math.max(Math.min(totalImpact * dampener, 0.05), -0.05); // 클램프 ±5% (기존 ±6%)
   }
 
   /** 섹터 트렌드 영향: 현재 산업의 강세/약세 방향을 가격에 반영 */
@@ -818,7 +838,7 @@ export class MarketScheduler {
       totalImpact += impact;
     }
 
-    return Math.max(Math.min(totalImpact, 0.05), -0.05);
+    return Math.max(Math.min(totalImpact, 0.06), -0.06); // 클램프 ±6% (기존 ±5%)
   }
 
   // ─── 변동성 계산 헬퍼 ──────────────────────────
@@ -937,7 +957,7 @@ export class MarketScheduler {
 
       await Promise.all(
         companies.map(async (company: Company) => {
-          const sectorBias = (marketState.sector_trends[company.industry] || 0) * 0.01;
+          const sectorBias = (marketState.sector_trends[company.industry] || 0) * 0.003; // 시가 편향 약화 (기존 0.01)
           const priceChange = (Math.random() - 0.5) * 0.08 + phaseBias + sectorBias;
           const openingPrice = company.last_closing_price * (1 + priceChange);
           const newMarketCap = Math.round(openingPrice * company.shares_issued);
@@ -1058,15 +1078,15 @@ export class MarketScheduler {
    * 편향 강도: |bias| * 0.35 만큼 선호 감정에 가중치 부여 (최대 ~65% 편향)
    */
   private selectBiasedNews(templates: NewsTemplate[], sentimentBias: number): NewsTemplate {
-    const biasStrength = Math.abs(sentimentBias) * 0.35;
+    const biasStrength = Math.abs(sentimentBias) * 0.15; // 편향 약화 (기존 0.35 → 0.15)
     const preferredSentiment = sentimentBias > 0 ? 'positive' : 'negative';
 
     const weights = templates.map((t) => {
       const vol = t.volatility ?? 1.0;
       let weight = Math.pow(1 / vol, 2.0); // 기존 volatility 가중치
 
-      // 편향 적용: 선호 감정이면 가중치 증가, 반대면 감소
-      if (Math.abs(sentimentBias) > 0.1) { // 약한 트렌드는 편향 안 줌
+      // 편향 적용: 강한 트렌드에서만 활성화 (기존 0.1 → 0.35)
+      if (Math.abs(sentimentBias) > 0.35) {
         if (t.sentiment === preferredSentiment) {
           weight *= (1 + biasStrength * 3); // 선호 감정: 최대 ~2.05배
         } else if (t.sentiment !== 'neutral') {

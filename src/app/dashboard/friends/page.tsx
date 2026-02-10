@@ -12,14 +12,27 @@ export default async function FriendsPage() {
   }
   
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900">
+    <div className="min-h-screen bg-background">
       <div className="fixed top-4 left-4 z-50">
         <DashboardBackButton />
       </div>
-      <div className="container mx-auto px-4 py-20">
-        <h1 className="text-3xl font-bold text-gray-100 mb-8">친구 관리</h1>
-        <FriendsList userId={user.id} />
-      </div>
+
+      <section className="pt-20 pb-8 px-4">
+        <div className="container mx-auto max-w-5xl">
+          <p className="text-sm font-bold tracking-widest text-violet-400 mb-1">
+            STACKS
+          </p>
+          <h1 className="text-2xl font-bold text-gray-100">
+            친구 관리
+          </h1>
+        </div>
+      </section>
+
+      <section className="px-4 pb-12">
+        <div className="container mx-auto max-w-5xl">
+          <FriendsList userId={user.id} />
+        </div>
+      </section>
     </div>
   )
 } 

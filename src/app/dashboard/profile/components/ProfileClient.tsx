@@ -169,17 +169,33 @@ export function ProfileClient({ user, profile: initialProfile }: ProfileClientPr
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900">
+    <div className="min-h-screen bg-background">
       <div className="fixed top-4 left-4 z-50">
         <DashboardBackButton />
       </div>
 
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold text-gray-100 mb-8">내 프로필</h1>
-        
-        <div className="grid grid-cols-1 gap-6">
-          {/* 기본 프로필 정보 */}
-          <Card className="bg-black/40 backdrop-blur-sm border-gray-800">
+      {/* 컴팩트 헤더 */}
+      <section className="pt-20 pb-8 px-4">
+        <div className="container mx-auto max-w-5xl">
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <p className="text-sm font-bold tracking-widest text-violet-400 mb-1">
+              STACKS
+            </p>
+            <h1 className="text-2xl font-bold text-gray-100">
+              내 프로필
+            </h1>
+          </motion.div>
+        </div>
+      </section>
+
+      <section className="px-4 pb-12">
+        <div className="container mx-auto max-w-5xl">
+          <div className="grid grid-cols-1 gap-6">
+            {/* 기본 프로필 정보 */}
+            <Card className="rounded-2xl bg-black/40 backdrop-blur-sm border border-gray-800/50">
             <CardHeader>
               <div className="flex items-center gap-2">
                 <UserCircle className="w-6 h-6 text-blue-400" />
@@ -282,9 +298,10 @@ export function ProfileClient({ user, profile: initialProfile }: ProfileClientPr
                 </div>
               </div>
             </CardContent>
-          </Card>
+            </Card>
+          </div>
         </div>
-      </div>
+      </section>
     </div>
   )
 } 

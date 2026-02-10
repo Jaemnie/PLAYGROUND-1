@@ -4,7 +4,7 @@ import { useMemo } from 'react'
 import { CardHeader, CardContent } from '@/components/ui/card'
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts'
 import { motion } from 'framer-motion'
-import { ChartPieIcon } from '@heroicons/react/24/outline'
+import { ChartPieIcon, LightBulbIcon } from '@heroicons/react/24/outline'
 
 interface PortfolioDiversificationProps {
   portfolio: any[]
@@ -15,22 +15,130 @@ const COLORS = [
   '#EC4899', '#6366F1', '#14B8A6',
 ]
 
+const ALL_SECTORS = ['IT', '전자', '제조', '건설', '식품'] as const
+
+function getScoreTip(score: number, missingSectors: string[]): string {
+  if (missingSectors.length === 5) return '주식을 매수하여 포트폴리오를 구성해 보세요.'
+  if (score >= 70) return '훌륭한 다각화! 안정적인 포트폴리오입니다.'
+  if (score >= 50) return '괜찮은 분산이지만, 더 넓게 투자하면 리스크를 줄일 수 있어요.'
+  if (missingSectors.length >= 3) return `${missingSectors.slice(0, 2).join(', ')} 등 미투자 섹터를 고려해 보세요.`
+  if (score >= 30) return '특정 섹터에 집중되어 있어요. 분산 투자를 고려해 보세요.'
+  return '한 섹터에 쏠려 있어요! 다른 섹터에도 투자해 보세요.'
+}
+
+interface SectorHolding {
+  name: string
+  shares: number
+  currentValue: number
+  profitRate: number
+}
+
+interface SectorData {
+  sector: string
+  value: number
+  percentage: number
+  displayPercentage: number
+  holdings: SectorHolding[]
+  totalCost: number
+  totalProfitRate: number
+}
+
+const tooltipKeyframes = `
+@keyframes tooltipFadeIn {
+  from { opacity: 0; transform: scale(0.95) translateY(4px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+`
+
+function CustomTooltip({ active, payload }: any) {
+  if (!active || !payload || !payload[0]) return null
+  const data = payload[0].payload as SectorData
+  const isProfit = data.totalProfitRate >= 0
+
+  return (
+    <div
+      style={{
+        backgroundColor: 'rgba(0, 0, 0, 0.92)',
+        border: '1px solid rgba(255, 255, 255, 0.1)',
+        borderRadius: '0.5rem',
+        padding: '10px 12px',
+        backdropFilter: 'blur(12px)',
+        boxShadow: '0 8px 24px rgba(0, 0, 0, 0.6)',
+        minWidth: '160px',
+        maxWidth: '220px',
+        animation: 'tooltipFadeIn 150ms ease-out',
+      }}
+    >
+      {/* 섹터 헤더 */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+        <span style={{ color: '#e5e7eb', fontWeight: 700, fontSize: '13px' }}>{data.sector}</span>
+        <span style={{ color: '#9ca3af', fontSize: '11px' }}>{data.percentage.toFixed(1)}%</span>
+      </div>
+
+      {/* 평가액 + 수익률 */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '8px' }}>
+        <span style={{ color: '#d1d5db', fontSize: '12px' }}>
+          {Math.floor(data.value).toLocaleString()}원
+        </span>
+        <span style={{ color: isProfit ? '#4ade80' : '#f87171', fontSize: '12px', fontWeight: 600 }}>
+          {isProfit ? '+' : ''}{data.totalProfitRate.toFixed(1)}%
+        </span>
+      </div>
+
+      {/* 종목별 디테일 */}
+      <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '6px' }}>
+        {data.holdings.map((h, i) => {
+          const hProfit = h.profitRate >= 0
+          return (
+            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '2px 0' }}>
+              <span style={{ color: '#9ca3af', fontSize: '11px' }}>
+                {h.name} <span style={{ color: '#6b7280' }}>{h.shares}주</span>
+              </span>
+              <span style={{ color: hProfit ? '#4ade80' : '#f87171', fontSize: '11px', fontWeight: 500 }}>
+                {hProfit ? '+' : ''}{h.profitRate.toFixed(1)}%
+              </span>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 export function PortfolioDiversification({ portfolio }: PortfolioDiversificationProps) {
-  const diversificationData = useMemo(() => {
-    const sectorMap = new Map<string, number>()
+  const diversificationData = useMemo((): SectorData[] => {
+    const sectorMap = new Map<string, { value: number; cost: number; holdings: SectorHolding[] }>()
+
     portfolio.forEach(holding => {
       const sector = holding.company.industry
-      const value = holding.shares * holding.company.current_price
-      sectorMap.set(sector, (sectorMap.get(sector) || 0) + value)
+      const currentValue = holding.shares * holding.company.current_price
+      const costBasis = holding.shares * (holding.average_cost || holding.company.current_price)
+      const profitRate = costBasis > 0 ? ((currentValue - costBasis) / costBasis) * 100 : 0
+
+      const existing = sectorMap.get(sector) || { value: 0, cost: 0, holdings: [] }
+      existing.value += currentValue
+      existing.cost += costBasis
+      existing.holdings.push({
+        name: holding.company.name,
+        shares: holding.shares,
+        currentValue,
+        profitRate,
+      })
+      sectorMap.set(sector, existing)
     })
-    const totalValue = Array.from(sectorMap.values()).reduce((a, b) => a + b, 0)
+
+    const totalValue = Array.from(sectorMap.values()).reduce((a, b) => a + b.value, 0)
     if (totalValue === 0) return []
+
     return Array.from(sectorMap.entries())
-      .map(([sector, value]) => ({
+      .map(([sector, data]) => ({
         sector,
-        value,
-        percentage: (value / totalValue) * 100,
-        displayPercentage: Math.max((value / totalValue) * 100, 3),
+        value: data.value,
+        percentage: (data.value / totalValue) * 100,
+        displayPercentage: Math.max((data.value / totalValue) * 100, 3),
+        holdings: data.holdings.sort((a, b) => b.currentValue - a.currentValue),
+        totalCost: data.cost,
+        totalProfitRate: data.cost > 0 ? ((data.value - data.cost) / data.cost) * 100 : 0,
       }))
       .sort((a, b) => b.value - a.value)
   }, [portfolio])
@@ -41,10 +149,17 @@ export function PortfolioDiversification({ portfolio }: PortfolioDiversification
     return Math.round(Math.max(0, Math.min(100, (1 - hhi) * 100)))
   }, [diversificationData])
 
+  const missingSectors = useMemo(() => {
+    const ownedSectors = new Set(diversificationData.map(d => d.sector))
+    return ALL_SECTORS.filter(s => !ownedSectors.has(s))
+  }, [diversificationData])
+
   const hasHoldings = diversificationData.length > 0
+  const tip = getScoreTip(score, missingSectors as unknown as string[])
 
   return (
     <>
+      <style dangerouslySetInnerHTML={{ __html: tooltipKeyframes }} />
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -84,16 +199,16 @@ export function PortfolioDiversification({ portfolio }: PortfolioDiversification
                     ))}
                   </Pie>
                   <Tooltip
-                    formatter={(value: number | string, name: string, props: any) => [
-                      `${props.payload.percentage.toFixed(1)}%`,
-                      props.payload.sector,
-                    ]}
-                    contentStyle={{
-                      backgroundColor: '#1F2937',
-                      border: '1px solid #374151',
-                      borderRadius: '0.375rem',
-                      fontSize: '12px',
-                      color: '#fff',
+                    content={<CustomTooltip />}
+                    allowEscapeViewBox={{ x: true, y: true }}
+                    offset={15}
+                    isAnimationActive={true}
+                    animationDuration={150}
+                    animationEasing="ease-out"
+                    wrapperStyle={{
+                      transition: 'transform 120ms ease-out, opacity 120ms ease-out',
+                      pointerEvents: 'none',
+                      zIndex: 50,
                     }}
                   />
                 </PieChart>
@@ -125,6 +240,29 @@ export function PortfolioDiversification({ portfolio }: PortfolioDiversification
             </div>
           </div>
         )}
+
+        {/* 미보유 섹터 + 팁 */}
+        <div className="mt-3 pt-3 border-t border-white/5">
+          {hasHoldings && missingSectors.length > 0 && (
+            <div className="mb-2">
+              <span className="text-xs text-gray-500">미보유 섹터</span>
+              <div className="flex flex-wrap gap-1.5 mt-1">
+                {missingSectors.map(sector => (
+                  <span
+                    key={sector}
+                    className="px-2 py-0.5 rounded-md text-xs text-gray-500 bg-white/5 border border-white/5 border-dashed"
+                  >
+                    {sector}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+          <div className="flex items-start gap-1.5">
+            <LightBulbIcon className="w-3.5 h-3.5 text-yellow-500/60 flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-gray-500 leading-relaxed">{tip}</p>
+          </div>
+        </div>
       </CardContent>
     </>
   )

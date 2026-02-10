@@ -5,18 +5,27 @@ import { CardHeader, CardContent } from '@/components/ui/card'
 import { ArrowTrendingUpIcon } from '@heroicons/react/24/outline'
 import { motion } from 'framer-motion'
 
+type TrendDirection = 'bullish' | 'neutral' | 'bearish'
+
 interface SectorTrendsData {
-  sectorTrends: Record<string, number>
+  sectorTrends: Record<string, TrendDirection>
 }
 
 const INDUSTRY_ORDER = ['IT', '전자', '제조', '건설', '식품'] as const
 
-function getTrendColor(strength: number): { text: string; bar: string } {
-  if (strength > 0.3) return { text: 'text-green-400', bar: 'bg-green-400' }
-  if (strength > 0.1) return { text: 'text-green-400/70', bar: 'bg-green-400/70' }
-  if (strength > -0.1) return { text: 'text-gray-400', bar: 'bg-gray-500' }
-  if (strength > -0.3) return { text: 'text-red-400/70', bar: 'bg-red-400/70' }
-  return { text: 'text-red-400', bar: 'bg-red-400' }
+function getTrendInfo(direction: TrendDirection): {
+  label: string
+  color: string
+  icon: string
+} {
+  switch (direction) {
+    case 'bullish':
+      return { label: '강세', color: 'text-green-400', icon: '▲' }
+    case 'bearish':
+      return { label: '약세', color: 'text-red-400', icon: '▼' }
+    default:
+      return { label: '보합', color: 'text-gray-400', icon: '─' }
+  }
 }
 
 export function SectorTrends() {
@@ -55,10 +64,8 @@ export function SectorTrends() {
         ) : (
           <div className="space-y-1.5">
             {INDUSTRY_ORDER.map((industry, index) => {
-              const strength = data.sectorTrends[industry] || 0
-              const colors = getTrendColor(strength)
-              const barPercent = Math.abs(strength) * 100
-              const isPositive = strength >= 0
+              const direction = data.sectorTrends[industry] || 'neutral'
+              const info = getTrendInfo(direction as TrendDirection)
 
               return (
                 <motion.div
@@ -66,21 +73,14 @@ export function SectorTrends() {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: index * 0.03 }}
-                  className="flex items-center gap-2 h-6"
+                  className="flex items-center gap-3 h-6"
                 >
                   <span className="w-8 text-xs font-medium text-gray-400 flex-shrink-0">{industry}</span>
-                  <div className="flex-1 relative h-3 rounded-sm overflow-hidden bg-white/5">
-                    <div className="absolute left-1/2 top-0 bottom-0 w-px bg-white/10" />
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${barPercent / 2}%` }}
-                      transition={{ duration: 0.5, delay: index * 0.03 }}
-                      className={`absolute top-0 bottom-0 rounded-sm ${colors.bar}`}
-                      style={{ [isPositive ? 'left' : 'right']: '50%' }}
-                    />
-                  </div>
-                  <span className={`w-10 text-xs font-bold tabular-nums text-right ${colors.text}`}>
-                    {strength > 0 ? '+' : ''}{(strength * 100).toFixed(0)}%
+                  <span className={`w-4 text-xs text-center ${info.color}`}>
+                    {info.icon}
+                  </span>
+                  <span className={`text-xs font-bold ${info.color}`}>
+                    {info.label}
                   </span>
                 </motion.div>
               )

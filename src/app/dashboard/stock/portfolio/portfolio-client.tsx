@@ -113,7 +113,7 @@ export function PortfolioClient({ user, portfolio: initialPortfolio, transaction
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900">
+    <div className="min-h-screen bg-background">
       {selectedHolding && (
         <QuickTradeModal 
           isOpen={showTradeModal}
@@ -129,41 +129,54 @@ export function PortfolioClient({ user, portfolio: initialPortfolio, transaction
       <div className="fixed top-4 left-4 z-50">
         <StockBackButton />
       </div>
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold text-gray-100 mb-8">포트폴리오</h1>
-        
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card className="bg-black/40 backdrop-blur-sm border-gray-800">
-            <PortfolioAnalysis portfolio={updatedPortfolio} points={points} />
-          </Card>
-          <Card className="bg-black/40 backdrop-blur-sm border-gray-800">
-            <PerformanceChart 
-              portfolio={updatedPortfolio} 
-              user={user}
-            />
-          </Card>
-        </div>
-        
-        <div className="mt-6">
-          <Card className="bg-black/40 backdrop-blur-sm border-gray-800">
-            <HoldingsTable 
-              portfolio={updatedPortfolio} 
-              user={user}
-              points={points}
-              onTradeClick={(holding) => {
-                setSelectedHolding(holding)
-                setShowTradeModal(true)
-              }}
-            />
-          </Card>
-        </div>
 
-        <div className="mt-6">
-          <Card className="bg-black/40 backdrop-blur-sm border-gray-800">
-            <TransactionHistory transactions={transactions} />
-          </Card>
+      {/* 컴팩트 헤더 */}
+      <section className="pt-20 pb-8 px-4">
+        <div className="container mx-auto max-w-5xl">
+          <p className="text-sm font-bold tracking-widest text-violet-400 mb-1">
+            STACKS
+          </p>
+          <h1 className="text-2xl font-bold text-gray-100">
+            포트폴리오
+          </h1>
         </div>
-      </div>
+      </section>
+
+      <section className="px-4 pb-12">
+        <div className="container mx-auto max-w-5xl">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <Card className="rounded-2xl bg-black/40 backdrop-blur-sm border border-gray-800/50">
+              <PortfolioAnalysis portfolio={updatedPortfolio} points={points} />
+            </Card>
+            <Card className="rounded-2xl bg-black/40 backdrop-blur-sm border border-gray-800/50">
+              <PerformanceChart 
+                portfolio={updatedPortfolio} 
+                user={user}
+              />
+            </Card>
+          </div>
+          
+          <div className="mt-4">
+            <Card className="rounded-2xl bg-black/40 backdrop-blur-sm border border-gray-800/50">
+              <HoldingsTable 
+                portfolio={updatedPortfolio} 
+                user={user}
+                points={points}
+                onTradeClick={(holding) => {
+                  setSelectedHolding(holding)
+                  setShowTradeModal(true)
+                }}
+              />
+            </Card>
+          </div>
+
+          <div className="mt-4">
+            <Card className="rounded-2xl bg-black/40 backdrop-blur-sm border border-gray-800/50">
+              <TransactionHistory transactions={transactions} />
+            </Card>
+          </div>
+        </div>
+      </section>
     </div>
   )
 }

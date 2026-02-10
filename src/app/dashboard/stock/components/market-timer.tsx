@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { ChartBarIcon } from '@heroicons/react/24/outline'
 import { motion, AnimatePresence } from 'framer-motion'
 import { CardHeader, CardContent } from '@/components/ui/card'
-import { ClockIcon, UserIcon, BoltIcon } from '@heroicons/react/24/outline'
+import { ClockIcon, UserIcon, BoltIcon, ArrowTrendingUpIcon } from '@heroicons/react/24/outline'
 import { useSession } from '@/lib/useSession'
 
 interface MarketEvent {
@@ -16,9 +16,12 @@ interface MarketEvent {
   effectiveAt: string
 }
 
+type TrendDirection = 'bullish' | 'neutral' | 'bearish'
+
 interface MarketInfo {
   marketPhase: 'bull' | 'neutral' | 'bear'
   activeEvents: MarketEvent[]
+  sectorTrends: Record<string, TrendDirection>
 }
 
 const PHASE_CONFIG = {
@@ -45,6 +48,7 @@ export function MarketTimer() {
   const [marketInfo, setMarketInfo] = useState<MarketInfo>({
     marketPhase: 'neutral',
     activeEvents: [],
+    sectorTrends: {},
   })
 
   useSession()
@@ -53,7 +57,7 @@ export function MarketTimer() {
 
   useEffect(() => {
     if (!isClient) return
-    const timer = setInterval(() => setCurrentTime(new Date()), 100)
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000)
     return () => clearInterval(timer)
   }, [isClient])
 
@@ -96,6 +100,7 @@ export function MarketTimer() {
           setMarketInfo({
             marketPhase: data.marketPhase || 'neutral',
             activeEvents: data.activeEvents || [],
+            sectorTrends: data.sectorTrends || {},
           })
         }
       } catch { /* 기본값 유지 */ }
@@ -135,7 +140,7 @@ export function MarketTimer() {
 
       const timeUntil = nextPrice.getTime() - now.getTime()
       if (timeUntil <= 1000 && timeUntil > 0) setFlashPrice(true)
-    }, 100)
+    }, 1000)
 
     return () => clearInterval(timer)
   }, [isClient, marketIsOpen, serverOffset])
@@ -181,8 +186,10 @@ export function MarketTimer() {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            <div className="p-3 rounded-xl bg-black/20 border border-white/5 text-center">
-              <div className="font-bold text-white text-lg">로딩 중...</div>
+            <div className="space-y-3">
+              <div className="h-6 w-24 mx-auto rounded bg-white/5 animate-pulse" />
+              <div className="h-4 w-32 mx-auto rounded bg-white/5 animate-pulse" />
+              <div className="h-4 w-20 mx-auto rounded bg-white/5 animate-pulse" />
             </div>
           </div>
         </CardContent>
@@ -325,6 +332,64 @@ export function MarketTimer() {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* 섹터 트렌드 뱃지 */}
+        {Object.keys(marketInfo.sectorTrends).length > 0 && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3 }}
+            className="mt-3 pt-3 border-t border-white/5"
+          >
+            <div className="flex items-center gap-1.5 mb-2">
+              <ArrowTrendingUpIcon className="w-3.5 h-3.5 text-blue-400" />
+              <span className="text-xs font-medium text-gray-400">섹터 트렌드</span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {(['IT', '전자', '제조', '건설', '식품'] as const).map((industry) => {
+                const direction = marketInfo.sectorTrends[industry] || 'neutral'
+                const config = direction === 'bullish'
+                  ? { icon: '▲', color: 'text-green-400', bg: 'bg-green-500/10', border: 'border-green-500/20' }
+                  : direction === 'bearish'
+                    ? { icon: '▼', color: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/20' }
+                    : { icon: '─', color: 'text-gray-400', bg: 'bg-white/5', border: 'border-white/10' }
+                return (
+                  <span
+                    key={industry}
+                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium ${config.bg} border ${config.border}`}
+                  >
+                    <span className={config.color}>{config.icon}</span>
+                    <span className="text-gray-300">{industry}</span>
+                  </span>
+                )
+              })}
+            </div>
+          </motion.div>
+        )}
+
+        {/* 장 운영 안내 */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.4 }}
+          className="mt-3 pt-3 border-t border-white/5"
+        >
+          <div className="flex items-center justify-between text-xs text-gray-500">
+            <span>장 운영시간</span>
+            <span className="font-medium text-gray-400">09:00 ~ 24:00</span>
+          </div>
+          <div className="flex items-center justify-between text-xs text-gray-500 mt-1">
+            <span>주가 갱신</span>
+            <span className="font-medium text-gray-400">1분 간격</span>
+          </div>
+          <p className="text-xs text-gray-600 mt-2 leading-relaxed">
+            {marketInfo.marketPhase === 'bull'
+              ? '호황기에는 상승 추세가 지속될 수 있지만 반전에 주의하세요.'
+              : marketInfo.marketPhase === 'bear'
+                ? '침체기에는 저가 매수 기회를 노려보세요.'
+                : '보합장에서는 섹터 트렌드를 참고하여 선별 투자하세요.'}
+          </p>
+        </motion.div>
       </CardContent>
     </>
   )

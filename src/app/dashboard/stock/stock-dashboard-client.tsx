@@ -10,7 +10,7 @@ import { Card } from '@/components/ui/card'
 import DashboardBackButton from '@/components/DashboardBackButton'
 import { MarketTimer } from './components/market-timer'
 import { useRealtimeStockData } from '@/hooks/useRealtimeStockData'
-import { SectorTrends } from './components/sector-trends'
+// SectorTrends는 MarketTimer에 통합됨
 
 const PortfolioDiversification = dynamic(
   () => import('./components/portfolio-diversification').then(mod => mod.PortfolioDiversification),
@@ -90,51 +90,59 @@ export function StockDashboardClient({
   }, [stockData])
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 overflow-x-hidden">
+    <div className="min-h-screen bg-background overflow-x-hidden">
       <div className="fixed top-4 left-4 z-50">
         <DashboardBackButton />
       </div>
       
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold text-gray-100 mb-8">주식 시뮬레이션</h1>
-        
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* 포트폴리오 요약 */}
-          <Card className="lg:col-span-5 bg-black/40 backdrop-blur-sm border-gray-800 overflow-hidden">
-            <PortfolioSummary portfolio={portfolio} points={points} />
-          </Card>
+      {/* 컴팩트 헤더 */}
+      <section className="pt-20 pb-8 px-4">
+        <div className="container mx-auto max-w-5xl">
+          <p className="text-sm font-bold tracking-widest text-violet-400 mb-1">
+            STACKS
+          </p>
+          <h1 className="text-2xl font-bold text-gray-100">
+            주식 시뮬레이션
+          </h1>
+        </div>
+      </section>
 
-          {/* 마켓 타이머 */}
-          <Card className="lg:col-span-3 bg-black/40 backdrop-blur-sm border-gray-800 overflow-hidden">
-            <MarketTimer />
+      <section className="px-4 pb-12">
+        <div className="container mx-auto max-w-5xl">
+          {/* 상단 2행 통합 그리드 */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+            {/* 포트폴리오 요약 (1행, 왼쪽 넓게) */}
+            <Card className="lg:col-span-8 rounded-2xl bg-black/40 backdrop-blur-sm border border-gray-800/50 overflow-hidden">
+              <PortfolioSummary portfolio={portfolio} points={points} />
+            </Card>
+
+            {/* 마켓 타이머 + 섹터 트렌드 (1~2행 관통, 오른쪽 사이드바) */}
+            <Card className="lg:col-span-4 lg:row-span-2 rounded-2xl bg-black/40 backdrop-blur-sm border border-gray-800/50 overflow-hidden">
+              <MarketTimer />
+            </Card>
+            
+            {/* 시장 개요 (2행, 왼쪽) */}
+            <Card className="lg:col-span-4 rounded-2xl bg-black/40 backdrop-blur-sm border border-gray-800/50 overflow-hidden">
+              <MarketOverview companies={companies} />
+            </Card>
+
+            {/* 포트폴리오 다각화 (2행, 왼쪽 중앙) */}
+            <Card className="lg:col-span-4 rounded-2xl bg-black/40 backdrop-blur-sm border border-gray-800/50 overflow-hidden">
+              <PortfolioDiversification portfolio={portfolio} />
+            </Card>
+          </div>
+
+          {/* 뉴스 티커 */}
+          <Card className="mt-4 rounded-2xl bg-black/40 backdrop-blur-sm border border-gray-800/50 overflow-hidden">
+            <NewsTicker news={initialNews} />
           </Card>
           
-          {/* 시장 개요 */}
-          <Card className="lg:col-span-4 bg-black/40 backdrop-blur-sm border-gray-800 overflow-hidden">
-            <MarketOverview companies={companies} />
+          {/* 주식 목록 */}
+          <Card className="mt-4 rounded-2xl bg-black/40 backdrop-blur-sm border border-gray-800/50 overflow-hidden">
+            <StockList companies={companies} />
           </Card>
         </div>
-
-        {/* 섹터 트렌드 + 포트폴리오 다각화 (나란히 배치) */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-          <Card className="bg-black/40 backdrop-blur-sm border-gray-800 overflow-hidden">
-            <SectorTrends />
-          </Card>
-          <Card className="bg-black/40 backdrop-blur-sm border-gray-800 overflow-hidden">
-            <PortfolioDiversification portfolio={portfolio} />
-          </Card>
-        </div>
-        
-        {/* 뉴스 티커 */}
-        <Card className="mt-6 bg-black/40 backdrop-blur-sm border-gray-800 overflow-hidden">
-          <NewsTicker news={initialNews} />
-        </Card>
-        
-        {/* 주식 목록 */}
-        <Card className="mt-6 bg-black/40 backdrop-blur-sm border-gray-800 overflow-hidden">
-          <StockList companies={companies} />
-        </Card>
-      </div>
+      </section>
     </div>
   )
 }

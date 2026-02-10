@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "PLAYGROUND",
-  description: "당장에는 어디에 사용될 지 모르겠지만...",
+  title: "STACKS",
+  description: "STACKS - 주식 시뮬레이션 게임",
 };
 
 export default function RootLayout({
@@ -28,7 +28,19 @@ export default function RootLayout({
     <html lang="ko">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}>
         {children}
-        <Toaster richColors position="bottom-right" />
+        <Toaster
+          richColors
+          position="bottom-right"
+          theme="dark"
+          toastOptions={{
+            style: {
+              background: 'rgba(0, 0, 0, 0.8)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              backdropFilter: 'blur(12px)',
+              color: '#E5E7EB',
+            },
+          }}
+        />
         <SpeedInsights />
       </body>
     </html>

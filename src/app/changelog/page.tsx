@@ -28,15 +28,25 @@ export default function ChangelogPage() {
         </motion.div>
       </div>
 
-      <section className="relative pt-32 pb-20 px-4">
-        <div className="container mx-auto max-w-3xl">
+      <section className="pt-20 pb-8 px-4">
+        <div className="container mx-auto max-w-5xl">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            className="prose prose-invert max-w-none"
           >
-            <h1 className="text-4xl font-bold mb-8">변경사항</h1>
+            <p className="text-sm font-bold tracking-widest text-violet-400 mb-1">
+              STACKS
+            </p>
+            <h1 className="text-2xl font-bold text-gray-100">
+              변경사항
+            </h1>
+          </motion.div>
+        </div>
+      </section>
 
+      <section className="px-4 pb-12">
+        <div className="container mx-auto max-w-5xl">
+          <div className="prose prose-invert max-w-none">
             <div className="space-y-12">
               <div>
                 <h2 className="text-2xl font-bold text-gray-100">2024년 2월</h2>
@@ -103,14 +113,14 @@ export default function ChangelogPage() {
                     <h3 className="text-lg font-semibold text-gray-200">v1.0.0</h3>
                     <p className="text-sm text-gray-400">2025년 1월 23일</p>
                     <ul className="mt-2 space-y-2 text-gray-300">
-                      <li>PLAYGROUND 서비스 초기 버전 출시</li>
+                      <li>STACKS 서비스 초기 버전 출시</li>
                       <li>Next.js 프로젝트 기반 구축</li>
                     </ul>
                   </div>
                 </div>
               </div>
             </div>
-          </motion.div>
+          </div>
         </div>
       </section>
     </div>

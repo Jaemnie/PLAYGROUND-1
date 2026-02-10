@@ -40,7 +40,6 @@ export default async function LeaderboardPage() {
       company:companies(current_price)
     `)
   
-  console.log('Holdings:', holdings)
   
   // 사용자별 주식 자산 계산
   const userStockValues = new Map<string, number>()
@@ -71,16 +70,12 @@ export default async function LeaderboardPage() {
     })
   }
   
-  console.log('User stock values:', Object.fromEntries(userStockValues))
-  console.log('User IDs:', Array.from(userIds))
   
   // 모든 프로필 정보 가져오기 (ID 필터링 없이)
   const { data: allProfiles, error: profilesError } = await supabase
     .from('profiles')
     .select('id, nickname, points')
   
-  console.log('All profiles:', allProfiles)
-  console.log('Profiles error:', profilesError)
   
   // 수집된 사용자 ID를 기반으로 프로필 정보 필터링
   const userIdsArray = Array.from(userIds)
@@ -91,14 +86,12 @@ export default async function LeaderboardPage() {
     profiles = allProfiles.filter(profile => userIds.has(profile.id)) as Profile[]
   }
   
-  console.log('Filtered profiles:', profiles)
   
   // 프로필 정보가 없는 사용자 ID 찾기
   const missingProfileIds = userIdsArray.filter(id => 
     !profiles.some(profile => profile.id === id)
   )
   
-  console.log('Missing profile IDs:', missingProfileIds)
   
   // 프로필 정보가 없는 사용자를 위한 기본 프로필 생성
   const defaultProfiles = missingProfileIds.map(id => ({
@@ -124,8 +117,6 @@ export default async function LeaderboardPage() {
   
   // 총 자본 기준으로 내림차순 정렬
   const sortedUsers = usersWithTotalCapital.sort((a, b) => b.total_capital - a.total_capital)
-
-  console.log('Sorted users:', sortedUsers)
 
   return (
     <Suspense fallback={<LoadingSpinner />}>

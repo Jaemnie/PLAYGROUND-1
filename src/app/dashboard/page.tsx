@@ -14,60 +14,25 @@ export default async function DashboardPage() {
       redirect('/login')
     }
     
-    // 모든 쿼리를 병렬로 실행하여 성능 최적화
+    // 프로필 및 친구 요청 수만 조회
     const [
       profileResult,
       friendResult,
-      holdingsResult,
-      newsResult,
-      messagesResult,
     ] = await Promise.all([
-      // 프로필 정보 조회
       supabase
         .from('profiles')
         .select('*')
         .eq('id', user.id)
         .single(),
-      // 친구 요청 수 조회
       supabase
         .from('friends')
         .select('*', { count: 'exact', head: true })
         .eq('friend_id', user.id)
         .eq('status', 'pending'),
-      // 주식 보유 현황 조회
-      supabase
-        .from('holdings')
-        .select(`
-          id,
-          shares,
-          company:companies(
-            id,
-            name,
-            ticker,
-            current_price,
-            last_closing_price
-          )
-        `)
-        .eq('user_id', user.id),
-      // 최근 뉴스 조회
-      supabase
-        .from('news')
-        .select('*')
-        .order('published_at', { ascending: false })
-        .limit(5),
-      // 최근 채팅 메시지 조회
-      supabase
-        .from('messages')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(5),
     ])
 
     const profile = profileResult.data
     const friendRequestCount = friendResult.count
-    const holdings = holdingsResult.data
-    const news = newsResult.data
-    const messages = messagesResult.data
     
     return (
       <Suspense fallback={<LoadingSpinner />}>
@@ -75,9 +40,6 @@ export default async function DashboardPage() {
           user={user}
           profile={profile}
           friendRequestCount={friendRequestCount || 0}
-          holdings={holdings || []}
-          news={news || []}
-          messages={messages || []}
         />
       </Suspense>
     )

@@ -144,27 +144,33 @@ export function NewsListClient({ company, companyNews }: NewsListClientProps) {
   }
 
   return (
-    <div className="container mx-auto py-6 max-w-5xl">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-2">
-          <NewspaperIcon className="w-6 h-6 text-blue-400" />
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent">
-            {company.name} 뉴스 모음
-          </h1>
-        </div>
-        <Link href={`/dashboard/stock/${company.ticker}`} passHref>
+    <div className="min-h-screen bg-background">
+      <div className="fixed top-4 left-4 z-50">
+        <Link href={`/dashboard/stock/${company.ticker}`}>
           <Button
-            variant="outline"
-            size="sm"
-            className="text-gray-400 hover:text-gray-300 transition-colors flex items-center gap-1"
+            variant="ghost"
+            className="relative bg-zinc-900/60 backdrop-blur-sm border border-zinc-800/50 hover:bg-zinc-800/70 flex items-center gap-2"
           >
-            <ArrowLeftIcon className="w-4 h-4 mr-1" />
-            <span>돌아가기</span>
+            <ArrowLeftIcon className="h-[1.2rem] w-[1.2rem] text-zinc-200" />
+            <span className="text-zinc-200">돌아가기</span>
           </Button>
         </Link>
       </div>
 
-      <Card className="mb-6">
+      <section className="pt-20 pb-8 px-4">
+        <div className="container mx-auto max-w-5xl">
+          <p className="text-sm font-bold tracking-widest text-violet-400 mb-1">
+            STACKS
+          </p>
+          <h1 className="text-2xl font-bold text-gray-100">
+            {company.name} 뉴스 모음
+          </h1>
+        </div>
+      </section>
+
+      <section className="px-4 pb-12">
+        <div className="container mx-auto max-w-5xl">
+      <Card className="mb-6 rounded-2xl bg-black/40 backdrop-blur-sm border border-gray-800/50">
         <CardContent className="pt-6">
           <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between mb-4">
             <Input
@@ -255,6 +261,8 @@ export function NewsListClient({ company, companyNews }: NewsListClientProps) {
       <div className="mt-6 text-center text-sm text-gray-500">
         총 {filteredByImpact.length}개의 뉴스가 {newsGroups.length}개 시간대에 있습니다.
       </div>
+        </div>
+      </section>
     </div>
   )
 } 

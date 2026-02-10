@@ -26,7 +26,7 @@ export function TradeAlert({ isOpen, type, onClose }: TradeAlertProps) {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             transition={{ type: "spring", duration: 0.5 }}
-            className="fixed left-[45%] top-[45%] -translate-x-[50%] -translate-y-[50%] 
+            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 
                        bg-gray-900 rounded-2xl p-8 shadow-2xl z-[101] w-[90%] max-w-[360px]
                        border border-gray-800"
           >

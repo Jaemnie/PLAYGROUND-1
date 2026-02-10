@@ -73,13 +73,15 @@ export function LoginForm() {
       transition={{ duration: 0.5 }}
     >
       <Card className="w-[400px] bg-black/40 backdrop-blur-sm border border-gray-800/50 shadow-xl">
-        <CardHeader className="space-y-1">
-          <h2 className="text-2xl font-bold text-center bg-gradient-to-r from-blue-400 to-violet-400 bg-clip-text text-transparent">
-            로그인
-          </h2>
-          <p className="text-sm text-gray-400 text-center">
-            계정에 로그인하세요
-          </p>
+        <CardHeader className="space-y-1 pt-8 pb-2">
+          <div className="text-center">
+            <h1 className="text-4xl font-extrabold tracking-tight bg-gradient-to-r from-blue-400 to-violet-400 bg-clip-text text-transparent">
+              STACKS
+            </h1>
+            <p className="text-sm text-gray-400 mt-3">
+              계정에 로그인하세요
+            </p>
+          </div>
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">

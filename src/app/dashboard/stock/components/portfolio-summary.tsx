@@ -18,7 +18,6 @@ export function PortfolioSummary({ portfolio: initialPortfolio, points }: Portfo
   const [totalValue, setTotalValue] = useState(0)
   const [totalGain, setTotalGain] = useState(0)
   const [gainPercentage, setGainPercentage] = useState(0)
-  const [showDetails, setShowDetails] = useState(false)
 
   const companyIds = initialPortfolio.map(h => h.company.id)
   const { stockData } = useRealtimeStockData(companyIds)
@@ -44,7 +43,7 @@ export function PortfolioSummary({ portfolio: initialPortfolio, points }: Portfo
     
     setTotalValue(value)
     setTotalGain(gain)
-    setGainPercentage((gain / value) * 100)
+    setGainPercentage(value === 0 ? 0 : (gain / value) * 100)
   }, [portfolio])
 
   return (

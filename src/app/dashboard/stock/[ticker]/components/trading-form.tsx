@@ -5,7 +5,7 @@ import { CardHeader, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { createClientBrowser } from '@/lib/supabase/client'
-import { TradeAlert } from '@/components/ui/trade-alert'
+import { toast } from 'sonner'
 
 interface User {
   id: string;
@@ -51,7 +51,6 @@ export function TradingForm({
   const [type, setType] = useState<'buy' | 'sell'>('buy')
   const [shares, setShares] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [showAlert, setShowAlert] = useState(false)
   
   const supabase = createClientBrowser()
   if (!supabase) throw new Error('Could not create Supabase client')
@@ -111,7 +110,8 @@ export function TradingForm({
       
       setShares('')
     } catch (error: unknown) {
-      console.error('거래 오류:', error instanceof Error ? error.message : '알 수 없는 오류')
+      const message = error instanceof Error ? error.message : '거래 중 오류가 발생했습니다.'
+      toast.error(message)
     } finally {
       setIsLoading(false)
     }
@@ -137,11 +137,6 @@ export function TradingForm({
 
   return (
     <>
-      <TradeAlert 
-        isOpen={showAlert} 
-        type={type} 
-        onClose={() => setShowAlert(false)} 
-      />
       <CardHeader>
         <div className="flex justify-between items-center">
           <h2 className="text-xl font-semibold text-white">주식 거래</h2>
@@ -227,14 +222,14 @@ export function TradingForm({
                 ? 'bg-blue-500 hover:bg-blue-600'
                 : 'bg-red-500 hover:bg-red-600'
             }`}
-            disabled={type === 'buy' ? !canBuy : !canSell || isLoading}
+            disabled={type === 'buy' ? !canBuy || isLoading : !canSell || isLoading}
             onClick={handleTrade}
           >
-            {type === 'buy' ? '매수하기' : '매도하기'}
+            {isLoading ? '처리 중...' : type === 'buy' ? '매수하기' : '매도하기'}
           </Button>
 
           <p className="text-sm text-gray-400">
-            보유 포인트: {points.toLocaleString()}P
+            보유 포인트: {Math.floor(points).toLocaleString()}P
           </p>
         </div>
       </CardContent>

@@ -1,6 +1,69 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
+// 장 운영 시간 (KST 9:00 ~ 24:00)
+const MARKET_OPEN_HOUR = 9
+const MARKET_CLOSE_HOUR = 24
+const KST_OFFSET_HOURS = 9
+
+function getKSTHour(date: Date): number {
+  return (date.getUTCHours() + KST_OFFSET_HOURS) % 24
+}
+
+function isWithinMarketHours(date: Date): boolean {
+  const kstHour = getKSTHour(date)
+  return kstHour >= MARKET_OPEN_HOUR && kstHour < MARKET_CLOSE_HOUR
+}
+
+function getTimeIntervalMinutes(timeframe: string): number {
+  switch (timeframe) {
+    case '1M': return 1
+    case '5M': return 5
+    case '30M': return 30
+    case '1H': return 60
+    case '1D': return 24 * 60
+    case '1W': return 7 * 24 * 60
+    default: return 5
+  }
+}
+
+function getDataRange(timeframe: string, now: Date): Date {
+  const startTime = new Date(now)
+  switch (timeframe) {
+    case '1M':
+      startTime.setHours(now.getHours() - 6)
+      break
+    case '5M':
+      startTime.setHours(now.getHours() - 24)
+      break
+    case '30M':
+      startTime.setDate(now.getDate() - 3)
+      break
+    case '1H':
+      startTime.setDate(now.getDate() - 7)
+      break
+    case '1D':
+      startTime.setDate(now.getDate() - 30)
+      break
+    case '1W':
+      startTime.setDate(now.getDate() - 90)
+      break
+  }
+  return startTime
+}
+
+function generateTimeSlots(startTime: Date, endTime: Date, intervalMinutes: number): Date[] {
+  const slots: Date[] = []
+  const currentTime = new Date(startTime)
+
+  while (currentTime <= endTime) {
+    slots.push(new Date(currentTime))
+    currentTime.setTime(currentTime.getTime() + intervalMinutes * 60 * 1000)
+  }
+
+  return slots
+}
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
@@ -30,22 +93,7 @@ export async function GET(request: Request) {
     }
 
     const now = new Date()
-    const startTime = new Date()
-
-    switch (timeframe) {
-      case '5M':
-        startTime.setHours(now.getHours() - 24) // 5분봉은 24시간 데이터
-        break
-      case '30M':
-        startTime.setDate(now.getDate() - 3)    // 30분봉은 3일 데이터
-        break
-      case '1H':
-        startTime.setDate(now.getDate() - 7)    // 1시간봉은 7일 데이터
-        break
-      case '1D':
-        startTime.setDate(now.getDate() - 30)   // 일봉은 30일 데이터
-        break
-    }
+    const startTime = getDataRange(timeframe, now)
 
     const { data: priceUpdates, error } = await supabase
       .from('price_updates')
@@ -56,75 +104,51 @@ export async function GET(request: Request) {
 
     if (error) throw error
 
-    // 시간 간격(분) 계산 함수
-    function getTimeIntervalMinutes(timeframe: string): number {
-      switch (timeframe) {
-        case '5M': return 5
-        case '30M': return 30
-        case '1H': return 60
-        case '1D': return 24 * 60
-        default: return 5
-      }
-    }
-
-    // 전체 시간대 배열 생성 함수
-    function generateTimeSlots(startTime: Date, endTime: Date, intervalMinutes: number): Date[] {
-      const slots: Date[] = []
-      let currentTime = new Date(startTime)
-
-      while (currentTime <= endTime) {
-        slots.push(new Date(currentTime))
-        currentTime = new Date(currentTime.getTime() + intervalMinutes * 60 * 1000)
-      }
-
-      return slots
-    }
-
-    // OHLC 데이터 생성 부분 수정
     const intervalMinutes = getTimeIntervalMinutes(timeframe)
     const timeSlots = generateTimeSlots(startTime, now, intervalMinutes)
 
-    const ohlcData = new Map()
+    // 장 마감 시간 필터가 필요한 타임프레임 (시간봉 이하)
+    const needsMarketHoursFilter = !['1D', '1W'].includes(timeframe)
+
+    const candleData: { time: number; open: number; high: number; low: number; close: number }[] = []
     let lastValidPrice: number | null = null
 
     timeSlots.forEach(timeSlot => {
-      const key = timeSlot.getTime()
+      // 장 마감 시간 슬롯 건너뛰기 (1D/1W 제외)
+      if (needsMarketHoursFilter && !isWithinMarketHours(timeSlot)) {
+        return
+      }
+
+      const slotStart = timeSlot.getTime()
+      const slotEnd = slotStart + intervalMinutes * 60 * 1000
+
       const relevantUpdates = priceUpdates?.filter(update => {
-        const updateTime = new Date(update.created_at)
-        const slotEnd = new Date(timeSlot.getTime() + intervalMinutes * 60 * 1000)
-        return updateTime >= timeSlot && updateTime < slotEnd
+        const updateTime = new Date(update.created_at).getTime()
+        return updateTime >= slotStart && updateTime < slotEnd
       })
 
-      if (relevantUpdates?.length > 0) {
-        // 해당 시간대에 데이터가 있는 경우
+      if (relevantUpdates && relevantUpdates.length > 0) {
         const prices = relevantUpdates.map(u => u.new_price)
         lastValidPrice = prices[prices.length - 1]
         
-        ohlcData.set(key, {
-          x: key,
-          y: [
-            prices[0],                    // open
-            Math.max(...prices),          // high
-            Math.min(...prices),          // low
-            lastValidPrice                // close
-          ]
+        candleData.push({
+          time: Math.floor(slotStart / 1000), // lightweight-charts는 초 단위 Unix timestamp
+          open: prices[0],
+          high: Math.max(...prices),
+          low: Math.min(...prices),
+          close: lastValidPrice!
         })
       } else if (lastValidPrice !== null) {
-        // 데이터가 없지만 이전 가격이 있는 경우
-        ohlcData.set(key, {
-          x: key,
-          y: [
-            lastValidPrice,  // open
-            lastValidPrice,  // high
-            lastValidPrice,  // low
-            lastValidPrice   // close
-          ],
-          isEmpty: true      // 빈 캔들 표시용
+        // 장중이지만 데이터가 없는 경우 - 이전 가격으로 채움
+        candleData.push({
+          time: Math.floor(slotStart / 1000),
+          open: lastValidPrice,
+          high: lastValidPrice,
+          low: lastValidPrice,
+          close: lastValidPrice
         })
       }
     })
-
-    const candleData = Array.from(ohlcData.values())
 
     return NextResponse.json({ 
       candleData,
@@ -138,4 +162,4 @@ export async function GET(request: Request) {
       { status: 500 }
     )
   }
-} 
+}

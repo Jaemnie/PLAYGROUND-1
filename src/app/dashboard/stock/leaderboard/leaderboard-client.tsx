@@ -24,21 +24,31 @@ export function LeaderboardClient({ users }: LeaderboardClientProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900">
+    <div className="min-h-screen bg-background">
       <div className="fixed top-4 left-4 z-50">
         <StockBackButton />
       </div>
-      <div className="container mx-auto px-4 py-8">
-        <motion.h1 
-          className="text-3xl font-bold text-gray-100 mb-8"
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          랭킹 리더보드
-        </motion.h1>
-        
-        <Card className="bg-black/40 backdrop-blur-sm border-gray-800 p-6 mb-6 overflow-hidden">
+
+      {/* 컴팩트 헤더 */}
+      <section className="pt-20 pb-8 px-4">
+        <div className="container mx-auto max-w-5xl">
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <p className="text-sm font-bold tracking-widest text-violet-400 mb-1">
+              STACKS
+            </p>
+            <h1 className="text-2xl font-bold text-gray-100">
+              랭킹 리더보드
+            </h1>
+          </motion.div>
+        </div>
+      </section>
+
+      <section className="px-4 pb-12">
+        <div className="container mx-auto max-w-5xl">
+        <Card className="rounded-2xl bg-black/40 backdrop-blur-sm border border-gray-800/50 p-6 overflow-hidden">
           <h2 className="text-xl font-semibold text-gray-100 mb-6">전체 사용자 랭킹</h2>
           <div className="overflow-x-auto">
             <Table>
@@ -93,7 +103,8 @@ export function LeaderboardClient({ users }: LeaderboardClientProps) {
             </Table>
           </div>
         </Card>
-      </div>
+        </div>
+      </section>
     </div>
   )
 }

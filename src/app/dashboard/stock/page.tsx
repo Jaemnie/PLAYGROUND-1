@@ -69,6 +69,19 @@ export default async function StockDashboardPage() {
     )
   } catch (error: unknown) {
     console.error('Error:', error)
-    return <div>오류가 발생했습니다.</div>
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center px-4">
+        <div className="text-center max-w-sm">
+          <p className="text-4xl font-bold text-gray-300 mb-4">오류 발생</p>
+          <p className="text-gray-500 mb-6">데이터를 불러오는 중 문제가 발생했습니다.</p>
+          <a
+            href="/dashboard/stock"
+            className="inline-block px-6 py-2.5 rounded-xl bg-violet-500 hover:bg-violet-600 text-white text-sm font-medium transition-colors"
+          >
+            다시 시도
+          </a>
+        </div>
+      </div>
+    )
   }
 }

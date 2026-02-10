@@ -4,13 +4,12 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { CardHeader, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
-import { ChevronLeftIcon, ChevronRightIcon, ChevronUpIcon, ChevronDownIcon } from '@heroicons/react/24/outline'
+import { ChevronUpIcon, ChevronDownIcon } from '@heroicons/react/24/outline'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useRealtimeStockData } from '@/hooks/useRealtimeStockData'
 import { toast } from 'sonner'
-import { createClientBrowser } from '@/lib/supabase/client'
+
 
 interface Company {
   id: string
@@ -151,15 +150,6 @@ export function StockList({ companies: initialCompanies }: StockListProps) {
     return marketCap.toString()
   }
 
-  // 수정: 서버 사이드 페이징
-  const fetchPage = async (page: number) => {
-    const { data } = await createClientBrowser()
-      .from('companies')
-      .select('*')
-      .range((page-1)*20, page*20-1);
-    return data;
-  };
-
   return (
     <>
       <CardHeader>
@@ -213,6 +203,13 @@ export function StockList({ companies: initialCompanies }: StockListProps) {
               </TableRow>
             </TableHeader>
             <TableBody>
+              {sortedCompanies.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center py-12 text-gray-500">
+                    검색 결과가 없습니다
+                  </TableCell>
+                </TableRow>
+              )}
               <AnimatePresence mode="popLayout">
                 {sortedCompanies.map((company) => (
                   <motion.tr

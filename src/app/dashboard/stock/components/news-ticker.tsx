@@ -107,26 +107,33 @@ export function NewsTicker({ news: initialNews }: NewsTickerProps) {
         </div>
       </CardHeader>
       <CardContent>
-        <div className="relative min-h-[140px]">
+        <div className="relative h-[140px] overflow-hidden">
           <AnimatePresence mode="wait">
-            <motion.div
-              key={currentNews?.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.6, ease: "easeOut" }}
-              className={`absolute inset-0 space-y-3 p-4 rounded-xl ${getImpactStyle(currentNews?.impact || 'neutral')}`}
-            >
-              <h3 className="font-bold text-gray-100 mb-2 line-clamp-1 text-lg">
-                {currentNews?.title}
-              </h3>
-              <p className="text-sm text-gray-300/90 line-clamp-2 mb-2 leading-relaxed">
-                {currentNews?.content}
-              </p>
-              <p className="text-xs text-gray-400/80">
-                {currentNews?.published_at && formatDate(currentNews.published_at)}
-              </p>
-            </motion.div>
+            {currentNews && (
+              <motion.div
+                key={currentNews.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.4, ease: "easeOut" }}
+                className={`space-y-3 p-4 rounded-xl h-full ${getImpactStyle(currentNews.impact || 'neutral')}`}
+              >
+                <h3 className="font-bold text-gray-100 mb-2 line-clamp-1 text-lg">
+                  {currentNews.title}
+                </h3>
+                <p className="text-sm text-gray-300/90 line-clamp-2 mb-2 leading-relaxed">
+                  {currentNews.content}
+                </p>
+                <p className="text-xs text-gray-400/80">
+                  {formatDate(currentNews.published_at)}
+                </p>
+              </motion.div>
+            )}
+            {!currentNews && (
+              <div className="flex items-center justify-center h-full text-gray-500 text-sm">
+                뉴스가 없습니다
+              </div>
+            )}
           </AnimatePresence>
         </div>
 

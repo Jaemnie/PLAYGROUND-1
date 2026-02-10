@@ -117,7 +117,7 @@ export function StockDetailClient({
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900">
+    <div className="min-h-screen bg-background">
       <TradeAlert 
         isOpen={showAlert} 
         type={tradeType} 
@@ -128,43 +128,57 @@ export function StockDetailClient({
         <StockBackButton />
       </div>
       
-      <div className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* 기업 정보 */}
-          <Card className="lg:col-span-2 bg-black/40 backdrop-blur-sm border-gray-800">
-            <CompanyInfo company={company} holding={holding} />
-          </Card>
+      {/* 컴팩트 헤더 */}
+      <section className="pt-20 pb-8 px-4">
+        <div className="container mx-auto max-w-5xl">
+          <p className="text-sm font-bold tracking-widest text-violet-400 mb-1">
+            STACKS
+          </p>
+          <h1 className="text-2xl font-bold text-gray-100">
+            {company.name} ({company.ticker})
+          </h1>
+        </div>
+      </section>
+
+      <section className="px-4 pb-12">
+        <div className="container mx-auto max-w-5xl">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            {/* 기업 정보 */}
+            <Card className="lg:col-span-2 rounded-2xl bg-black/40 backdrop-blur-sm border border-gray-800/50">
+              <CompanyInfo company={company} holding={holding} />
+            </Card>
+            
+            {/* 주문 양식 */}
+            <Card className="rounded-2xl bg-black/40 backdrop-blur-sm border border-gray-800/50">
+              <TradingForm 
+                user={user}
+                company={company}
+                holding={holding}
+                points={points}
+                onTradeComplete={handleTradeComplete}
+              />
+            </Card>
+          </div>
           
-          {/* 주문 양식 */}
-          <Card className="bg-black/40 backdrop-blur-sm border-gray-800">
-            <TradingForm 
-              user={user}
+          {/* 가격 차트 */}
+          <Card className="mt-4 rounded-2xl bg-black/40 backdrop-blur-sm border border-gray-800/50">
+            <PriceChart 
               company={company}
-              holding={holding}
-              points={points}
-              onTradeComplete={handleTradeComplete}
+              timeframe={selectedTimeframe}
+              onTimeframeChange={setSelectedTimeframe}
+            />
+          </Card>
+
+          {/* 기업 뉴스 */}
+          <Card className="mt-4 rounded-2xl bg-black/40 backdrop-blur-sm border border-gray-800/50">
+            <CompanyNews 
+              companyId={company.id}
+              ticker={company.ticker}
+              initialNews={companyNews}
             />
           </Card>
         </div>
-        
-        {/* 가격 차트 */}
-        <Card className="mt-6 bg-black/40 backdrop-blur-sm border-gray-800">
-          <PriceChart 
-            company={company}
-            timeframe={selectedTimeframe}
-            onTimeframeChange={setSelectedTimeframe}
-          />
-        </Card>
-
-        {/* 기업 뉴스 */}
-        <Card className="mt-6 bg-black/40 backdrop-blur-sm border-gray-800">
-          <CompanyNews 
-            companyId={company.id}
-            ticker={company.ticker}
-            initialNews={companyNews}
-          />
-        </Card>
-      </div>
+      </section>
     </div>
   )
 } 
