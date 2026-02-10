@@ -9,7 +9,7 @@ import { motion } from 'framer-motion'
 import {
   Trophy, Star, Crown, Gem, HelpCircle, Lock,
   Footprints, Repeat, Award, Zap, HandCoins, TrendingUp,
-  Flame, Fire, Bomb, ThumbsUp, Target, Banknote, ShoppingCart,
+  Flame, Bomb, ThumbsUp, Target, Banknote, ShoppingCart,
   PieChart, Layers, Coins, Boxes, Compass, LayoutGrid,
   UserPlus, Users, UserCheck, MessageCircle, MessageSquare, MessagesSquare,
   Map, Newspaper, BookOpen, Calendar, CalendarCheck,
@@ -19,7 +19,7 @@ import {
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   Trophy, Star, Crown, Gem, HelpCircle, Lock,
   Footprints, Repeat, Award, Zap, HandCoins, TrendingUp,
-  Flame, Fire, Bomb, ThumbsUp, Target, Banknote, ShoppingCart,
+  Flame, Fire: Flame, Bomb, ThumbsUp, Target, Banknote, ShoppingCart,
   PieChart, Layers, Coins, Boxes, Compass, LayoutGrid,
   UserPlus, Users, UserCheck, MessageCircle, MessageSquare, MessagesSquare,
   Map, Newspaper, BookOpen, Calendar, CalendarCheck,
