@@ -11,33 +11,46 @@ export class PortfolioTracker {
   async recordPerformance(userId: string) {
     if (!this.supabase) await this.initialize();
     try {
-      // 1. 현재 보유 주식 정보 조회
-      const { data: holdings } = await this.supabase
-        .from('holdings')
-        .select(`
-          *,
-          company:companies(current_price)
-        `)
-        .eq('user_id', userId)
+      // 1. 현재 보유 주식 정보 + 포인트 조회
+      const [{ data: holdings }, { data: profile }] = await Promise.all([
+        this.supabase
+          .from('holdings')
+          .select(`
+            *,
+            company:companies(current_price)
+          `)
+          .eq('user_id', userId),
+        this.supabase
+          .from('profiles')
+          .select('points')
+          .eq('id', userId)
+          .single()
+      ])
 
-      if (!holdings) return;
+      if (!profile) return;
+
+      const points = Number(profile.points) || 0
 
       // 2. 포트폴리오 가치 계산
-      const totalValue = holdings.reduce((sum, holding) => 
+      const totalValue = (holdings || []).reduce((sum, holding) => 
         sum + (holding.shares * holding.company.current_price), 0)
         
-      const totalCost = holdings.reduce((sum, holding) => 
+      const totalCost = (holdings || []).reduce((sum, holding) => 
         sum + (holding.shares * holding.average_cost), 0)
         
       const totalProfit = totalValue - totalCost
       const profitRate = totalCost > 0 ? (totalProfit / totalCost) * 100 : 0
 
-      // 3. 성과 기록
+      // 3. 총 자산 = 보유 포인트(현금) + 주식 평가액
+      const totalAssets = points + totalValue
+
+      // 4. 성과 기록
       await this.supabase.from('portfolio_performance').insert({
         user_id: userId,
         total_value: totalValue,
         total_profit: totalProfit,
-        profit_rate: profitRate
+        profit_rate: profitRate,
+        total_assets: totalAssets
       })
 
     } catch (error) {

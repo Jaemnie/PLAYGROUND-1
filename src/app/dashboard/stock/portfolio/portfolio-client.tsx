@@ -7,12 +7,11 @@ import dynamic from 'next/dynamic'
 import { QuickTradeModal } from '@/components/ui/quick-trade-modal'
 import HoldingsTable from './components/holdings-table'
 import TransactionHistory from './components/transaction-history'
-import PortfolioAnalysis from './components/portfolio-analysis'
 import { useRealtimeStockData } from '@/hooks/useRealtimeStockData'
 import { createClientBrowser } from '@/lib/supabase/client'
 
-const PerformanceChart = dynamic(
-  () => import('./components/performance-chart'),
+const PortfolioOverview = dynamic(
+  () => import('./components/portfolio-overview'),
   { ssr: false }
 )
 
@@ -144,17 +143,9 @@ export function PortfolioClient({ user, portfolio: initialPortfolio, transaction
 
       <section className="px-4 pb-12">
         <div className="container mx-auto max-w-5xl">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <Card className="rounded-2xl bg-black/40 backdrop-blur-sm border border-gray-800/50">
-              <PortfolioAnalysis portfolio={updatedPortfolio} points={points} />
-            </Card>
-            <Card className="rounded-2xl bg-black/40 backdrop-blur-sm border border-gray-800/50">
-              <PerformanceChart 
-                portfolio={updatedPortfolio} 
-                user={user}
-              />
-            </Card>
-          </div>
+          <Card className="rounded-2xl bg-black/40 backdrop-blur-sm border border-gray-800/50">
+            <PortfolioOverview user={user} portfolio={updatedPortfolio} points={points} />
+          </Card>
           
           <div className="mt-4">
             <Card className="rounded-2xl bg-black/40 backdrop-blur-sm border border-gray-800/50">
