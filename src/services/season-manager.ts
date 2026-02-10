@@ -191,15 +191,6 @@ export class SeasonManager {
       return
     }
 
-    // 해당 테마 회사 가격 초기화
-    await this.supabase
-      .from('companies')
-      .update({
-        current_price: this.supabase.rpc ? undefined : 0, // fallback
-        previous_price: this.supabase.rpc ? undefined : 0,
-      })
-      .eq('theme_id', theme.id)
-
     // initial_price로 리셋
     const { data: themeCompanies } = await this.supabase
       .from('companies')
@@ -214,10 +205,23 @@ export class SeasonManager {
             current_price: company.initial_price,
             previous_price: company.initial_price,
             last_closing_price: company.initial_price,
+            is_delisted: false,
+            consecutive_down_days: 0,
           })
           .eq('id', company.id)
       }
     }
+
+    // 뉴스 테이블 초기화 (이전 시즌 뉴스 제거)
+    const { error: newsError } = await this.supabase.from('news').delete().neq('id', '00000000-0000-0000-0000-000000000000')
+    if (newsError) {
+      console.warn('[SeasonManager] 뉴스 초기화 중 오류 (무시됨):', newsError.message)
+    } else {
+      console.log('[SeasonManager] 뉴스 테이블 초기화 완료')
+    }
+
+    // 시장 이벤트 비활성화
+    await this.supabase.from('market_events').update({ is_active: false }).eq('is_active', true)
 
     console.log(`[SeasonManager] 시즌 ${nextNumber} 시작: ${theme.name} (${startsAt.toISOString()} ~ ${endsAt.toISOString()})`)
   }

@@ -20,6 +20,20 @@ export default async function StockDashboardPage() {
       name: user.user_metadata?.full_name || user.email || ''
     }
 
+    // 현재 활성 시즌 (테마별 기업/뉴스 필터링용)
+    const { data: activeSeason } = await supabase
+      .from('seasons')
+      .select('theme_id')
+      .eq('status', 'active')
+      .single()
+
+    const themeId = activeSeason?.theme_id ?? null
+
+    // 테마 기업 ID 목록 (뉴스 필터용)
+    const themeCompanyIds = themeId
+      ? (await supabase.from('companies').select('id').eq('theme_id', themeId)).data?.map((c) => c.id) ?? []
+      : []
+
     // 필요한 초기 데이터 병렬로 가져오기
     const [
       portfolioResult,
@@ -36,17 +50,29 @@ export default async function StockDashboardPage() {
         `)
         .eq('user_id', user.id),
       
-      // 주요 기업 목록 (시가총액 순)
-      supabase
-        .from('companies')
-        .select('*')
-        .order('market_cap', { ascending: false }),
+      // 주요 기업 목록 (현재 시즌 테마 기업만, 시가총액 순)
+      themeId
+        ? supabase
+            .from('companies')
+            .select('*')
+            .eq('theme_id', themeId)
+            .order('market_cap', { ascending: false })
+        : supabase
+            .from('companies')
+            .select('*')
+            .order('market_cap', { ascending: false }),
       
-      // 최신 뉴스
-      supabase
-        .from('news')
-        .select('*')
-        .order('published_at', { ascending: false }),
+      // 최신 뉴스 (현재 시즌 테마 기업 뉴스만)
+      themeCompanyIds.length > 0
+        ? supabase
+            .from('news')
+            .select('*')
+            .in('company_id', themeCompanyIds)
+            .order('published_at', { ascending: false })
+        : supabase
+            .from('news')
+            .select('*')
+            .order('published_at', { ascending: false }),
       
       // 사용자 프로필 정보
       supabase

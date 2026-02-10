@@ -490,9 +490,21 @@ export class MarketScheduler {
       await this.maybeGenerateMarketEvent();
       await this.maybeGenerateNews(marketState);
 
-      // 2. 데이터 일괄 조회 (N+1 쿼리 제거)
+      // 2. 데이터 일괄 조회 (현재 시즌 테마 기업만, N+1 쿼리 제거)
+      const { data: activeSeason } = await this.supabase
+        .from('seasons')
+        .select('theme_id')
+        .eq('status', 'active')
+        .single();
+
+      const themeId = activeSeason?.theme_id ?? null;
+      let companiesQuery = this.supabase.from('companies').select('*');
+      if (themeId) {
+        companiesQuery = companiesQuery.eq('theme_id', themeId);
+      }
+
       const [companiesResult, recentNewsResult, activeEvents] = await Promise.all([
-        this.supabase.from('companies').select('*'),
+        companiesQuery,
         this.supabase
           .from('news')
           .select('*')
@@ -1071,11 +1083,27 @@ export class MarketScheduler {
 
     try {
       const supabase = await this.ensureConnection();
-      const { data: companies, error } = await supabase.from('companies').select('*');
+
+      // 현재 시즌 테마 기업만 뉴스 대상 (상장폐지 제외)
+      const { data: activeSeason } = await supabase
+        .from('seasons')
+        .select('theme_id')
+        .eq('status', 'active')
+        .single();
+
+      const themeId = activeSeason?.theme_id ?? null;
+      let companiesQuery = supabase
+        .from('companies')
+        .select('*')
+        .eq('is_delisted', false);
+      if (themeId) {
+        companiesQuery = companiesQuery.eq('theme_id', themeId);
+      }
+      const { data: companies, error } = await companiesQuery;
       if (error) throw error;
 
       if (companies && companies.length > 0) {
-        // 랜덤 회사 1개 선택
+        // 랜덤 회사 1개 선택 (현재 시즌 테마 기업만)
         const company = companies[Math.floor(Math.random() * companies.length)];
         const templates = await this.getNewsTemplatesForIndustry(company.industry);
         if (templates.length === 0) return;
