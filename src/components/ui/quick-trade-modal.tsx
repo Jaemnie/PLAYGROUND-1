@@ -135,13 +135,9 @@ export function QuickTradeModal({
     }
   }
 
-  const setMaxSharesBtn = () => {
-    setShares(String(mode === 'conditional' ? condMaxShares : maxShares))
-  }
-
-  const setHalfSharesBtn = () => {
+  const setSharesPercent = (pct: number) => {
     const max = mode === 'conditional' ? condMaxShares : maxShares
-    setShares(String(Math.floor(max / 2)))
+    setShares(String(Math.floor(max * pct)))
   }
 
   // 매수/매도 전환 시 조건 유형 자동 조정
@@ -403,23 +399,21 @@ export function QuickTradeModal({
                   <div>
                     <div className="flex justify-between items-center mb-2">
                       <p className="text-sm text-gray-400">수량</p>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-7 px-2 text-xs border-gray-700 text-gray-300 hover:text-white"
-                          onClick={setHalfSharesBtn}
-                        >
-                          HALF
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-7 px-2 text-xs border-gray-700 text-gray-300 hover:text-white"
-                          onClick={setMaxSharesBtn}
-                        >
-                          ALL
-                        </Button>
+                      <div className="flex gap-1">
+                        {[
+                          { label: '10%', pct: 0.1 },
+                          { label: '25%', pct: 0.25 },
+                          { label: '50%', pct: 0.5 },
+                          { label: '전량', pct: 1 },
+                        ].map(({ label, pct }) => (
+                          <button
+                            key={label}
+                            className="h-7 px-2 text-xs rounded-md border border-gray-700 text-gray-400 hover:text-white hover:border-gray-500 transition-colors"
+                            onClick={() => setSharesPercent(pct)}
+                          >
+                            {label}
+                          </button>
+                        ))}
                       </div>
                     </div>
                     <Input

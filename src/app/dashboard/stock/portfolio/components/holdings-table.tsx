@@ -2,16 +2,18 @@
 
 import { Button } from '@/components/ui/button'
 import { motion } from 'framer-motion'
-import { TrendingUp, TrendingDown, Minus, ArrowRightLeft } from 'lucide-react'
+import { TrendingUp, TrendingDown, Minus, ArrowRightLeft, Lock } from 'lucide-react'
+import type { LockedSharesMap } from '../portfolio-client'
 
 interface HoldingsTableProps {
   portfolio: any[]
   user: any
   points: number
+  lockedShares?: LockedSharesMap
   onTradeClick: (holding: any) => void
 }
 
-export default function HoldingsTable({ portfolio, user, points, onTradeClick }: HoldingsTableProps) {
+export default function HoldingsTable({ portfolio, user, points, lockedShares, onTradeClick }: HoldingsTableProps) {
   return (
     <div className="p-6">
       <div className="flex items-center justify-between mb-5">
@@ -24,11 +26,13 @@ export default function HoldingsTable({ portfolio, user, points, onTradeClick }:
       <div className="space-y-2.5">
         {portfolio.map((holding, index) => {
           const { company, shares, average_cost } = holding
+          const locked = lockedShares?.get(company.id) || 0
+          const totalShares = shares + locked  // 실제 보유 = 사용 가능 + 잠김
           const currentPrice = company.current_price
-          const totalValue = shares * currentPrice
+          const totalValue = totalShares * currentPrice
           const gainLoss = currentPrice - average_cost
           const gainLossPercent = (gainLoss / average_cost) * 100
-          const totalGainLoss = gainLoss * shares
+          const totalGainLoss = gainLoss * totalShares
           const isProfit = gainLoss > 0
           const isFlat = gainLoss === 0
 
@@ -96,8 +100,14 @@ export default function HoldingsTable({ portfolio, user, points, onTradeClick }:
                       <span className="text-xs text-gray-500 font-normal ml-0.5">원</span>
                     </span>
                     <span className="text-xs text-gray-500">
-                      {shares.toLocaleString()}주
+                      {totalShares.toLocaleString()}주
                     </span>
+                    {locked > 0 && (
+                      <span className="flex items-center gap-0.5 text-[11px] text-violet-400/80">
+                        <Lock className="w-3 h-3" />
+                        {locked.toLocaleString()}주 예약
+                      </span>
+                    )}
                   </div>
 
                   {/* 우측: 손익 금액 */}

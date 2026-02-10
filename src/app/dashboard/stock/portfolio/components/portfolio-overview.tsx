@@ -18,10 +18,13 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
+type LockedSharesMap = Map<string, number>
+
 interface PortfolioOverviewProps {
   user: { id: string }
   portfolio: any[]
   points: number
+  lockedShares?: LockedSharesMap
 }
 
 interface Insight {
@@ -100,14 +103,20 @@ function ScoreRing({ score }: { score: number }) {
   )
 }
 
-export default function PortfolioOverview({ user, portfolio, points }: PortfolioOverviewProps) {
+export default function PortfolioOverview({ user, portfolio, points, lockedShares }: PortfolioOverviewProps) {
   const [analysis, setAnalysis] = useState<AnalysisData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
 
-  // 포트폴리오 현황 계산
-  const stocksValue = portfolio.reduce((sum, h) => sum + (h.shares * h.company.current_price), 0)
-  const investedAmount = portfolio.reduce((sum, h) => sum + (h.shares * h.average_cost), 0)
+  // 포트폴리오 현황 계산 (잠긴 주식 포함)
+  const stocksValue = portfolio.reduce((sum, h) => {
+    const locked = lockedShares?.get(h.company.id) || 0
+    return sum + ((h.shares + locked) * h.company.current_price)
+  }, 0)
+  const investedAmount = portfolio.reduce((sum, h) => {
+    const locked = lockedShares?.get(h.company.id) || 0
+    return sum + ((h.shares + locked) * h.average_cost)
+  }, 0)
   const totalAssets = points + stocksValue
   const unrealizedGain = stocksValue - investedAmount
   const gainPct = investedAmount > 0 ? (unrealizedGain / investedAmount) * 100 : 0

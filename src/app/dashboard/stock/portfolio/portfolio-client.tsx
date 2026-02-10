@@ -2,7 +2,7 @@
 
 import { Card } from '@/components/ui/card'
 import StockBackButton from '@/components/StockBackButton'
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import dynamic from 'next/dynamic'
 import { QuickTradeModal } from '@/components/ui/quick-trade-modal'
 import HoldingsTable from './components/holdings-table'
@@ -19,7 +19,6 @@ const PortfolioOverview = dynamic(
 interface User {
   id: string;
   username: string;
-  // 필요한 추가 필드들
 }
 
 interface Company {
@@ -28,13 +27,11 @@ interface Company {
   ticker: string;
   current_price: number;
   last_closing_price: number;
-  // 필요한 추가 필드들
 }
 
 interface PortfolioItem {
   company: Company;
   quantity: number;
-  // 필요한 추가 필드들
 }
 
 interface Transaction {
@@ -46,6 +43,9 @@ interface Transaction {
   created_at: string;
   company: Company;
 }
+
+// 회사별 잠긴 주식 수량 (조건 매도 주문 에스크로)
+export type LockedSharesMap = Map<string, number>
 
 interface PortfolioClientProps {
   user: User;
@@ -60,6 +60,7 @@ export function PortfolioClient({ user, portfolio: initialPortfolio, transaction
   const [points, setPoints] = useState(initialPoints)
   const [selectedHolding, setSelectedHolding] = useState<typeof initialPortfolio[number] | null>(null)
   const [showTradeModal, setShowTradeModal] = useState(false)
+  const [lockedShares, setLockedShares] = useState<LockedSharesMap>(new Map())
 
   // 실시간 주식 데이터 구독
   const companyIds = portfolio.map(h => h.company.id)
@@ -73,6 +74,30 @@ export function PortfolioClient({ user, portfolio: initialPortfolio, transaction
       ...stockData.get(holding.company.id)
     }
   }))
+
+  // 조건 매도 주문의 잠긴 주식 수량 조회
+  const fetchLockedShares = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/stock/pending-orders?user_id=${user.id}&status=pending`)
+      const data = await res.json()
+      if (data.orders) {
+        const map = new Map<string, number>()
+        for (const order of data.orders) {
+          if (order.order_type === 'sell') {
+            const current = map.get(order.company_id) || 0
+            map.set(order.company_id, current + order.shares)
+          }
+        }
+        setLockedShares(map)
+      }
+    } catch {
+      // 조회 실패해도 무시 (잠김 표시만 안 됨)
+    }
+  }, [user.id])
+
+  useEffect(() => {
+    fetchLockedShares()
+  }, [fetchLockedShares])
 
   const refreshData = async (): Promise<void> => {
     const supabase = createClientBrowser()
@@ -105,6 +130,9 @@ export function PortfolioClient({ user, portfolio: initialPortfolio, transaction
     if (holdingsResult.data) setPortfolio(holdingsResult.data)
     if (transactionsResult.data) setTransactions(transactionsResult.data)
     if (profileResult.data) setPoints(profileResult.data.points)
+    
+    // 잠긴 주식도 갱신
+    await fetchLockedShares()
   }
 
   const handleTradeComplete = async (): Promise<void> => {
@@ -145,7 +173,7 @@ export function PortfolioClient({ user, portfolio: initialPortfolio, transaction
       <section className="px-4 pb-12">
         <div className="container mx-auto max-w-5xl">
           <Card className="rounded-2xl bg-black/40 backdrop-blur-sm border border-gray-800/50">
-            <PortfolioOverview user={user} portfolio={updatedPortfolio} points={points} />
+            <PortfolioOverview user={user} portfolio={updatedPortfolio} points={points} lockedShares={lockedShares} />
           </Card>
           
           <div className="mt-4">
@@ -154,6 +182,7 @@ export function PortfolioClient({ user, portfolio: initialPortfolio, transaction
                 portfolio={updatedPortfolio} 
                 user={user}
                 points={points}
+                lockedShares={lockedShares}
                 onTradeClick={(holding) => {
                   setSelectedHolding(holding)
                   setShowTradeModal(true)
