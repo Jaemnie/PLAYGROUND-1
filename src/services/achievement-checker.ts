@@ -139,39 +139,44 @@ export class AchievementChecker {
       )
 
       const isUnlocked = progress >= maxProgress
-      const progressVal = Math.min(progress, maxProgress)
 
       if (existing) {
+        // 기존 진행도 업데이트
         const updateData: Record<string, unknown> = {
-          progress: progressVal,
+          progress: Math.min(progress, maxProgress),
         }
+
         if (isUnlocked && !existing.unlocked_at) {
           updateData.unlocked_at = new Date().toISOString()
         }
 
         pendingUpdates.push(
-          this.supabase
-            .from('user_achievements')
-            .update(updateData)
-            .eq('id', existing.id)
-            .then(() => {})
+          Promise.resolve(
+            this.supabase
+              .from('user_achievements')
+              .update(updateData)
+              .eq('id', existing.id)
+          )
         )
       } else {
+        // 새 진행도 생성
         pendingUpdates.push(
-          this.supabase
-            .from('user_achievements')
-            .insert({
+          Promise.resolve(
+            this.supabase.from('user_achievements').insert({
               user_id: userId,
               achievement_id: achievement.id,
-              progress: progressVal,
+              progress: Math.min(progress, maxProgress),
               max_progress: maxProgress,
               unlocked_at: isUnlocked ? new Date().toISOString() : null,
             })
-            .then(() => {})
+          )
         )
       }
 
+      // 새로 해금 시 보상 지급
       if (isUnlocked && !existing?.unlocked_at) {
+        await this.grantReward(userId, achievement)
+
         newUnlocks.push({
           achievementId: achievement.id,
           achievementName: achievement.name,
@@ -184,12 +189,6 @@ export class AchievementChecker {
     }
 
     await Promise.all(pendingUpdates)
-
-    // 보상 지급은 순차 (gems 업데이트 등)
-    for (const unlock of newUnlocks) {
-      const achievement = achievements.find((a) => a.id === unlock.achievementId)
-      if (achievement) await this.grantReward(userId, achievement)
-    }
 
     return newUnlocks
   }
@@ -281,6 +280,12 @@ export class AchievementChecker {
   private async grantReward(userId: string, achievement: Achievement) {
     // 젬 보상
     if (achievement.reward_gems > 0) {
+      await this.supabase.rpc('increment_points', {
+        user_id_input: userId,
+        amount_input: achievement.reward_gems,
+      })
+
+      // gems 컬럼에 별도로도 추가
       const { data: profile } = await this.supabase
         .from('profiles')
         .select('gems')
