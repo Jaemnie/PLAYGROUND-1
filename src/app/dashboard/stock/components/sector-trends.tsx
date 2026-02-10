@@ -11,8 +11,6 @@ interface SectorTrendsData {
   sectorTrends: Record<string, TrendDirection>
 }
 
-const INDUSTRY_ORDER = ['테크', '반도체', '바이오', '엔터', '에너지', '금융', '패션', '푸드', '로봇', '건설', '모빌리티', '우주'] as const
-
 function getTrendInfo(direction: TrendDirection): {
   label: string
   color: string
@@ -61,9 +59,13 @@ export function SectorTrends() {
       <CardContent className="pt-0">
         {isLoading ? (
           <div className="text-center py-4 text-sm text-gray-500">로딩 중...</div>
+        ) : Object.keys(data.sectorTrends).length === 0 ? (
+          <div className="text-center py-4 text-sm text-gray-500">섹터 정보가 없습니다.</div>
         ) : (
           <div className="space-y-1.5">
-            {INDUSTRY_ORDER.map((industry, index) => {
+            {Object.keys(data.sectorTrends)
+              .sort()
+              .map((industry, index) => {
               const direction = data.sectorTrends[industry] || 'neutral'
               const info = getTrendInfo(direction as TrendDirection)
 
@@ -75,7 +77,7 @@ export function SectorTrends() {
                   transition={{ delay: index * 0.03 }}
                   className="flex items-center gap-3 h-6"
                 >
-                  <span className="w-8 text-xs font-medium text-gray-400 flex-shrink-0">{industry}</span>
+                  <span className="min-w-[3.5rem] text-xs font-medium text-gray-400 flex-shrink-0">{industry}</span>
                   <span className={`w-4 text-xs text-center ${info.color}`}>
                     {info.icon}
                   </span>

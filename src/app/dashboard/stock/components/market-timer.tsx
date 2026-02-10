@@ -346,7 +346,9 @@ export function MarketTimer() {
               <span className="text-xs font-medium text-gray-400">섹터 트렌드</span>
             </div>
             <div className="flex flex-wrap gap-1.5">
-              {(['테크', '반도체', '바이오', '엔터', '에너지', '금융', '패션', '푸드', '로봇', '건설', '모빌리티', '우주'] as const).map((industry) => {
+              {Object.keys(marketInfo.sectorTrends)
+                .sort()
+                .map((industry) => {
                 const direction = marketInfo.sectorTrends[industry] || 'neutral'
                 const config = direction === 'bullish'
                   ? { icon: '▲', color: 'text-green-400', bg: 'bg-green-500/10', border: 'border-green-500/20' }

@@ -269,7 +269,7 @@ export class MarketScheduler {
     if (!this.supabase) {
       this.supabase = createAdminClient();
     }
-    await this.loadNewsTemplates();
+    // 뉴스 템플릿은 getNewsTemplatesForIndustry(industry) 호출 시 시즌별 on-demand 로드
   }
 
   private async ensureConnection() {
@@ -1162,10 +1162,12 @@ export class MarketScheduler {
         const sentimentBias = Math.max(-1, Math.min(1, sectorStrength + cycleBias));
 
         const selectedNews = this.selectBiasedNews(templates, sentimentBias);
+        const title = selectedNews.title.replace(/{company}/g, company.name);
+        const content = selectedNews.content.replace(/{company}/g, company.name);
         await this.createNews({
           ...selectedNews,
-          title: `[${company.name}] ${selectedNews.title}`,
-          content: `${company.name}(${company.ticker}): ${selectedNews.content}`,
+          title: `[${company.name}] ${title}`,
+          content: `${company.name}(${company.ticker}): ${content}`,
           company_id: company.id,
         });
 
@@ -1236,7 +1238,22 @@ export class MarketScheduler {
 
     try {
       const supabase = await this.ensureConnection();
-      const { data: companies, error } = await supabase.from('companies').select('*');
+
+      const { data: activeSeason } = await supabase
+        .from('seasons')
+        .select('theme_id')
+        .eq('status', 'active')
+        .single();
+
+      const themeId = activeSeason?.theme_id ?? null;
+      let companiesQuery = supabase
+        .from('companies')
+        .select('*')
+        .eq('is_delisted', false);
+      if (themeId) {
+        companiesQuery = companiesQuery.eq('theme_id', themeId);
+      }
+      const { data: companies, error } = await companiesQuery;
       if (error) throw error;
 
       const newsCount = Math.min(
@@ -1253,10 +1270,12 @@ export class MarketScheduler {
           if (templates.length === 0) continue;
 
           const selectedNews = this.selectRandomNews(templates);
+          const title = selectedNews.title.replace(/{company}/g, company.name);
+          const content = selectedNews.content.replace(/{company}/g, company.name);
           await this.createNews({
             ...selectedNews,
-            title: `[${company.name}] ${selectedNews.title}`,
-            content: `${company.name}(${company.ticker}): ${selectedNews.content}`,
+            title: `[${company.name}] ${title}`,
+            content: `${company.name}(${company.ticker}): ${content}`,
             company_id: company.id,
           });
         }
@@ -1317,38 +1336,63 @@ export class MarketScheduler {
 
   private async getNewsTemplatesForIndustry(industry: string): Promise<NewsTemplate[]> {
     if (!this.newsTemplateCache.has(industry)) {
-      await this.loadNewsTemplates();
+      await this.loadNewsTemplatesForIndustry(industry);
     }
     return this.newsTemplateCache.get(industry) || [];
   }
 
   /**
-   * 뉴스 템플릿 로드 (산업별 필터링)
-   * - industries가 NULL이면 모든 산업에 적용
-   * - industries 배열에 해당 산업이 포함된 경우만 적용
+   * 뉴스 템플릿 로드 (시즌 테마 + 산업별 필터링)
+   * - 현재 시즌 theme_id에 해당하는 템플릿 사용 (theme_id NULL은 폴백)
+   * - industries가 NULL/빈 배열이면 모든 산업에 적용
    */
-  private async loadNewsTemplates() {
+  private async loadNewsTemplatesForIndustry(industry: string): Promise<void> {
     try {
-      const { data, error } = await this.supabase
-        .from('news_templates')
-        .select('*')
-        .eq('type', 'company');
+      const { data: activeSeason } = await this.supabase
+        .from('seasons')
+        .select('theme_id')
+        .eq('status', 'active')
+        .single();
 
-      if (error) throw error;
+      const themeId = activeSeason?.theme_id ?? null;
 
-      // 산업별 필터링하여 캐시
-      for (const industry of ALL_INDUSTRIES) {
-        const filtered = data.filter((template: NewsTemplate) => {
-          if (!template.industries || template.industries.length === 0) return true;
-          return template.industries.includes(industry);
-        });
-        this.newsTemplateCache.set(industry, filtered);
+      let data: (NewsTemplate & { industries?: string[] })[] | null = null;
+      if (themeId) {
+        const res = await this.supabase
+          .from('news_templates')
+          .select('*')
+          .eq('type', 'company')
+          .eq('theme_id', themeId);
+        if (res.error) throw res.error;
+        data = res.data;
+        if (!data || data.length === 0) {
+          const fallback = await this.supabase
+            .from('news_templates')
+            .select('*')
+            .eq('type', 'company')
+            .is('theme_id', null);
+          if (fallback.error) throw fallback.error;
+          data = fallback.data;
+        }
+      } else {
+        const res = await this.supabase
+          .from('news_templates')
+          .select('*')
+          .eq('type', 'company')
+          .is('theme_id', null);
+        if (res.error) throw res.error;
+        data = res.data;
       }
 
-      console.log(`${data.length}개의 뉴스 템플릿을 DB에서 로드했습니다. (산업별 필터링 적용)`);
+      const filtered = (data || []).filter((template: NewsTemplate & { industries?: string[] }) => {
+        if (!template.industries || template.industries.length === 0) return true;
+        return template.industries.includes(industry);
+      });
+
+      this.newsTemplateCache.set(industry, filtered);
     } catch (error) {
       console.error('뉴스 템플릿 로드 중 오류:', error);
-      throw new Error('뉴스 템플릿 로드 실패');
+      this.newsTemplateCache.set(industry, []);
     }
   }
 

@@ -128,7 +128,10 @@ export function StockDashboardClient({
 
             {/* 포트폴리오 다각화 (2행, 왼쪽 중앙) */}
             <Card className="lg:col-span-4 rounded-2xl bg-black/40 backdrop-blur-sm border border-gray-800/50 overflow-hidden">
-              <PortfolioDiversification portfolio={portfolio} />
+              <PortfolioDiversification
+                portfolio={portfolio}
+                availableSectors={[...new Set(companies.map((c) => c.industry))]}
+              />
             </Card>
           </div>
 

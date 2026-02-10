@@ -8,14 +8,14 @@ import { ChartPieIcon, LightBulbIcon } from '@heroicons/react/24/outline'
 
 interface PortfolioDiversificationProps {
   portfolio: any[]
+  /** 현재 시즌 테마의 산업 목록 (미보유 섹터 표시용). 없으면 보유 섹터만 표시 */
+  availableSectors?: string[]
 }
 
 const COLORS = [
   '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6',
   '#EC4899', '#6366F1', '#14B8A6',
 ]
-
-const ALL_SECTORS = ['테크', '반도체', '바이오', '엔터', '에너지', '금융', '패션', '푸드', '로봇', '건설', '모빌리티', '우주'] as const
 
 function getScoreTip(score: number, missingSectors: string[]): string {
   if (missingSectors.length === 5) return '주식을 매수하여 포트폴리오를 구성해 보세요.'
@@ -105,7 +105,7 @@ function CustomTooltip({ active, payload }: any) {
   )
 }
 
-export function PortfolioDiversification({ portfolio }: PortfolioDiversificationProps) {
+export function PortfolioDiversification({ portfolio, availableSectors = [] }: PortfolioDiversificationProps) {
   const diversificationData = useMemo((): SectorData[] => {
     const sectorMap = new Map<string, { value: number; cost: number; holdings: SectorHolding[] }>()
 
@@ -151,8 +151,8 @@ export function PortfolioDiversification({ portfolio }: PortfolioDiversification
 
   const missingSectors = useMemo(() => {
     const ownedSectors = new Set(diversificationData.map(d => d.sector))
-    return ALL_SECTORS.filter(s => !ownedSectors.has(s))
-  }, [diversificationData])
+    return availableSectors.filter(s => !ownedSectors.has(s))
+  }, [diversificationData, availableSectors])
 
   const hasHoldings = diversificationData.length > 0
   const tip = getScoreTip(score, missingSectors as unknown as string[])
