@@ -178,7 +178,7 @@ export function QuickTradeModal({
         type === 'sell' &&
         holding?.average_cost != null &&
         company.current_price > holding.average_cost
-      await notifyTradeComplete(type, totalAmount, isProfitSell)
+      void notifyTradeComplete(type, totalAmount, isProfitSell)
 
       onTradeComplete(type)
       setShowAlert(true)
