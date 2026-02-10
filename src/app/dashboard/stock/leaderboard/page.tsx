@@ -26,6 +26,8 @@ interface User {
   points: number
   stock_value: number
   total_capital: number
+  tier?: string
+  division?: number
 }
 
 export default async function LeaderboardPage() {
@@ -103,15 +105,30 @@ export default async function LeaderboardPage() {
   // 기존 프로필과 기본 프로필 합치기
   profiles = [...profiles, ...defaultProfiles]
   
+  // 랭크 정보 조회
+  const { data: ranks } = await supabase
+    .from('user_ranks')
+    .select('user_id, tier, division')
+
+  const rankMap = new Map<string, { tier: string; division: number }>()
+  if (ranks) {
+    for (const r of ranks) {
+      rankMap.set(r.user_id, { tier: r.tier, division: r.division })
+    }
+  }
+
   // 사용자 데이터 가공: 포인트와 주식 자산을 합쳐 총 자본 계산
   const usersWithTotalCapital: User[] = profiles.map(user => {
     const stockValue = userStockValues.get(user.id) || 0
+    const rank = rankMap.get(user.id)
     return {
       id: user.id,
       nickname: user.nickname || undefined,
       points: user.points || 0,
       stock_value: stockValue,
-      total_capital: (user.points || 0) + stockValue
+      total_capital: (user.points || 0) + stockValue,
+      tier: rank?.tier || 'bronze',
+      division: rank?.division || 3,
     }
   })
   

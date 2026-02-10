@@ -6,6 +6,7 @@ import { ArrowLeftIcon } from '@heroicons/react/24/outline'
 import { useRouter } from 'next/navigation'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { motion } from 'framer-motion'
+import { TierBadge } from '@/components/ui/tier-badge'
 
 interface User {
   id: string
@@ -13,6 +14,8 @@ interface User {
   points: number
   stock_value: number
   total_capital: number
+  tier?: string
+  division?: number
 }
 
 interface LeaderboardClientProps {
@@ -102,7 +105,14 @@ export function LeaderboardClient({ users }: LeaderboardClientProps) {
                         )}
                       </div>
                     </TableCell>
-                    <TableCell>{user.nickname || '이름 없음'}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <span>{user.nickname || '이름 없음'}</span>
+                        {user.tier && (
+                          <TierBadge tier={user.tier} division={user.division} size="sm" />
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell className="text-right font-mono">
                       {formatNumber(user.points)} P
                     </TableCell>

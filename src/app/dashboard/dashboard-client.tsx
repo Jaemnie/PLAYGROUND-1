@@ -8,6 +8,9 @@ import {
   UserCircle,
   MessageSquare,
   ArrowRight,
+  Award,
+  Store,
+  Swords,
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { LogoutButton } from '@/components/logout-button'
@@ -161,27 +164,85 @@ export function DashboardClient({
               </div>
             </motion.div>
 
-            {/* 메시지 - 2x1 */}
+            {/* 시즌 - 1x1 */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.12 }}
+              onClick={() => router.push('/dashboard/season')}
+              className="cursor-pointer group"
+            >
+              <div className="h-full rounded-2xl border border-gray-800/50 bg-black/40 backdrop-blur-sm p-6 transition-all duration-300 group-hover:border-gray-700/60 group-hover:bg-black/60 group-hover:scale-[1.02]">
+                <div className="flex flex-col justify-between h-full">
+                  <div className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-cyan-500/10 border border-cyan-500/20">
+                    <Swords className="h-5 w-5 text-cyan-400" />
+                  </div>
+                  <div className="mt-4">
+                    <h3 className="text-lg font-semibold text-gray-100">시즌</h3>
+                    <p className="text-xs text-gray-500 mt-1">시즌 경쟁에 참여하세요</p>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* 상점 - 1x1 */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15 }}
+              onClick={() => router.push('/dashboard/shop')}
+              className="cursor-pointer group"
+            >
+              <div className="h-full rounded-2xl border border-gray-800/50 bg-black/40 backdrop-blur-sm p-6 transition-all duration-300 group-hover:border-gray-700/60 group-hover:bg-black/60 group-hover:scale-[1.02]">
+                <div className="flex flex-col justify-between h-full">
+                  <div className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                    <Store className="h-5 w-5 text-emerald-400" />
+                  </div>
+                  <div className="mt-4">
+                    <h3 className="text-lg font-semibold text-gray-100">상점</h3>
+                    <p className="text-xs text-gray-500 mt-1">코스메틱과 아이템을 구매하세요</p>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* 업적 - 1x1 */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.35 }}
+              onClick={() => router.push('/dashboard/achievements')}
+              className="cursor-pointer group"
+            >
+              <div className="h-full rounded-2xl border border-gray-800/50 bg-black/40 backdrop-blur-sm p-6 transition-all duration-300 group-hover:border-gray-700/60 group-hover:bg-black/60 group-hover:scale-[1.02]">
+                <div className="flex flex-col justify-between h-full">
+                  <div className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-violet-500/10 border border-violet-500/20">
+                    <Award className="h-5 w-5 text-violet-400" />
+                  </div>
+                  <div className="mt-4">
+                    <h3 className="text-lg font-semibold text-gray-100">업적</h3>
+                    <p className="text-xs text-gray-500 mt-1">도전 과제를 달성하세요</p>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* 메시지 - 1x1 */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 }}
               onClick={() => router.push('/dashboard/chat')}
-              className="col-span-1 md:col-span-2 cursor-pointer group"
+              className="cursor-pointer group"
             >
-              <div className="h-full rounded-2xl border border-gray-800/50 bg-black/40 backdrop-blur-sm p-6 transition-all duration-300 group-hover:border-gray-700/60 group-hover:bg-black/60 group-hover:scale-[1.01]">
-                <div className="flex items-center justify-between h-full">
-                  <div className="flex items-center gap-4">
-                    <div className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-pink-500/10 border border-pink-500/20">
-                      <MessageSquare className="h-5 w-5 text-pink-400" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-100">메시지</h3>
-                      <p className="text-xs text-gray-500 mt-0.5">친구들과 대화를 나누세요</p>
-                    </div>
+              <div className="h-full rounded-2xl border border-gray-800/50 bg-black/40 backdrop-blur-sm p-6 transition-all duration-300 group-hover:border-gray-700/60 group-hover:bg-black/60 group-hover:scale-[1.02]">
+                <div className="flex flex-col justify-between h-full">
+                  <div className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-pink-500/10 border border-pink-500/20">
+                    <MessageSquare className="h-5 w-5 text-pink-400" />
                   </div>
-                  <div className="flex items-center gap-2 text-gray-500 group-hover:text-gray-300 transition-colors duration-300">
-                    <ArrowRight className="h-4 w-4" />
+                  <div className="mt-4">
+                    <h3 className="text-lg font-semibold text-gray-100">메시지</h3>
+                    <p className="text-xs text-gray-500 mt-1">친구들과 대화를 나누세요</p>
                   </div>
                 </div>
               </div>
