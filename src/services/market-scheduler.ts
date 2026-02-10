@@ -209,6 +209,53 @@ const MARKET_EVENT_TEMPLATES: Array<{
   { title: '로봇세 도입 논의', description: '로봇 활용에 대한 세금 부과가 논의되고 있습니다.', sentiment: 'neutral', impact: 0.3, affected_industries: ['로봇', '테크'], duration_minutes: 90 },
 ];
 
+/** 시즌 테마별 마켓 이벤트 템플릿 (theme_code → 템플릿 목록) */
+type MarketEventTemplate = {
+  title: string;
+  description: string;
+  sentiment: 'positive' | 'negative' | 'neutral';
+  impact: number;
+  affected_industries: string[];
+  duration_minutes: number;
+};
+
+const MARKET_EVENT_TEMPLATES_BY_THEME: Record<string, MarketEventTemplate[]> = {
+  stone_age: [
+    { title: '맘모스 대이동', description: '맘모스 군단이 이동하면서 사냥 기회가 늘어났습니다.', sentiment: 'positive', impact: 0.8, affected_industries: [], duration_minutes: 120 },
+    { title: '흑요석 광맥 발견', description: '주요 채집지에서 흑요석 광맥이 발견되었습니다.', sentiment: 'positive', impact: 0.7, affected_industries: ['석기제작', '채집'], duration_minutes: 150 },
+    { title: '부족 간 교역 확대', description: '인근 부족들과의 교역이 활발해지고 있습니다.', sentiment: 'positive', impact: 0.6, affected_industries: ['교역'], duration_minutes: 120 },
+    { title: '가죽 가공 기술 발전', description: '가죽 가공 기술이 발전하여 품질이 향상되었습니다.', sentiment: 'positive', impact: 0.5, affected_industries: ['가죽'], duration_minutes: 90 },
+    { title: '고대 동굴 벽화 발견', description: '새로운 동굴 벽화가 발견되어 예술계가 들썩입니다.', sentiment: 'positive', impact: 0.5, affected_industries: ['예술'], duration_minutes: 90 },
+    { title: '가뭄 피해 확대', description: '장기 가뭄으로 채집량이 크게 감소했습니다.', sentiment: 'negative', impact: 0.8, affected_industries: [], duration_minutes: 120 },
+    { title: '부족 간 분쟁', description: '부족 간 분쟁이 격화되어 교역이 위축되고 있습니다.', sentiment: 'negative', impact: 0.7, affected_industries: ['교역', '사냥'], duration_minutes: 150 },
+    { title: '야생동물 개체수 감소', description: '사냥터의 야생동물 개체수가 급감했습니다.', sentiment: 'negative', impact: 0.6, affected_industries: ['사냥'], duration_minutes: 120 },
+    { title: '전염병 유행', description: '부족 내 전염병이 유행하여 의술 수요가 급증했습니다.', sentiment: 'negative', impact: 0.5, affected_industries: ['의술'], duration_minutes: 90 },
+    { title: '동굴 주거 붕괴 우려', description: '지질 변동으로 동굴 주거의 안정성이 우려됩니다.', sentiment: 'negative', impact: 0.5, affected_industries: ['건축'], duration_minutes: 90 },
+    { title: '교역로 변경 논의', description: '부족장들이 새로운 교역로를 논의하고 있습니다.', sentiment: 'neutral', impact: 0.3, affected_industries: ['교역'], duration_minutes: 120 },
+    { title: '채집 제철 도래', description: '계절적 채집 제철이 도래하여 시장이 관망세입니다.', sentiment: 'neutral', impact: 0.2, affected_industries: ['채집'], duration_minutes: 60 },
+  ],
+  medieval: [
+    { title: '성곽 보수 공사 완료', description: '주요 성곽 보수 공사가 완료되어 안전성이 높아졌습니다.', sentiment: 'positive', impact: 0.7, affected_industries: [], duration_minutes: 120 },
+    { title: '해상 교역로 개척', description: '새로운 해상 교역로가 개척되었습니다.', sentiment: 'positive', impact: 0.6, affected_industries: ['교역'], duration_minutes: 150 },
+    { title: '귀족 후원 확대', description: '귀족들의 예술 후원이 확대되고 있습니다.', sentiment: 'positive', impact: 0.5, affected_industries: ['예술'], duration_minutes: 90 },
+    { title: '기사단 무기 수주', description: '왕국 기사단이 대규모 무기 수주를 발표했습니다.', sentiment: 'positive', impact: 0.6, affected_industries: ['건축', '교역'], duration_minutes: 120 },
+    { title: '전염병 확산', description: '전염병이 확산되어 의료 수요가 급증했습니다.', sentiment: 'negative', impact: 0.8, affected_industries: [], duration_minutes: 120 },
+    { title: '해적 습격 증가', description: '해적 습격이 증가하여 교역선 운항이 위축되고 있습니다.', sentiment: 'negative', impact: 0.6, affected_industries: ['교역'], duration_minutes: 150 },
+    { title: '돌담 붕괴 사고', description: '주요 건축 현장에서 돌담 붕괴 사고가 발생했습니다.', sentiment: 'negative', impact: 0.5, affected_industries: ['건축'], duration_minutes: 90 },
+    { title: '전쟁 재물 수요', description: '전쟁으로 인한 재물 수요 변동이 예상됩니다.', sentiment: 'neutral', impact: 0.3, affected_industries: [], duration_minutes: 120 },
+  ],
+  industrial: [
+    { title: '공장 확장 투자', description: '주요 기업들이 공장 확장에 대규모 투자를 발표했습니다.', sentiment: 'positive', impact: 0.7, affected_industries: [], duration_minutes: 120 },
+    { title: '철도 건설 계획', description: '신규 철도 노선 건설이 계획되어 건설업이 기대에 부풀었습니다.', sentiment: 'positive', impact: 0.6, affected_industries: ['건설'], duration_minutes: 150 },
+    { title: '석탄 수요 급증', description: '산업화 가속으로 석탄 수요가 급증했습니다.', sentiment: 'positive', impact: 0.5, affected_industries: ['에너지'], duration_minutes: 120 },
+    { title: '경기 침체 우려', description: '주요 산업 지표 악화로 경기 침체가 우려됩니다.', sentiment: 'negative', impact: 0.8, affected_industries: [], duration_minutes: 120 },
+    { title: '노동쟁의 확대', description: '노동쟁의가 확대되어 공장 가동에 차질이 빛고 있습니다.', sentiment: 'negative', impact: 0.6, affected_industries: [], duration_minutes: 150 },
+    { title: '원자재 가격 급등', description: '국제 원자재 가격이 급등하여 생산 비용이 증가했습니다.', sentiment: 'negative', impact: 0.5, affected_industries: ['건설', '에너지'], duration_minutes: 120 },
+    { title: '규제 개편 예고', description: '정부가 산업 규제 개편을 예고하여 시장이 관망세입니다.', sentiment: 'neutral', impact: 0.3, affected_industries: [], duration_minutes: 120 },
+  ],
+  future: [], // 비어 있으면 MARKET_EVENT_TEMPLATES 사용 (기존 미래/현대 산업 템플릿)
+};
+
 // ========================================
 // 섹터 트렌드 사유 (UI 표시용)
 // ========================================
@@ -438,14 +485,16 @@ export class MarketScheduler {
       return;
     }
 
-    // 현재 시즌 테마 산업 조회
+    // 현재 시즌 테마 조회 (theme_id, theme_code)
     const { data: activeSeason } = await this.supabase
       .from('seasons')
-      .select('theme_id')
+      .select('theme_id, theme:season_themes(theme_code)')
       .eq('status', 'active')
       .single();
 
     let themeIndustrySet = new Set<string>();
+    let baseTemplates: MarketEventTemplate[] = MARKET_EVENT_TEMPLATES as MarketEventTemplate[];
+
     if (activeSeason?.theme_id) {
       const { data: themeCompanies } = await this.supabase
         .from('companies')
@@ -454,10 +503,16 @@ export class MarketScheduler {
       themeIndustrySet = new Set(
         (themeCompanies ?? []).map((c) => c.industry as string)
       );
+
+      // 테마별 전용 템플릿이 있으면 사용 (future는 비어있어 기존 템플릿 사용)
+      const themeCode = (activeSeason.theme as { theme_code?: string } | null)?.theme_code;
+      if (themeCode && MARKET_EVENT_TEMPLATES_BY_THEME[themeCode]?.length > 0) {
+        baseTemplates = MARKET_EVENT_TEMPLATES_BY_THEME[themeCode];
+      }
     }
 
     // 시즌에 맞는 이벤트 템플릿만 선택 (affected_industries 빈 배열이거나 테마 산업과 겹치는 것)
-    const eligibleTemplates = MARKET_EVENT_TEMPLATES.filter((t) => {
+    const eligibleTemplates = baseTemplates.filter((t) => {
       if (t.affected_industries.length === 0) return true;
       if (themeIndustrySet.size === 0) return true;
       return t.affected_industries.some((ind) => themeIndustrySet.has(ind));
