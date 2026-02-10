@@ -91,7 +91,7 @@ export default async function StockDashboardPage() {
           initialNews={newsResult.data || []}
           points={profileResult.data?.points || 0}
           themeCompanyIds={themeCompanyIds}
-          activeSeason={activeSeason ? { season_number: activeSeason.season_number, ends_at: activeSeason.ends_at, theme: activeSeason.theme } : null}
+          activeSeason={activeSeason ? { season_number: activeSeason.season_number, ends_at: activeSeason.ends_at, theme: Array.isArray(activeSeason.theme) ? (activeSeason.theme[0] ?? null) : (activeSeason.theme ?? null) } : null}
         />
       </Suspense>
     )
