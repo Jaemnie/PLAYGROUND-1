@@ -113,15 +113,7 @@ export class StatsTracker {
   async incrementNewsRead(userId: string) {
     await this.ensureInitialized()
 
-    await this.supabase
-      .from('user_stats')
-      .update({
-        news_read: this.supabase.rpc ? undefined : 0, // fallback
-        updated_at: new Date().toISOString()
-      })
-      .eq('user_id', userId)
-
-    // 직접 increment
+    // RPC로 news_read 증가
     await this.supabase.rpc('increment_user_stat', {
       p_user_id: userId,
       p_field: 'news_read'
