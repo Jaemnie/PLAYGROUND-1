@@ -154,6 +154,7 @@ export class AchievementChecker {
             .from('user_achievements')
             .update(updateData)
             .eq('id', existing.id)
+            .then(() => {})
         )
       } else {
         pendingUpdates.push(
@@ -166,6 +167,7 @@ export class AchievementChecker {
               max_progress: maxProgress,
               unlocked_at: isUnlocked ? new Date().toISOString() : null,
             })
+            .then(() => {})
         )
       }
 
