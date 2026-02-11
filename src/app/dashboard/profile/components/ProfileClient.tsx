@@ -164,7 +164,12 @@ export function ProfileClient({
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.15 }}
               >
-                <ProfileStatsCard stats={userStats} />
+                <ProfileStatsCard
+                  stats={{
+                    ...userStats,
+                    login_streak: checkIn?.streak ?? userStats?.login_streak ?? 0,
+                  }}
+                />
               </motion.div>
             </div>
 

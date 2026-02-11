@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import { MarketScheduler } from '@/services/market-scheduler'
 import { MarketQueue } from '@/services/market-queue'
 import { OrderExecutor } from '@/services/order-executor'
+import { StatsTracker } from '@/services/stats-tracker'
 
 const receiver = new Receiver({
   currentSigningKey: process.env.QSTASH_CURRENT_SIGNING_KEY!,
@@ -38,7 +39,17 @@ export async function POST(req: Request) {
       execute: async () => {
         console.log('[market-close] 장 마감 처리 실행')
         await scheduler.setClosingPrices()
-        
+
+        // 전체 사용자 최대 포트폴리오 가치 갱신
+        try {
+          const statsTracker = new StatsTracker()
+          await statsTracker.initialize()
+          await statsTracker.updateAllMaxPortfolioValues()
+          console.log('[market-close] 최대 포트폴리오 통계 갱신 완료')
+        } catch (statsError) {
+          console.error('[market-close] 포트폴리오 통계 갱신 중 오류:', statsError)
+        }
+
         // 만료된 조건 주문 정리 + 에스크로 환불
         try {
           const orderExecutor = new OrderExecutor()
@@ -47,7 +58,7 @@ export async function POST(req: Request) {
         } catch (orderError) {
           console.error('[market-close] 만료 주문 처리 중 오류:', orderError)
         }
-        
+
         console.log('[market-close] 장 마감 처리 완료')
       }
     })

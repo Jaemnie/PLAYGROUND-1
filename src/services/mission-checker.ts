@@ -137,9 +137,17 @@ export class MissionChecker {
   /**
    * 미션 진행도 갱신 (거래 후 호출)
    * @param tradeAmount - 거래 금액 (weekly_volume 미션용, 선택)
+   * @returns 새로 완료된 미션 목록 [{ name, reward_gems }]
    */
-  async updateMissionProgress(userId: string, eventType: string, value: number = 1, tradeAmount?: number) {
+  async updateMissionProgress(
+    userId: string,
+    eventType: string,
+    value: number = 1,
+    tradeAmount?: number
+  ): Promise<{ name: string; reward_gems: number }[]> {
     await this.ensureInitialized()
+
+    const completed: { name: string; reward_gems: number }[] = []
 
     // 활성 미션 조회
     const { data: missions } = await this.supabase
@@ -149,7 +157,7 @@ export class MissionChecker {
       .eq('is_completed', false)
       .gt('expires_at', new Date().toISOString())
 
-    if (!missions) return
+    if (!missions) return completed
 
     for (const mission of missions) {
       const template = mission.mission_template as MissionTemplate
@@ -176,7 +184,13 @@ export class MissionChecker {
           is_completed: isCompleted,
         })
         .eq('id', mission.id)
+
+      if (isCompleted) {
+        completed.push({ name: template.name, reward_gems: template.reward_gems })
+      }
     }
+
+    return completed
   }
 
   /**

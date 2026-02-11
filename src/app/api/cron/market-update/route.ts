@@ -2,6 +2,7 @@ import { Receiver } from '@upstash/qstash'
 import { NextResponse } from 'next/server'
 import { MarketScheduler } from '@/services/market-scheduler'
 import { MarketQueue } from '@/services/market-queue'
+import { StatsTracker } from '@/services/stats-tracker'
 
 const receiver = new Receiver({
   currentSigningKey: process.env.QSTASH_CURRENT_SIGNING_KEY!,
@@ -44,6 +45,16 @@ export async function POST(req: Request) {
       execute: async () => {
         console.log('[market-update] 마켓 업데이트 태스크 실행 시작')
         await scheduler.updateMarket()
+
+        // 최대 포트폴리오 가치 갱신 (현재가 기준)
+        try {
+          const statsTracker = new StatsTracker()
+          await statsTracker.initialize()
+          await statsTracker.updateAllMaxPortfolioValues()
+        } catch {
+          // 실패해도 마켓 업데이트는 성공으로 처리
+        }
+
         console.log('[market-update] 마켓 업데이트 태스크 실행 완료')
       }
     })

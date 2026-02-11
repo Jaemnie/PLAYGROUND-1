@@ -20,9 +20,9 @@ export async function POST(request: NextRequest) {
     }
 
     const checker = new MissionChecker()
-    await checker.updateMissionProgress(user.id, eventType, value, tradeAmount)
+    const completed = await checker.updateMissionProgress(user.id, eventType, value, tradeAmount)
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ success: true, completed })
   } catch (error) {
     console.error('[missions/progress] Error:', error)
     return NextResponse.json({ error: '진행도 갱신 실패' }, { status: 500 })

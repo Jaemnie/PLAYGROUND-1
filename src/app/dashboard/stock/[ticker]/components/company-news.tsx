@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useRealtimeNews } from '@/hooks/useRealtimeNews'
+import { useNewsRead } from '@/hooks/useNewsRead'
 import Link from 'next/link'
 
 interface CompanyNewsProps {
@@ -25,10 +26,12 @@ export function CompanyNews({ companyId, ticker, initialNews }: CompanyNewsProps
   const { newsData, latestUpdate } = useRealtimeNews(initialNews)
   const [currentPage, setCurrentPage] = useState(1)
   const [showAlert, setShowAlert] = useState(false)
-  
+
+  const currentNews = newsData[currentPage - 1]
+  useNewsRead(currentNews?.id ?? null, !!currentNews)
+
   const itemsPerPage = 1
   const totalPages = Math.ceil(newsData.length / itemsPerPage)
-  const currentNews = newsData[currentPage - 1]
 
   useEffect(() => {
     if (latestUpdate) {

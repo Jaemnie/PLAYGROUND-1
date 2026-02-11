@@ -6,6 +6,7 @@ import { NewspaperIcon, ArrowLeftIcon, ChevronLeftIcon, ChevronRightIcon } from 
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import { Input } from '@/components/ui/input'
+import { NewsReadTracker } from '@/hooks/useNewsRead'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
@@ -208,8 +209,9 @@ export function NewsListClient({ company, companyNews }: NewsListClientProps) {
               </div>
               <div className="space-y-4">
                 {group.news.map((news) => (
-                  <Card key={news.id} className="overflow-hidden">
-                    <CardContent className="p-6">
+                  <NewsReadTracker key={news.id} newsId={news.id}>
+                    <Card className="overflow-hidden">
+                      <CardContent className="p-6">
                       <div className="flex flex-col gap-4">
                         <div className="flex justify-between items-start">
                           <h2 className="text-xl font-bold text-gray-100">{news.title}</h2>
@@ -224,6 +226,7 @@ export function NewsListClient({ company, companyNews }: NewsListClientProps) {
                       </div>
                     </CardContent>
                   </Card>
+                  </NewsReadTracker>
                 ))}
               </div>
             </div>

@@ -47,6 +47,23 @@ export function MissionPanel() {
     fetchCheckIns()
   }, [])
 
+  // 거래/행동 후 미션 진행도 실시간 반영
+  useEffect(() => {
+    const handler = () => {
+      fetchMissions()
+    }
+    window.addEventListener('missions-updated', handler)
+    return () => window.removeEventListener('missions-updated', handler)
+  }, [])
+
+  // 패널 열 때 최신 데이터 갱신 (조건 주문 체결 등 서버 갱신 반영)
+  useEffect(() => {
+    if (isOpen) {
+      fetchMissions()
+      fetchCheckIns()
+    }
+  }, [isOpen])
+
   const fetchMissions = async () => {
     const res = await fetch('/api/missions')
     const data = await res.json()
@@ -100,12 +117,12 @@ export function MissionPanel() {
 
   return (
     <>
-      {/* 플로팅 버튼 */}
+      {/* 플로팅 버튼 - 왼쪽 하단 (토스트 영역과 분리) */}
       <motion.button
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-violet-600 hover:bg-violet-700 shadow-lg shadow-violet-500/30 flex items-center justify-center"
+        className="fixed bottom-6 left-6 z-50 w-14 h-14 rounded-full bg-violet-600 hover:bg-violet-700 shadow-lg shadow-violet-500/30 flex items-center justify-center"
       >
         <CalendarCheck className="w-6 h-6 text-white" />
         {missions.filter(m => m.is_completed && !m.reward_claimed).length > 0 && (
@@ -122,7 +139,7 @@ export function MissionPanel() {
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="fixed bottom-24 right-6 z-50 w-[360px] max-h-[500px] overflow-y-auto"
+            className="fixed bottom-24 left-6 z-50 w-[360px] max-h-[500px] overflow-y-auto"
           >
             <Card className="rounded-2xl bg-zinc-900/95 backdrop-blur-xl border border-zinc-800/50 p-4 shadow-2xl">
               <div className="flex items-center justify-between mb-4">
