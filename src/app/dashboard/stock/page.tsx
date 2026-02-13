@@ -39,7 +39,8 @@ export default async function StockDashboardPage() {
       portfolioResult,
       companiesResult,
       newsResult,
-      profileResult
+      profileResult,
+      pendingOrdersResult
     ] = await Promise.all([
       // 사용자의 포트폴리오 정보
       supabase
@@ -79,8 +80,21 @@ export default async function StockDashboardPage() {
         .from('profiles')
         .select('points')
         .eq('id', user.id)
-        .single()
+        .single(),
+
+      supabase
+        .from('pending_orders')
+        .select('company_id, shares, order_type, status')
+        .eq('user_id', user.id)
+        .eq('status', 'pending')
+        .eq('order_type', 'sell')
     ])
+
+    const initialLockedShares = (pendingOrdersResult.data || []).reduce<Record<string, number>>((acc, order) => {
+      const key = order.company_id
+      acc[key] = (acc[key] || 0) + Number(order.shares || 0)
+      return acc
+    }, {})
 
     return (
       <Suspense fallback={<LoadingSpinner />}>
@@ -90,6 +104,7 @@ export default async function StockDashboardPage() {
           initialCompanies={companiesResult.data || []}
           initialNews={newsResult.data || []}
           points={profileResult.data?.points || 0}
+          initialLockedShares={initialLockedShares}
           themeCompanyIds={themeCompanyIds}
           activeSeason={activeSeason ? { season_number: activeSeason.season_number, ends_at: activeSeason.ends_at, theme: Array.isArray(activeSeason.theme) ? (activeSeason.theme[0] ?? null) : (activeSeason.theme ?? null) } : null}
         />

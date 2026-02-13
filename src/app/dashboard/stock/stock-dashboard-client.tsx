@@ -61,15 +61,18 @@ interface StockDashboardClientProps {
   initialCompanies: Company[];
   initialNews: News[];
   points: number;
+  initialLockedShares?: Record<string, number>;
   themeCompanyIds?: string[];
   activeSeason?: ActiveSeason | null;
 }
 
 export function StockDashboardClient({
+  user,
   initialPortfolio,
   initialCompanies,
   initialNews,
   points,
+  initialLockedShares = {},
   themeCompanyIds = [],
   activeSeason = null
 }: StockDashboardClientProps) {
@@ -137,7 +140,7 @@ export function StockDashboardClient({
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
             {/* 포트폴리오 요약 (1행, 왼쪽 넓게) */}
             <Card className="lg:col-span-8 rounded-2xl bg-black/40 backdrop-blur-sm border border-gray-800/50 overflow-hidden">
-              <PortfolioSummary portfolio={portfolio} points={points} themeCompanyIds={themeCompanyIds} />
+              <PortfolioSummary portfolio={portfolio} points={points} initialLockedShares={initialLockedShares} themeCompanyIds={themeCompanyIds} />
             </Card>
 
             {/* 마켓 타이머 + 섹터 트렌드 (1~2행 관통, 오른쪽 사이드바) */}

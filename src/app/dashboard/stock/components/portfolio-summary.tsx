@@ -1,26 +1,34 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { CardHeader, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { ArrowUpIcon, ArrowDownIcon, ChartBarIcon, WalletIcon, BanknotesIcon } from '@heroicons/react/24/outline'
+import { ChartBarIcon, WalletIcon, BanknotesIcon } from '@heroicons/react/24/outline'
 import { useRouter } from 'next/navigation'
 import { useRealtimeStockData } from '@/hooks/useRealtimeStockData'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 
 interface PortfolioSummaryProps {
   portfolio: any[]
   points: number
+  initialLockedShares?: Record<string, number>
   themeCompanyIds?: string[]
 }
 
-export function PortfolioSummary({ portfolio: initialPortfolio, points, themeCompanyIds = [] }: PortfolioSummaryProps) {
+export function PortfolioSummary({ portfolio: initialPortfolio, points, initialLockedShares = {}, themeCompanyIds = [] }: PortfolioSummaryProps) {
   const router = useRouter()
   const [totalValue, setTotalValue] = useState(0)
   const [totalGain, setTotalGain] = useState(0)
   const [gainPercentage, setGainPercentage] = useState(0)
+  const lockedShares = useMemo(
+    () => new Map(Object.entries(initialLockedShares).map(([k, v]) => [k, Number(v)])),
+    [initialLockedShares]
+  )
 
-  const allIds = initialPortfolio.map(h => h.company.id)
+  const allIds = [...new Set([
+    ...initialPortfolio.map(h => h.company.id),
+    ...Array.from(lockedShares.keys())
+  ])]
   const companyIds = themeCompanyIds.length > 0 ? allIds.filter(id => themeCompanyIds.includes(id)) : allIds
   const { stockData } = useRealtimeStockData(companyIds)
   
@@ -33,20 +41,40 @@ export function PortfolioSummary({ portfolio: initialPortfolio, points, themeCom
   }))
 
   useEffect(() => {
-    const value = portfolio.reduce((sum, holding) => {
-      return sum + (holding.shares * holding.company.current_price)
+    const holdingCompanyIds = new Set(portfolio.map(holding => holding.company.id))
+
+    const stockValueFromHoldings = portfolio.reduce((sum, holding) => {
+      const locked = lockedShares.get(holding.company.id) || 0
+      return sum + ((holding.shares + locked) * holding.company.current_price)
     }, 0)
-    
+
+    // holdings에 없는(전량 잠김) 종목도 메인 자산 합계에 포함
+    const stockValueFromLockedOnly = Array.from(lockedShares.entries()).reduce((sum, [companyId, shares]) => {
+      if (holdingCompanyIds.has(companyId)) return sum
+      const realtimePrice = stockData.get(companyId)?.current_price
+      return sum + (shares * (realtimePrice || 0))
+    }, 0)
+
+    const investedFromHoldings = portfolio.reduce((sum, holding) => {
+      const locked = lockedShares.get(holding.company.id) || 0
+      return sum + ((holding.shares + locked) * holding.average_cost)
+    }, 0)
+
+    const totalStockValue = stockValueFromHoldings + stockValueFromLockedOnly
+    const totalAssets = points + totalStockValue
+
     const gain = portfolio.reduce((sum, holding) => {
-      const currentValue = holding.shares * holding.company.current_price
-      const costBasis = holding.shares * holding.average_cost
+      const locked = lockedShares.get(holding.company.id) || 0
+      const totalShares = holding.shares + locked
+      const currentValue = totalShares * holding.company.current_price
+      const costBasis = totalShares * holding.average_cost
       return sum + (currentValue - costBasis)
     }, 0)
-    
-    setTotalValue(value)
+
+    setTotalValue(totalAssets)
     setTotalGain(gain)
-    setGainPercentage(value === 0 ? 0 : (gain / value) * 100)
-  }, [portfolio])
+    setGainPercentage(investedFromHoldings === 0 ? 0 : (gain / investedFromHoldings) * 100)
+  }, [portfolio, points, lockedShares, stockData])
 
   return (
     <>

@@ -4,12 +4,8 @@ import { redis } from '@/lib/upstash-client'
 
 async function calculatePriceChange(
   currentPrice: number,
-  transactionVolume: number,
   marketEventImpact: number
 ): Promise<number> {
-  // 거래량 기반 가격 변동 (거래량이 많을수록 가격 변동폭 증가)
-  const volumeImpact = (transactionVolume / 10000) * 0.01 
-  
   // 시장 이벤트 영향
   const eventImpact = marketEventImpact || 0
   
@@ -17,7 +13,7 @@ async function calculatePriceChange(
   const randomChange = (Math.random() - 0.5) * 0.01
   
   // 전체 변동률 계산
-  const totalChange = volumeImpact + eventImpact + randomChange
+  const totalChange = eventImpact + randomChange
   
   return currentPrice * (1 + totalChange)
 }
@@ -38,19 +34,13 @@ export async function POST() {
       return NextResponse.json({ success: true, skipped: true, reason: 'no_active_season' })
     }
 
-    // 1. 최근 거래 데이터 조회
-    const { data: transactions } = await supabase
-      .from('transactions')
-      .select('company_id, shares')
-      .gte('created_at', new Date(Date.now() - 5 * 60000).toISOString()) // 최근 5분
-    
-    // 2. 활성 시장 이벤트 조회
+    // 1. 활성 시장 이벤트 조회
     const { data: marketEvents } = await supabase
       .from('market_events')
       .select('*')
       .lte('effective_at', new Date().toISOString())
       
-    // 3. 각 기업별 주가 업데이트 (현재 시즌 테마 기업만)
+    // 2. 각 기업별 주가 업데이트 (현재 시즌 테마 기업만)
     const { data: companies } = await supabase
       .from('companies')
       .select('id, current_price, ticker')
@@ -58,13 +48,10 @@ export async function POST() {
     
     const updates = await Promise.all(
       (companies || []).map(async (company) => {
-        const companyTransactions = transactions?.filter(t => t.company_id === company.id) || [];
-        const totalVolume = companyTransactions.reduce((sum, t) => sum + t.shares, 0);
         const eventImpact = marketEvents?.reduce((sum, event) => sum + (event.impact || 0), 0) || 0;
         
         const newPrice = await calculatePriceChange(
           company.current_price,
-          totalVolume,
           eventImpact
         );
 

@@ -2,7 +2,7 @@
 
 import { Card } from '@/components/ui/card'
 import StockBackButton from '@/components/StockBackButton'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import dynamic from 'next/dynamic'
 import { QuickTradeModal } from '@/components/ui/quick-trade-modal'
 import HoldingsTable from './components/holdings-table'
@@ -52,16 +52,26 @@ interface PortfolioClientProps {
   portfolio: PortfolioItem[];
   transactions: Transaction[];
   points: number;
+  initialLockedShares?: Record<string, number>;
   themeCompanyIds?: string[];
 }
 
-export function PortfolioClient({ user, portfolio: initialPortfolio, transactions: initialTransactions, points: initialPoints, themeCompanyIds = [] }: PortfolioClientProps) {
+export function PortfolioClient({
+  user,
+  portfolio: initialPortfolio,
+  transactions: initialTransactions,
+  points: initialPoints,
+  initialLockedShares = {},
+  themeCompanyIds = [],
+}: PortfolioClientProps) {
   const [portfolio, setPortfolio] = useState(initialPortfolio)
   const [transactions, setTransactions] = useState(initialTransactions)
   const [points, setPoints] = useState(initialPoints)
   const [selectedHolding, setSelectedHolding] = useState<typeof initialPortfolio[number] | null>(null)
   const [showTradeModal, setShowTradeModal] = useState(false)
-  const [lockedShares, setLockedShares] = useState<LockedSharesMap>(new Map())
+  const [lockedShares, setLockedShares] = useState<LockedSharesMap>(
+    new Map(Object.entries(initialLockedShares).map(([k, v]) => [k, Number(v)]))
+  )
 
   const allIds = portfolio.map(h => h.company.id)
   const companyIds = themeCompanyIds.length > 0 ? allIds.filter(id => themeCompanyIds.includes(id)) : allIds
@@ -95,10 +105,6 @@ export function PortfolioClient({ user, portfolio: initialPortfolio, transaction
       // 조회 실패해도 무시 (잠김 표시만 안 됨)
     }
   }, [user.id])
-
-  useEffect(() => {
-    fetchLockedShares()
-  }, [fetchLockedShares])
 
   const refreshData = async (): Promise<void> => {
     const supabase = createClientBrowser()

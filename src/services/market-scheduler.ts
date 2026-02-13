@@ -101,9 +101,16 @@ const SIMULATION_PARAMS = {
   },
   PRICE: {
     BASE_VOLATILITY: 0.012,        // 기본 1.2% 변동성
-    MAX_CHANGE_PER_UPDATE: 0.01,   // 업데이트당 최대 1% (현실적 수준)
-    DAILY_PRESSURE_START: 0.18,    // 일중 18%부터 부드러운 압력 시작
-    DAILY_PRESSURE_STRENGTH: 0.35, // 압력 강도 (부드러움)
+    MAX_CHANGE_PER_UPDATE: 0.008,  // 업데이트당 최대 0.8% (과도한 누적 억제)
+    DAILY_PRESSURE_START: 0.12,    // 일중 12%부터 압력 시작
+    DAILY_PRESSURE_STRENGTH: 0.9,  // 상한 근접 시 강한 완충
+    LIMIT_GUARD_START: 0.16,       // 일중 16% 이상부터 추가 상승/하락 가드
+    LIMIT_GUARD_STRENGTH: 0.75,    // 가드 강도 (0~1)
+    DEEP_DROP_THRESHOLD: 0.12,     // 일중 -12% 이하를 급락 구간으로 간주
+    DIP_REBOUND_DAMPENER: 0.45,    // 급락 구간 반등 틱 감쇠 (45%)
+    DEEP_DROP_CONTINUATION_CHANCE: 0.18, // 급락 구간 추가 하락 꼬리확률
+    DEEP_DROP_CONTINUATION_MIN: 0.002,   // 꼬리하락 최소 0.2%
+    DEEP_DROP_CONTINUATION_MAX: 0.01,    // 꼬리하락 최대 1.0%
     WEIGHTS: {                     // 합계 = 1.0 (정규화됨)
       BASE_NOISE: 0.15,
       NEWS: 0.25,
@@ -160,12 +167,12 @@ const SIMULATION_PARAMS = {
   MARKET_CYCLE: {
     PHASE_MIN_MINUTES: 480,               // 최소 8시간 지속
     PHASE_MAX_MINUTES: 2880,              // 최대 48시간 지속
-    BULL_BIAS: 0.015,                     // 호황시 +1.5% 편향
-    BEAR_BIAS: -0.015,                    // 침체시 -1.5% 편향
+    BULL_BIAS: 0.008,                     // 호황시 +0.8% 편향
+    BEAR_BIAS: -0.008,                    // 침체시 -0.8% 편향
     NEUTRAL_BIAS: 0,
   },
   MARKET_EVENT: {
-    CHANCE_PER_UPDATE: 0.015,             // 매 업데이트 1.5% 확률로 이벤트 발생
+    CHANCE_PER_UPDATE: 0.008,             // 매 업데이트 0.8% 확률로 이벤트 발생
     MAX_ACTIVE_EVENTS: 3,                 // 동시 활성 이벤트 최대 3개
   },
 };
@@ -622,6 +629,8 @@ export class MarketScheduler {
         return;
       }
 
+      const marketBreadth = this.calculateMarketBreadth(companies);
+
       // 3. 각 회사별 새 가격 계산 (DB 쿼리 없이 순수 계산)
       const updates = companies.map((company) => {
         if (company.is_delisted) return null;
@@ -631,7 +640,7 @@ export class MarketScheduler {
         );
 
         const { newPrice, reason } = this.calculateNewPrice(
-          company, companies, companyNews, marketState, activeEvents
+          company, companies, companyNews, marketState, activeEvents, marketBreadth
         );
 
         const priceChange = (newPrice - company.current_price) / company.current_price;
@@ -733,7 +742,8 @@ export class MarketScheduler {
     allCompanies: Company[],
     companyNews: NewsRecord[],
     marketState: MarketState,
-    activeEvents: MarketEvent[]
+    activeEvents: MarketEvent[],
+    marketBreadth: number
   ): { newPrice: number; factors: PriceFactors; reason: string } {
     if (company.is_delisted) {
       const zeroFactors: PriceFactors = {
@@ -757,7 +767,7 @@ export class MarketScheduler {
     };
 
     // 가중 합산
-    const weightedChange =
+    let weightedChange =
       factors.baseNoise * WEIGHTS.BASE_NOISE +
       factors.newsImpact * WEIGHTS.NEWS +
       factors.sectorTrend * WEIGHTS.SECTOR_TREND +
@@ -765,6 +775,9 @@ export class MarketScheduler {
       factors.momentum * WEIGHTS.MOMENTUM +
       factors.leaderImpact * WEIGHTS.LEADER +
       factors.eventImpact * WEIGHTS.EVENT;
+
+    // 시장 전체가 한 방향으로 과열될 때 동일 방향 변동을 완화해 상한/하한 쏠림을 줄인다.
+    weightedChange = this.applyBreadthDampener(weightedChange, marketBreadth);
 
     // 변동성 스케일링 (산업 × 시가총액 × 시간대)
     const koreaHour = (new Date().getUTCHours() + 9) % 24;
@@ -775,7 +788,8 @@ export class MarketScheduler {
     const scaledChange = weightedChange * industryVol * capVol * timeVol;
 
     // 업데이트당 최대 변동폭 제한
-    const maxChange = SIMULATION_PARAMS.PRICE.MAX_CHANGE_PER_UPDATE * industryVol;
+    const baseMaxChange = SIMULATION_PARAMS.PRICE.MAX_CHANGE_PER_UPDATE * industryVol;
+    let maxChange = baseMaxChange;
     let clampedChange = Math.max(Math.min(scaledChange, maxChange), -maxChange);
 
     // 블랙스완 이벤트: 극히 드물게 캡을 무시하는 극단 변동
@@ -789,16 +803,28 @@ export class MarketScheduler {
 
     // 일중 변동폭 부드러운 압력 (18%부터 시작, 0.35 강도)
     if (company.last_closing_price > 0) {
+      const currentDailyChange =
+        (company.current_price - company.last_closing_price) / company.last_closing_price;
+      maxChange = this.applyLimitGuard(maxChange, currentDailyChange, clampedChange);
+      clampedChange = Math.max(Math.min(clampedChange, maxChange), -maxChange);
+
       const projectedPrice = company.current_price * (1 + clampedChange);
       const projectedDailyChange =
         (projectedPrice - company.last_closing_price) / company.last_closing_price;
       const pressureStart = SIMULATION_PARAMS.PRICE.DAILY_PRESSURE_START;
       const pressureStrength = SIMULATION_PARAMS.PRICE.DAILY_PRESSURE_STRENGTH;
 
-      if (Math.abs(projectedDailyChange) > pressureStart) {
-        const pressure = (Math.abs(projectedDailyChange) - pressureStart) * pressureStrength;
-        clampedChange -= Math.sign(projectedDailyChange) * pressure;
+      if (
+        Math.abs(projectedDailyChange) > pressureStart &&
+        Math.sign(clampedChange) === Math.sign(projectedDailyChange)
+      ) {
+        const excess = Math.abs(projectedDailyChange) - pressureStart;
+        const pressure = excess * pressureStrength * (1 + excess * 4);
+        clampedChange = this.applyOneSidedPressure(clampedChange, pressure);
       }
+
+      // 급락 종목은 "반등이 항상 유리"해지지 않도록 반등 강도 감쇠 + 꼬리 하락 리스크 부여
+      clampedChange = this.applyDeepDropAsymmetry(currentDailyChange, clampedChange);
     }
 
     const newPrice = company.current_price * (1 + clampedChange);
@@ -890,6 +916,113 @@ export class MarketScheduler {
       NEUTRAL_BIAS;
     // ±30% 변동 추가
     return baseBias * (0.7 + Math.random() * 0.6);
+  }
+
+  /**
+   * 시장 폭(Breadth): 전일 종가 대비 상승 종목 비율
+   * - 0.5에 가까울수록 균형
+   * - 1.0에 가까울수록 상승 쏠림
+   */
+  private calculateMarketBreadth(companies: Company[]): number {
+    const valid = companies.filter((c) => !c.is_delisted && c.last_closing_price > 0);
+    if (valid.length === 0) return 0.5;
+
+    const risingCount = valid.reduce((count, company) => {
+      const dailyChange = (company.current_price - company.last_closing_price) / company.last_closing_price;
+      return dailyChange > 0 ? count + 1 : count;
+    }, 0);
+
+    return risingCount / valid.length;
+  }
+
+  /**
+   * 시장 전체가 한 방향으로 과열되면 같은 방향 변동을 감쇠.
+   * - 상승 쏠림(62% 초과)에서는 양(+) 방향 변동을 줄임
+   * - 하락 쏠림(38% 미만)에서는 음(-) 방향 변동을 줄임
+   */
+  private applyBreadthDampener(weightedChange: number, marketBreadth: number): number {
+    const upperThreshold = 0.62;
+    const lowerThreshold = 0.38;
+
+    if (weightedChange > 0 && marketBreadth > upperThreshold) {
+      const overload = Math.min((marketBreadth - upperThreshold) / (1 - upperThreshold), 1);
+      return weightedChange * (1 - overload * 0.7);
+    }
+
+    if (weightedChange < 0 && marketBreadth < lowerThreshold) {
+      const overload = Math.min((lowerThreshold - marketBreadth) / lowerThreshold, 1);
+      return weightedChange * (1 - overload * 0.7);
+    }
+
+    return weightedChange;
+  }
+
+  /**
+   * 일중 변동이 커진 종목은 같은 방향 추가 변동의 상한을 축소.
+   * - 목표: 16% 이상에서 상한/하한 근접 가속을 방지
+   */
+  private applyLimitGuard(baseMaxChange: number, currentDailyChange: number, tickChange: number): number {
+    const { LIMIT_GUARD_START, LIMIT_GUARD_STRENGTH } = SIMULATION_PARAMS.PRICE;
+
+    // 이미 크게 오른/내린 종목이 같은 방향으로 더 움직이려는 경우에만 가드 적용
+    if (
+      Math.abs(currentDailyChange) <= LIMIT_GUARD_START ||
+      Math.sign(currentDailyChange) !== Math.sign(tickChange)
+    ) {
+      return baseMaxChange;
+    }
+
+    const overload = Math.min(
+      (Math.abs(currentDailyChange) - LIMIT_GUARD_START) / (0.3 - LIMIT_GUARD_START),
+      1
+    );
+    const scaled = baseMaxChange * (1 - overload * LIMIT_GUARD_STRENGTH);
+    return Math.max(scaled, baseMaxChange * 0.25);
+  }
+
+  /**
+   * 압력은 변동 "방향"을 뒤집지 않고 같은 방향 크기만 줄인다.
+   * - 강제 반등/강제 반락으로 인한 예측 가능성 증가를 방지
+   */
+  private applyOneSidedPressure(change: number, pressure: number): number {
+    const reducedMagnitude = Math.max(0, Math.abs(change) - pressure);
+    return Math.sign(change) * reducedMagnitude;
+  }
+
+  /**
+   * 급락 구간 비대칭:
+   * - 양(+) 틱 반등은 감쇠
+   * - 일부는 추가 하락 꼬리 리스크를 부여
+   */
+  private applyDeepDropAsymmetry(currentDailyChange: number, tickChange: number): number {
+    const {
+      DEEP_DROP_THRESHOLD,
+      DIP_REBOUND_DAMPENER,
+      DEEP_DROP_CONTINUATION_CHANCE,
+      DEEP_DROP_CONTINUATION_MIN,
+      DEEP_DROP_CONTINUATION_MAX,
+    } = SIMULATION_PARAMS.PRICE;
+
+    if (currentDailyChange > -DEEP_DROP_THRESHOLD) {
+      return tickChange;
+    }
+
+    let adjusted = tickChange;
+
+    // 급락 상태에서는 반등 강도를 줄여 dip-buy 정답화를 완화
+    if (adjusted > 0) {
+      adjusted *= DIP_REBOUND_DAMPENER;
+    }
+
+    // 급락 상태에서 확률적으로 추가 하락 꼬리 리스크 부여
+    if (Math.random() < DEEP_DROP_CONTINUATION_CHANCE) {
+      const extraDrop =
+        DEEP_DROP_CONTINUATION_MIN +
+        Math.random() * (DEEP_DROP_CONTINUATION_MAX - DEEP_DROP_CONTINUATION_MIN);
+      adjusted -= extraDrop;
+    }
+
+    return adjusted;
   }
 
   /**

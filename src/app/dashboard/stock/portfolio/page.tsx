@@ -28,7 +28,7 @@ export default async function PortfolioPage() {
     : []
 
   // 모든 쿼리를 병렬로 실행하여 성능 최적화
-  const [holdingsResult, transactionsResult, profileResult] = await Promise.all([
+  const [holdingsResult, transactionsResult, profileResult, pendingOrdersResult] = await Promise.all([
     // 보유 주식 데이터 조회 (회사 조인 결과는 배열로 반환될 수 있음)
     supabase
       .from('holdings')
@@ -72,7 +72,20 @@ export default async function PortfolioPage() {
       .select('points')
       .eq('id', enrichedUser.id)
       .single(),
+
+    supabase
+      .from('pending_orders')
+      .select('company_id, shares, order_type, status')
+      .eq('user_id', enrichedUser.id)
+      .eq('status', 'pending')
+      .eq('order_type', 'sell'),
   ])
+
+  const initialLockedShares = (pendingOrdersResult.data || []).reduce<Record<string, number>>((acc, order) => {
+    const key = order.company_id
+    acc[key] = (acc[key] || 0) + Number(order.shares || 0)
+    return acc
+  }, {})
 
   // holdings 결과 변환: shares를 quantity로 매핑하고, company 필드는 배열인 경우 첫 번째 객체를 사용
   const portfolio = (holdingsResult.data || []).map(item => ({
@@ -94,6 +107,7 @@ export default async function PortfolioPage() {
         portfolio={portfolio}
         transactions={transactions}
         points={profileResult.data?.points || 0}
+        initialLockedShares={initialLockedShares}
         themeCompanyIds={themeCompanyIds}
       />
     </Suspense>
