@@ -35,7 +35,7 @@ export async function POST(req: Request) {
     // 만료된 세션 정리 로직
     const sessionResult = await cleanupExpiredSessions()
     
-    // 한 달 이상 된 시세 변동 데이터 정리
+    // 1주일 이상 된 시세 변동 데이터 정리
     const priceResult = await cleanupOldPriceUpdates()
     
     return NextResponse.json({ 
@@ -55,7 +55,7 @@ interface SessionData {
   userId?: string;
   lastActive?: number;
   createdAt?: number;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /**
@@ -192,35 +192,53 @@ async function expireSession(sessionId: string) {
   }
 }
 
+const PRICE_CLEANUP_REDIS_KEY = 'cleanup:price_updates:last_run'
+const PRICE_CLEANUP_INTERVAL_MS = 24 * 60 * 60 * 1000 // 24시간
+
 /**
- * 한 달 이상 된 주식 시세 변동 데이터를 삭제하는 함수
+ * 1주일 이상 된 주식 시세 변동 데이터를 삭제하는 함수
+ * 크론이 15분마다 실행되더라도 실제 DB 삭제는 24시간에 1회만 수행
  */
 async function cleanupOldPriceUpdates() {
   try {
+    // 마지막 실행 후 24시간 미경과 시 스킵
+    const lastRun = await redis.get(PRICE_CLEANUP_REDIS_KEY)
+    if (lastRun) {
+      const elapsed = Date.now() - parseInt(lastRun as string)
+      if (elapsed < PRICE_CLEANUP_INTERVAL_MS) {
+        const nextRunMs = PRICE_CLEANUP_INTERVAL_MS - elapsed
+        const nextRunMin = Math.ceil(nextRunMs / (60 * 1000))
+        console.log(`시세 변동 데이터 정리 스킵 (다음 실행까지 약 ${nextRunMin}분 남음)`)
+        return { skipped: true, message: `24시간 미경과, 스킵 (${nextRunMin}분 후 실행 예정)` }
+      }
+    }
+
+    await redis.set(PRICE_CLEANUP_REDIS_KEY, Date.now().toString())
+
     const supabase = createAdminClient()
-    
-    // 한 달 전 날짜 계산
-    const oneMonthAgo = new Date()
-    oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1)
-    const cutoffDate = oneMonthAgo.toISOString()
-    
+
+    // 1주일 전 날짜 계산
+    const oneWeekAgo = new Date()
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7)
+    const cutoffDate = oneWeekAgo.toISOString()
+
     const { count, error } = await supabase
       .from('price_updates')
       .delete({ count: 'exact' })
       .lt('created_at', cutoffDate)
-    
+
     if (error) {
       console.error('시세 변동 데이터 정리 오류:', error)
       throw error
     }
-    
+
     const deletedCount = count ?? 0
     console.log(`${deletedCount}개의 오래된 시세 변동 데이터가 삭제되었습니다. (기준: ${cutoffDate})`)
-    
+
     return {
       deletedCount,
       cutoffDate,
-      message: `${deletedCount}개의 한 달 이상 된 시세 변동 데이터가 삭제되었습니다.`
+      message: `${deletedCount}개의 1주일 이상 된 시세 변동 데이터가 삭제되었습니다.`
     }
   } catch (error) {
     console.error('시세 변동 데이터 정리 중 오류 발생:', error)
