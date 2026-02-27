@@ -64,6 +64,21 @@ function generateTimeSlots(startTime: Date, endTime: Date, intervalMinutes: numb
   return slots
 }
 
+// 장 미개장 시간(KST 0~8시)에 조회 시 슬롯 생성 기준을 마지막 장 마감 시각으로 조정
+// 이를 통해 0~8시 슬롯이 생성되지 않으면서도 이전 거래일 히스토리는 완전히 표시됨
+function getEffectiveEndTime(now: Date, needsMarketHoursFilter: boolean): Date {
+  if (!needsMarketHoursFilter) return now
+
+  const kstHour = getKSTHour(now)
+  if (kstHour < MARKET_OPEN_HOUR) {
+    // 장 미개장 상태: 마지막 장 마감 시각(KST 자정 = UTC 15:00)으로 대체
+    const effectiveEnd = new Date(now)
+    effectiveEnd.setUTCHours(15, 0, 0, 0)
+    return effectiveEnd
+  }
+  return now
+}
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
@@ -105,10 +120,11 @@ export async function GET(request: Request) {
     if (error) throw error
 
     const intervalMinutes = getTimeIntervalMinutes(timeframe)
-    const timeSlots = generateTimeSlots(startTime, now, intervalMinutes)
 
     // 장 마감 시간 필터가 필요한 타임프레임 (시간봉 이하)
     const needsMarketHoursFilter = !['1D', '1W'].includes(timeframe)
+    const effectiveEnd = getEffectiveEndTime(now, needsMarketHoursFilter)
+    const timeSlots = generateTimeSlots(startTime, effectiveEnd, intervalMinutes)
 
     const candleData: { time: number; open: number; high: number; low: number; close: number }[] = []
     let lastValidPrice: number | null = null
